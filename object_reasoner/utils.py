@@ -5,6 +5,7 @@ import os
 import json
 import h5py
 import numpy as np
+import cv2
 
 def init_obj_catalogue(path_to_data):
 
@@ -80,11 +81,19 @@ def pred_twostage(ReasonerObj, args):
     """
 
     #Decide if object is Known or Novel, based on best threshold
+    # Not clear from their code how to do it without GT
 
     #If assumed to be Known use K-net
-    pred_singlemodel(ReasonerObj, args, model='k-net')
+    # pred_singlemodel(ReasonerObj, args, model='k-net')
     #Otherwise use N-net
-    pred_singlemodel(ReasonerObj, args, model='n-net')
+    # pred_singlemodel(ReasonerObj, args, model='n-net')
 
     return
 
+
+def load_depth(paths_to_depths):
+    h,w,c = cv2.imread(paths_to_depths[0]).shape
+    all_depths = np.zeros((len(paths_to_depths),h,w,c))
+    for i,pth in enumerate(paths_to_depths):
+        all_depths[i,:] = cv2.imread(pth)
+    return all_depths
