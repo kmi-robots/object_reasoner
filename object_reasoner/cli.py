@@ -18,7 +18,7 @@ def main():
 
     args = parser.parse_args()
     reasoner = ObjectReasoner(args)
-    reasoner.run(args)
+    reasoner.run()
 
     return 0
 

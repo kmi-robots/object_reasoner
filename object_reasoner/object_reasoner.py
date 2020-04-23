@@ -4,8 +4,11 @@ import os
 import time
 import sys
 import numpy as np
-from utils import init_obj_catalogue, load_emb_space, pred_singlemodel, pred_twostage, load_depth
+import cv2
+from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics
+from predict import pred_singlemodel, pred_twostage
 from evalscript import eval_singlemodel
+from img_processing import extract_foreground, detect_contours
 
 class ObjectReasoner():
 
@@ -35,12 +38,10 @@ class ObjectReasoner():
             self.plabels = prf.read().splitlines()       # product img labels
             self.dimglist = [os.path.join(args.test_res,pth.replace('color','depth')) for pth in imgf.read().splitlines()]       # paths to test depth imgs
 
-        #Read depth images in test as matrix
-        if not os.path.isfile('./data/test_dmatrix.npy'):
-            self.dmatrix = load_depth(self.dimglist)
-            np.save('./data/test_dmatrix.npy', self.dmatrix)
-        else:
-            self.dmatrix = np.load('./data/test_dmatrix.npy')
+
+        # Camera intrinsics
+        # replace values in yaml file for custom setups
+        self.camintr = load_camera_intrinsics('./camera_intrinsics.yaml')
 
         # Load predictions from baseline algo
         start = time.process_time()
@@ -63,8 +64,7 @@ class ObjectReasoner():
         print("Double checking top-1 accuracies to reproduce baseline...")
         eval_singlemodel(self)
 
-    def run(self, args):
-
+    def run(self):
         """
         Color images are saved as 24-bit RGB PNG.
         Depth images and heightmaps are saved as 16-bit PNG, where depth values are saved in deci-millimeters (10-4m).
@@ -72,8 +72,16 @@ class ObjectReasoner():
         Depth images are aligned to their corresponding color images.
         """
         # TODO correct self.predictions from baseline
+        for i in range(len(self.dimglist)):  # for each depth image
+            dimage = cv2.imread(self.dimglist[i])
+            cluster_bw = extract_foreground(dimage)
+            masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
 
-        # based on obj size reasoning
+            # based on obj size reasoning
+
+        # self.predictions = None     #TODO new corrected predictions here
+        # print("Evaluating again post correction...")
+        # eval_singlemodel(self)
 
         return
 

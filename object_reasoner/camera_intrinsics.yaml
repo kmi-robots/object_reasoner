@@ -1,0 +1,4 @@
+# camera intrinsics for depth value interpretation
+
+focalLength: 0
+scaling: 10000 #deci-millimiters to meters
