@@ -5,8 +5,7 @@ import os
 import json
 import h5py
 import numpy as np
-import cv2
-import yaml
+import csv
 # import matplotlib.pyplot as plt
 
 def init_obj_catalogue(path_to_data):
@@ -47,9 +46,21 @@ def load_emb_space(path_to_hdf5):
     return np.array(knetf['prodFeat'], dtype='<f4'), np.array(nnetf['prodFeat'], dtype='<f4'), \
            np.array(knetf['testFeat'], dtype='<f4'), np.array(nnetf['testFeat'], dtype='<f4')
 
-def load_camera_intrinsics(path_to_yaml):
-    with open(path_to_yaml) as file:
-        intrinsics = yaml.load(file, Loader=yaml.FullLoader)
+def load_camera_intrinsics(path_to_intr):
+    """
+    Expects 3x3 intrinsics matrix as tab-separated txt
+    """
+    intrinsics=[]
+    with open(path_to_intr) as f:
+        reader = csv.reader(f,delimiter='\t')
+        for row in reader:
+            if row==[]: continue
+            for cell in row:
+                if cell=='': continue
+                try:
+                    intrinsics.append(float(cell.split("  ")[1]))
+                except IndexError:
+                    intrinsics.append(float(cell.split(" ")[1]))
     return intrinsics
 
 
