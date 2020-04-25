@@ -7,22 +7,23 @@ import yaml
 def extract_foreground_2D(dm):
     #flatten matrix first
     dmat = dm.copy()
-    plt.imshow(dmat, cmap='Greys_r')
-    plt.show()
+    # plt.imshow(dmat, cmap='Greys_r')
+    # plt.show()
     fmatrix = np.reshape(dmat,(dm.shape[0]*dm.shape[1], 1))
     clt = KMeans(n_clusters=3)  # background, foreground, no-value
     clt.fit(fmatrix)
     #Find cluster index for closest points to camera (foreground)
-    tgt_idx = np.argmin(clt.cluster_centers_, axis=0)[0]
+    #Second smallest to avoid zero value cluster
+    tgt_idx = np.where(clt.cluster_centers_ == sorted(clt.cluster_centers_)[1][0])[0][0]
     cbin = np.uint8(fmatrix.copy()) #binarized version
     for i in range(clt.labels_.shape[0]):
         #color pixels based on cluster label
         if clt.labels_[i]==tgt_idx:   #foreground
-            cbin[i, :] = 0
-        else: #either background or no value, treated the same
             cbin[i, :] = 255
-    plt.imshow(np.reshape(cbin, dm.shape), cmap='Greys_r')
-    plt.show()
+        else: #either background or no value, treated the same
+            cbin[i, :] = 0
+    # plt.imshow(np.reshape(cbin, dm.shape), cmap='Greys_r')
+    # plt.show()
     return np.reshape(cbin, dm.shape)
 
 
@@ -42,8 +43,8 @@ def detect_contours(dmatrix, cbin):
     # mask original depth image
     out = dmatrix.copy()
     out[out_mask == 0] = 0.
-    """
     # print(out[out != 0])
+    """
     plt.imshow(out_mask,cmap='Greys_r')
     plt.show()
     plt.imshow(out,cmap='Greys_r')

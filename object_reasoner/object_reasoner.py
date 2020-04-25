@@ -78,15 +78,15 @@ class ObjectReasoner():
         """
         # TODO correct self.predictions from baseline
         for i in range(len(self.dimglist)):  # for each depth image
-            dimage = cv2.imread(self.dimglist[10],cv2.IMREAD_UNCHANGED)
-            plt.imshow(cv2.imread(self.imglist[10],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
+            dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
+            plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
             plt.show()
-            origpcl = PathToPCL(self.dimglist[10], self.camera)
+            # origpcl = PathToPCL(self.dimglist[10], self.camera)
             cluster_bw = extract_foreground_2D(dimage)
             masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
             obj_pcl = MatToPCL(masked_dmatrix, self.camera)
             cluster_pcl = cluster_3D(obj_pcl)
-            height,width,depth = estimate_dims(cluster_pcl)
+            height,width,depth = estimate_dims(cluster_pcl,obj_pcl)
             current_top = self.predictions[i,:]          # baseline top 5 predictions as (label, distance)
             current_pred = current_top[0,:]  #top 1
             for k, v in self.KB.items():

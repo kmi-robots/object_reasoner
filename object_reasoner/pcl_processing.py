@@ -72,19 +72,21 @@ def PathToPCL(imgpath, camera_intrinsics):
     # plt.show()
     pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_raw, camera_intrinsics,depth_scale=10000.0, depth_trunc=10000.0)
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-    o3d.visualization.draw_geometries([pcd])
+    # o3d.visualization.draw_geometries([pcd])
     return pcd
 
 
-def estimate_dims(pcd):
+def estimate_dims(pcd,original_pcd):
     """
     Finds bounding solid and
     estimates obj dimensions from vertices
     """
     # threedbox = pcd.get_axis_aligned_bounding_box()
     orthreedbox = pcd.get_oriented_bounding_box()
+    # orthreedbox = pcd.get_axis_aligned_bounding_box()
+    # print(orthreedbox.dimension())
     box_points = np.asarray(orthreedbox.get_box_points())
-    o3d.visualization.draw_geometries([pcd, orthreedbox])
+    o3d.visualization.draw_geometries([original_pcd, orthreedbox])
     # o3d.visualization.draw_geometries_with_vertex_selection([orthreedbox])
 
     # open3d.geometry.OrientedBoundingBox.get_axis_aligned_bounding_box()
