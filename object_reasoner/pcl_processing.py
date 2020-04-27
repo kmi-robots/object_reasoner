@@ -14,12 +14,12 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     # o3d.visualization.draw_geometries([downpcl])
     # numpoints = np.asarray(downpcl.points).shape[0]
     # minpoints = int(round(numpoints / ratio))
-    print("Clustering point cloud")
-    start = time.time()
-    labels = np.array(downpcl.cluster_dbscan(eps=eps, min_points=minpoints, print_progress=True))
-    print("Took % fseconds." % float(time.time() - start))
+    # print("Clustering point cloud")
+    # start = time.time()
+    labels = np.array(downpcl.cluster_dbscan(eps=eps, min_points=minpoints)) #, print_progress=True))
+    # print("Took % fseconds." % float(time.time() - start))
     max_label = labels.max()
-    print("Pcl has %d clusters" % (max_label + 1))
+    # print("Pcl has %d clusters" % (max_label + 1))
 
     cmap = plt.get_cmap("tab20")
     colors = cmap(labels / (max_label if max_label > 0 else 1))
@@ -28,7 +28,13 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
 
     #Select largest cluster
     # Skipping -1, where -1 indicates noise as in open3d docs
-    win_label = [key for key, val in Counter(labels).most_common() if key != -1][0]
+    try:
+        win_label = [key for key, val in Counter(labels).most_common() if key != -1][0]
+    except IndexError:
+        o3d.visualization.draw_geometries([pcl])
+        o3d.visualization.draw_geometries([downpcl])
+        win_label =-1
+        
     indices = [i for i, x in enumerate(labels) if x == win_label]
 
     new_pcl=downpcl.select_down_sample(indices)
@@ -87,7 +93,7 @@ def estimate_dims(pcd,original_pcd):
     # print(orthreedbox.dimension())
     box_points = np.asarray(orthreedbox.get_box_points())
     box_center = np.asarray(orthreedbox.get_center())
-
+    # box_axis = orthreedbox.R
     # o3d.visualization.draw_geometries([original_pcd, orthreedbox])
 
     #cf = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01, origin= box_points[0])
@@ -107,4 +113,4 @@ def estimate_dims(pcd,original_pcd):
     Hard to know a priori what is the w and what is the h
     But we can assume the depth will be always the min due to how data are captured
     """
-    return d1,d2,min(d1,d2,d3)
+    return d1,d2,min(d1,d2,d3), orthreedbox.volume(), orthreedbox

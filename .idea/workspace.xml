@@ -6,7 +6,6 @@
       <change beforePath="$PROJECT_DIR$/object_reasoner/object_reasoner.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/object_reasoner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/object_reasoner/pcl_processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/pcl_processing.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/object_reasoner/predict.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/predict.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -141,7 +140,7 @@
       <workItem from="1587727496845" duration="15868000" />
       <workItem from="1587746521087" duration="3399000" />
       <workItem from="1587835342679" duration="3992000" />
-      <workItem from="1587975944906" duration="5040000" />
+      <workItem from="1587975944906" duration="25342000" />
     </task>
     <servers />
   </component>
@@ -157,50 +156,54 @@
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
     <state x="454" y="396" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587660580318" />
+    <state width="1851" height="440" key="DebuggerActiveHint" timestamp="1588006544573">
+      <screen x="67" y="0" width="1853" height="1080" />
+    </state>
+    <state width="1851" height="440" key="DebuggerActiveHint/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588006544573" />
     <state x="779" y="496" width="424" height="484" key="FileChooserDialogImpl" timestamp="1587121036786">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
     <state x="779" y="496" width="424" height="484" key="FileChooserDialogImpl/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587121036786" />
-    <state width="1868" height="240" key="GridCell.Tab.0.bottom" timestamp="1587979932231">
+    <state width="1868" height="462" key="GridCell.Tab.0.bottom" timestamp="1588008545754">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.0.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979932231" />
-    <state width="1868" height="240" key="GridCell.Tab.0.center" timestamp="1587979932231">
+    <state width="1868" height="462" key="GridCell.Tab.0.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008545754" />
+    <state width="1868" height="462" key="GridCell.Tab.0.center" timestamp="1588008545754">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.0.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979932231" />
-    <state width="1868" height="240" key="GridCell.Tab.0.left" timestamp="1587979932231">
+    <state width="1868" height="462" key="GridCell.Tab.0.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008545754" />
+    <state width="1868" height="462" key="GridCell.Tab.0.left" timestamp="1588008545754">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.0.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979932231" />
-    <state width="1868" height="240" key="GridCell.Tab.0.right" timestamp="1587979932231">
+    <state width="1868" height="462" key="GridCell.Tab.0.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008545754" />
+    <state width="1868" height="462" key="GridCell.Tab.0.right" timestamp="1588008545754">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.0.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979932231" />
-    <state width="1868" height="240" key="GridCell.Tab.1.bottom" timestamp="1587979934210">
+    <state width="1868" height="462" key="GridCell.Tab.0.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008545754" />
+    <state width="1868" height="240" key="GridCell.Tab.1.bottom" timestamp="1588008033081">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.1.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979934210" />
-    <state width="1868" height="240" key="GridCell.Tab.1.center" timestamp="1587979934210">
+    <state width="1868" height="240" key="GridCell.Tab.1.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008033081" />
+    <state width="1868" height="240" key="GridCell.Tab.1.center" timestamp="1588008033081">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.1.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979934210" />
-    <state width="1868" height="240" key="GridCell.Tab.1.left" timestamp="1587979934210">
+    <state width="1868" height="240" key="GridCell.Tab.1.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008033081" />
+    <state width="1868" height="240" key="GridCell.Tab.1.left" timestamp="1588008033081">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.1.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979934210" />
-    <state width="1868" height="240" key="GridCell.Tab.1.right" timestamp="1587979934210">
+    <state width="1868" height="240" key="GridCell.Tab.1.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008033081" />
+    <state width="1868" height="240" key="GridCell.Tab.1.right" timestamp="1588008033081">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="240" key="GridCell.Tab.1.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587979934210" />
+    <state width="1868" height="240" key="GridCell.Tab.1.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588008033081" />
     <state x="295" y="243" key="SettingsEditor" timestamp="1587118395746">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
     <state x="295" y="243" key="SettingsEditor/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587118395746" />
-    <state width="960" height="541" key="XDebugger.FullValuePopup" timestamp="1587741382564">
+    <state width="960" height="541" key="XDebugger.FullValuePopup" timestamp="1588007470860">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="960" height="541" key="XDebugger.FullValuePopup/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587741382564" />
+    <state width="960" height="541" key="XDebugger.FullValuePopup/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588007470860" />
     <state x="616" y="366" key="com.intellij.ide.util.TipDialog" timestamp="1587975947685">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
@@ -220,14 +223,9 @@
           <option name="timeStamp" value="68" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/object_reasoner/object_reasoner.py</url>
-          <line>40</line>
-          <option name="timeStamp" value="112" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/object_reasoner/object_reasoner.py</url>
-          <line>106</line>
-          <option name="timeStamp" value="113" />
+          <url>file://$PROJECT_DIR$/object_reasoner/pcl_processing.py</url>
+          <line>35</line>
+          <option name="timeStamp" value="156" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -246,6 +244,6 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/object_reasoner$DH_IO.coverage" NAME="DH_IO Coverage Results" MODIFIED="1587653625489" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner/DH" />
-    <SUITE FILE_PATH="coverage/object_reasoner$cli.coverage" NAME="cli Coverage Results" MODIFIED="1587979932117" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner" />
+    <SUITE FILE_PATH="coverage/object_reasoner$cli.coverage" NAME="cli Coverage Results" MODIFIED="1588008545722" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner" />
   </component>
 </project>

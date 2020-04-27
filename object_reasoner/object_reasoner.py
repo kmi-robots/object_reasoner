@@ -5,8 +5,9 @@ import time
 import sys
 import numpy as np
 import cv2
+from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics
-from predict import pred_singlemodel, pred_twostage, pred_by_size
+from predict import pred_singlemodel, pred_twostage, pred_by_vol
 from evalscript import eval_singlemodel
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
@@ -34,8 +35,12 @@ class ObjectReasoner():
         # KB sizes as 3D vectors
         # self.sizes = dict((k,np.array(v['dimensions'])) for k, v in self.KB.items())
         self.sizes = np.empty((len(self.KB.keys()),3))
+        self.volumes = np.empty((len(self.KB.keys()),1))
+        self.labelset = []
         for i, (k, v) in enumerate(self.KB.items()):
             self.sizes[i] = np.array(v['dimensions'])
+            self.volumes[i] = v['dimensions'][0]*v['dimensions'][1]*v['dimensions'][2]
+            self.labelset.append(v['label'])
 
         # load metadata from txt files provided
         with open(os.path.join(args.test_base,'test-labels.txt')) as txtf, \
@@ -62,19 +67,34 @@ class ObjectReasoner():
             if args.baseline == 'two-stage':
                 self.predictions = pred_twostage(self, args)
             else:
-                self.predictions = pred_singlemodel(self, args)
+                self.predictions,self.avg_predictions, self.min_predictions = pred_singlemodel(self, args)
             if self.predictions is not None:
                 np.save(('./data/test_predictions_%s.npy' % args.baseline), self.predictions)
+                np.save(('./data/test_avg_predictions_%s.npy' % args.baseline), self.avg_predictions)
+                np.save(('./data/test_min_predictions_%s.npy' % args.baseline), self.min_predictions)
             else:
                 print("Prediction mode not supported yet. Please choose a different one.")
                 sys.exit(0)
         else:
-            self.predictions = np.load(('./data/test_predictions_%s.npy' % args.baseline))
+            self.predictions = np.load(('./data/test_predictions_%s.npy' % args.baseline),allow_pickle=True)
+            self.avg_predictions = np.load(('./data/test_avg_predictions_%s.npy' % args.baseline), allow_pickle=True)
+            self.min_predictions = np.load(('./data/test_min_predictions_%s.npy' % args.baseline), allow_pickle=True)
 
         print("%s detection results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
         print("Double checking top-1 accuracies to reproduce baseline...")
         eval_singlemodel(self)
 
+
+        """
+        # print("Results if matches are average by class / across views")
+        print("Results if min across views is taken")
+        tmp_copy = self.predictions
+        # self.predictions = self.avg_predictions
+        self.predictions = self.min_predictions
+        eval_singlemodel(self)
+        self.predictions = tmp_copy
+        del tmp_copy
+        """
     def run(self):
         """
         Color images are saved as 24-bit RGB PNG.
@@ -82,8 +102,10 @@ class ObjectReasoner():
         Invalid depth is set to 0.
         Depth images are aligned to their corresponding color images.
         """
-        # TODO correct self.predictions from baseline
+
         for i in range(len(self.dimglist)):  # for each depth image
+            print("Reasoning for correction")
+            start = time.time()
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
             # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
             # plt.show()
@@ -92,22 +114,53 @@ class ObjectReasoner():
             masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
             obj_pcl = MatToPCL(masked_dmatrix, self.camera)
             cluster_pcl = cluster_3D(obj_pcl)
-            d1,d2,depth = estimate_dims(cluster_pcl,obj_pcl)
-            current_top = self.predictions[i,:]          # baseline top 5 predictions as (label, distance)
-            # current_pred = current_top[0,:]  #top 1
-            plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
-            plt.show()
-            # compare estimated dims with ground truth dims
-            #first possible permutation
-            p1_rank = pred_by_size(self, np.array([d1,d2,depth]),i)
-            #second possible permutation
-            p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
-            #TODO decide on final ranking
-            # self.predictions[i, :] =  #TODO new corrected predictions here
-            continue
+            d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
 
-        # TODO print("Evaluating again post correction...")
-        # eval_singlemodel(self)
+            current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
+            current_avg_ranking = self.avg_predictions[i,:]
+            current_min_ranking = self.min_predictions[i, :]
+            current_prediction = int(self.predictions[i,0,0]) - 1   # class labels start at 1 but indexing starts at 0
+            current_label = list(self.KB.keys())[current_prediction]
+            gt_label = list(self.KB.keys())[int(self.labels[i])-1]
+            pr_volume = self.volumes[current_prediction]    # ground truth volume and dims for current prediction
+            pr_dims = self.sizes[current_prediction]
+
+            alpha = 3
+            if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
+                # If we detect a volume alpha times or more larger/smaller
+                # than object predicted by baseline, then hypothesise object needs correction
+                # actually need to correct, gives upper bound
+                # TODO remove 1st check condition afterwards
+                # create ranking by nearest volume
+                # gt_volume = self.volumes[int(self.labels[i]) - 1]
+                # plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
+                # plt.show()
+                # o3d.visualization.draw_geometries([obj_pcl, orientedbox])
+                gt_dims = self.sizes[int(self.labels[i]) - 1]
+                from predict import pred_by_size
+                # compare estimated dims with ground truth dims
+                # first possible permutation
+                dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
+                #second possible permutation
+                p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
+                vol_ranking = pred_by_vol(self,volume, i)
+                #Set of classes from both rankings
+                class_set = list(np.unique(current_min_ranking[:,0]))
+                final_rank= Counter()
+                for cname in class_set:
+                    base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
+                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                    final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
+
+                final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
+                self.predictions[i, :] = final_rank
+
+            print("Took % fseconds." % float(time.time() - start)) #proc time per image
+
+        print("Re-evaluating post size correction...")
+        eval_singlemodel(self)
         return
 
 
