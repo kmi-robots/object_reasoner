@@ -31,10 +31,10 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     try:
         win_label = [key for key, val in Counter(labels).most_common() if key != -1][0]
     except IndexError:
-        o3d.visualization.draw_geometries([pcl])
-        o3d.visualization.draw_geometries([downpcl])
-        win_label =-1
-        
+        #o3d.visualization.draw_geometries([pcl])
+        # o3d.visualization.draw_geometries([downpcl])
+        return None
+
     indices = [i for i, x in enumerate(labels) if x == win_label]
 
     new_pcl=downpcl.select_down_sample(indices)

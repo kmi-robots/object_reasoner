@@ -102,10 +102,11 @@ class ObjectReasoner():
         Invalid depth is set to 0.
         Depth images are aligned to their corresponding color images.
         """
-
+        print("Reasoning for correction ... ")
+        start = time.time()
+        non_processed_pcls = 0
+        no_corrected =0
         for i in range(len(self.dimglist)):  # for each depth image
-            print("Reasoning for correction")
-            start = time.time()
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
             # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
             # plt.show()
@@ -114,6 +115,10 @@ class ObjectReasoner():
             masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
             obj_pcl = MatToPCL(masked_dmatrix, self.camera)
             cluster_pcl = cluster_3D(obj_pcl)
+            if cluster_pcl is None:
+                non_processed_pcls+=1
+                print("There was a problem extracting a relevant cluster, skipping correction")
+                continue #skip correction
             d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
 
             current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
@@ -127,6 +132,7 @@ class ObjectReasoner():
 
             alpha = 3
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
+                no_corrected+=1
                 # If we detect a volume alpha times or more larger/smaller
                 # than object predicted by baseline, then hypothesise object needs correction
                 # actually need to correct, gives upper bound
@@ -157,10 +163,11 @@ class ObjectReasoner():
                 final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
                 self.predictions[i, :] = final_rank
 
-            print("Took % fseconds." % float(time.time() - start)) #proc time per image
-
+        print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         eval_singlemodel(self)
+        print("%s image predictions were corrected " % str(no_corrected))
+        print("%s images were skipped and kept the same " % str(non_processed_pcls))
         return
 
 
