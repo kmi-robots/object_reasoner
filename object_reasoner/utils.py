@@ -23,7 +23,7 @@ def init_obj_catalogue(path_to_data):
         except FileNotFoundError:
             print("No json file found for object %s" % cname)
             print("Adding empty node")
-            obj_node = {}
+            obj_node = {"dimensions": [0,0,0] }
             obj_node['known'] = True #'Empty' is known at training time
 
         obj_node['label'] = str(i + 1) # add class label in same format as gt (starts from 1)

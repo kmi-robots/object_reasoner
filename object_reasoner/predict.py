@@ -43,3 +43,16 @@ def pred_twostage(ReasonerObj, args):
     # pred_singlemodel(ReasonerObj, args, model='n-net')
 
     return
+
+def pred_by_size(ReasonerObj, dims,current_index):
+
+    """Find NN based on size catalogue"""
+    prod_space = ReasonerObj.sizes
+    classlist = ReasonerObj.tsamples[current_index]
+    t_emb = dims  # 1x3
+    l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
+    all_dists = np.column_stack((ReasonerObj.plabels, l2dist.astype(np.object)))  # keep 2nd column as numeric
+    valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]
+    ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
+
+    return ranking[:5, :] # keep track of top 5

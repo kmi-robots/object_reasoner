@@ -86,10 +86,25 @@ def estimate_dims(pcd,original_pcd):
     # orthreedbox = pcd.get_axis_aligned_bounding_box()
     # print(orthreedbox.dimension())
     box_points = np.asarray(orthreedbox.get_box_points())
-    o3d.visualization.draw_geometries([original_pcd, orthreedbox])
-    # o3d.visualization.draw_geometries_with_vertex_selection([orthreedbox])
+    box_center = np.asarray(orthreedbox.get_center())
 
-    # open3d.geometry.OrientedBoundingBox.get_axis_aligned_bounding_box()
-    # http://www.open3d.org/docs/release/python_api/open3d.geometry.OrientedBoundingBox.html#open3d.geometry.OrientedBoundingBox
-    #TODO compute width, height and depth from bbox points
-    return None,None,None
+    # o3d.visualization.draw_geometries([original_pcd, orthreedbox])
+
+    #cf = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01, origin= box_points[0])
+    #cf2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=box_points[1])
+    #cf3 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=box_points[2])
+    #cf4 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.15, origin=box_points[3])
+    # o3d.visualization.draw_geometries([cf, cf2, cf3, cf4, orthreedbox, pcd])
+
+    #Compute width, height and depth from bbox points
+    #Point order not documented. But First 3 vertices look like they lie always on same surface
+    # and the 4th one perpendicular to the first one
+    d1 = np.linalg.norm(box_points[0] - box_points[1])
+    d2 = np.linalg.norm(box_points[0] - box_points[2])
+    d3 = np.linalg.norm(box_points[0] - box_points[3])
+
+    """
+    Hard to know a priori what is the w and what is the h
+    But we can assume the depth will be always the min due to how data are captured
+    """
+    return d1,d2,min(d1,d2,d3)

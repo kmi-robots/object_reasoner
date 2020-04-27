@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import cv2
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics
-from predict import pred_singlemodel, pred_twostage
+from predict import pred_singlemodel, pred_twostage, pred_by_size
 from evalscript import eval_singlemodel
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
@@ -30,6 +30,12 @@ class ObjectReasoner():
         # Filter only known/novel objects
         self.known = dict((k, v) for k, v in self.KB.items() if v["known"] == True)
         self.novel = dict((k, v) for k, v in self.KB.items() if v["known"] == False)
+
+        # KB sizes as 3D vectors
+        # self.sizes = dict((k,np.array(v['dimensions'])) for k, v in self.KB.items())
+        self.sizes = np.empty((len(self.KB.keys()),3))
+        for i, (k, v) in enumerate(self.KB.items()):
+            self.sizes[i] = np.array(v['dimensions'])
 
         # load metadata from txt files provided
         with open(os.path.join(args.test_base,'test-labels.txt')) as txtf, \
@@ -79,30 +85,29 @@ class ObjectReasoner():
         # TODO correct self.predictions from baseline
         for i in range(len(self.dimglist)):  # for each depth image
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
-            plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
-            plt.show()
+            # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
+            # plt.show()
             # origpcl = PathToPCL(self.dimglist[10], self.camera)
             cluster_bw = extract_foreground_2D(dimage)
             masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
             obj_pcl = MatToPCL(masked_dmatrix, self.camera)
             cluster_pcl = cluster_3D(obj_pcl)
-            height,width,depth = estimate_dims(cluster_pcl,obj_pcl)
+            d1,d2,depth = estimate_dims(cluster_pcl,obj_pcl)
             current_top = self.predictions[i,:]          # baseline top 5 predictions as (label, distance)
-            current_pred = current_top[0,:]  #top 1
-            for k, v in self.KB.items():
-                if v["label"] == str(int(current_pred[0])) \
-                    and str(int(current_pred[0])) != self.labels[i]: # if actually incorrect
-                    #TODO remove above check on gt labels afterwards
-                    gth,gtw,gtd = v['dimensions'] # ground truth dims, in meters
-                    break
-            #compare estimated dims with ground truth dims
+            # current_pred = current_top[0,:]  #top 1
+            plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
+            plt.show()
+            # compare estimated dims with ground truth dims
+            #first possible permutation
+            p1_rank = pred_by_size(self, np.array([d1,d2,depth]),i)
+            #second possible permutation
+            p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
+            #TODO decide on final ranking
+            # self.predictions[i, :] =  #TODO new corrected predictions here
             continue
-            # based on obj size reasoning
 
-        # self.predictions = None     #TODO new corrected predictions here
-        # print("Evaluating again post correction...")
+        # TODO print("Evaluating again post correction...")
         # eval_singlemodel(self)
-
         return
 
 
