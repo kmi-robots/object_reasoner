@@ -84,7 +84,6 @@ class ObjectReasoner():
         print("Double checking top-1 accuracies to reproduce baseline...")
         eval_singlemodel(self)
 
-
         """
         # print("Results if matches are average by class / across views")
         print("Results if min across views is taken")
@@ -95,6 +94,7 @@ class ObjectReasoner():
         self.predictions = tmp_copy
         del tmp_copy
         """
+
     def run(self):
         """
         Color images are saved as 24-bit RGB PNG.
@@ -109,10 +109,12 @@ class ObjectReasoner():
         for i in range(len(self.dimglist)):  # for each depth image
 
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
-            # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
-            # plt.show()
-            # origpcl = PathToPCL(self.dimglist[i], self.camera)
-            # o3d.visualization.draw_geometries([origpcl])
+            """
+            plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
+            plt.show()
+            origpcl = PathToPCL(self.dimglist[i], self.camera)
+            o3d.visualization.draw_geometries([origpcl])
+            """
             cluster_bw = extract_foreground_2D(dimage)
             if cluster_bw is None: #problem with 2D clustering
                 non_processed_pcls += 1
@@ -156,6 +158,7 @@ class ObjectReasoner():
                 from predict import pred_by_size
                 # compare estimated dims with ground truth dims
                 # first possible permutation
+
                 dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
                 #second possible permutation
                 p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)

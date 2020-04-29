@@ -106,12 +106,15 @@ def estimate_dims(pcd,original_pcd):
     #Compute width, height and depth from bbox points
     #Point order not documented. But First 3 vertices look like they lie always on same surface
     # and the 4th one perpendicular to the first one
+    # Confirmed by double checking open3D source code
     d1 = np.linalg.norm(box_points[0] - box_points[1])
     d2 = np.linalg.norm(box_points[0] - box_points[2])
     d3 = np.linalg.norm(box_points[0] - box_points[3])
+    dims = [d1,d2,d3]
+    dims.remove(min(dims))
 
     """
     Hard to know a priori what is the w and what is the h
     But we can assume the depth will be always the min due to how data are captured
     """
-    return d1,d2,min(d1,d2,d3), orthreedbox.volume(), orthreedbox
+    return (*dims,min(d1,d2,d3), orthreedbox.volume(), orthreedbox)
