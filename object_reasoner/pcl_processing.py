@@ -31,9 +31,10 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     try:
         win_label = [key for key, val in Counter(labels).most_common() if key != -1][0]
     except IndexError:
-        #o3d.visualization.draw_geometries([pcl])
-        # o3d.visualization.draw_geometries([downpcl])
-        return None
+        # maybe only one object is there, skip downsampling
+        # remove outliers and return as_is
+        new_pcl, _ = pcl.remove_radius_outlier(nb_points=minpoints, radius=eps)
+        return new_pcl
 
     indices = [i for i, x in enumerate(labels) if x == win_label]
 

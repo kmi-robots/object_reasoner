@@ -107,17 +107,27 @@ class ObjectReasoner():
         non_processed_pcls = 0
         no_corrected =0
         for i in range(len(self.dimglist)):  # for each depth image
+
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
             # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
             # plt.show()
-            # origpcl = PathToPCL(self.dimglist[10], self.camera)
+            # origpcl = PathToPCL(self.dimglist[i], self.camera)
+            # o3d.visualization.draw_geometries([origpcl])
             cluster_bw = extract_foreground_2D(dimage)
+            if cluster_bw is None: #problem with 2D clustering
+                non_processed_pcls += 1
+                print("There was a problem extracting a relevant cluster for img no %i, skipping correction" % i)
+                gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
+                print(gt_label)
+                continue  # skip correction
             masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
             obj_pcl = MatToPCL(masked_dmatrix, self.camera)
             cluster_pcl = cluster_3D(obj_pcl)
-            if cluster_pcl is None:
+            if cluster_pcl is None: #or with 3D clustering
                 non_processed_pcls+=1
-                print("There was a problem extracting a relevant cluster, skipping correction")
+                print("There was a problem extracting a relevant cluster for img no %i, skipping correction" % i)
+                gt_label = list(self.KB.keys())[int(self.labels[i])-1]
+                print(gt_label)
                 continue #skip correction
             d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
 
@@ -161,6 +171,7 @@ class ObjectReasoner():
                     final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
 
                 final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
+
                 self.predictions[i, :] = final_rank
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time

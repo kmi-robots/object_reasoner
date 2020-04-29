@@ -3,6 +3,7 @@ from sklearn.cluster import KMeans
 import numpy as np
 import matplotlib.pyplot as plt
 import yaml
+import warnings
 
 def extract_foreground_2D(dm):
     #flatten matrix first
@@ -10,8 +11,14 @@ def extract_foreground_2D(dm):
     # plt.imshow(dmat, cmap='Greys_r')
     # plt.show()
     fmatrix = np.reshape(dmat,(dm.shape[0]*dm.shape[1], 1))
+
     clt = KMeans(n_clusters=3)  # background, foreground, no-value
-    clt.fit(fmatrix)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error')
+        try:
+            clt.fit(fmatrix)
+        except Warning:
+            return
     #Find cluster index for closest points to camera (foreground)
     #Second smallest to avoid zero value cluster
     tgt_idx = np.where(clt.cluster_centers_ == sorted(clt.cluster_centers_)[1][0])[0][0]
@@ -34,7 +41,15 @@ def detect_contours(dmatrix, cbin):
     """
     # plt.imshow(cbin, cmap='Greys_r')
     # plt.show()
-    contours, hierarchy = cv2.findContours(cbin, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    #add morphological transformation
+    kernel = np.ones((9, 9), np.uint8)
+    opening = cv2.morphologyEx(cbin, cv2.MORPH_OPEN, kernel)
+    closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
+    # plt.imshow(opening, cmap='Greys_r')
+    # plt.show()
+
+    contours, hierarchy = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # select largest contour
     c = max(contours, key=cv2.contourArea)
     # Create binary mask from largest contour
@@ -44,6 +59,7 @@ def detect_contours(dmatrix, cbin):
     out = dmatrix.copy()
     out[out_mask == 0] = 0.
     # print(out[out != 0])
+
     """
     plt.imshow(out_mask,cmap='Greys_r')
     plt.show()
