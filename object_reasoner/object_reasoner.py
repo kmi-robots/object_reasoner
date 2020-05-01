@@ -93,6 +93,7 @@ class ObjectReasoner():
         eval_singlemodel(self)
         self.predictions = tmp_copy
         del tmp_copy
+        sys.exit(0)
         """
 
     def run(self):
@@ -109,12 +110,12 @@ class ObjectReasoner():
         for i in range(len(self.dimglist)):  # for each depth image
 
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
-            """
-            plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
-            plt.show()
-            origpcl = PathToPCL(self.dimglist[i], self.camera)
-            o3d.visualization.draw_geometries([origpcl])
-            """
+
+            # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
+            # plt.show()
+            # origpcl = PathToPCL(self.dimglist[i], self.camera)
+            # o3d.visualization.draw_geometries([origpcl])
+
             cluster_bw = extract_foreground_2D(dimage)
             if cluster_bw is None: #problem with 2D clustering
                 non_processed_pcls += 1
@@ -131,20 +132,24 @@ class ObjectReasoner():
                 gt_label = list(self.KB.keys())[int(self.labels[i])-1]
                 print(gt_label)
                 continue #skip correction
-            d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
 
+            d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
             current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
-            current_avg_ranking = self.avg_predictions[i,:]
+            # current_avg_ranking = self.avg_predictions[i,:]
             current_min_ranking = self.min_predictions[i, :]
             current_prediction = int(self.predictions[i,0,0]) - 1   # class labels start at 1 but indexing starts at 0
             current_label = list(self.KB.keys())[current_prediction]
             gt_label = list(self.KB.keys())[int(self.labels[i])-1]
             pr_volume = self.volumes[current_prediction]    # ground truth volume and dims for current prediction
-            pr_dims = self.sizes[current_prediction]
+            # pr_dims = self.sizes[current_prediction]
 
-            alpha = 3
+            alpha = 4
+            volOnly = True   # if True, dims based rankings are excluded
+            combined = False # if True, all types of ranking used
+            novision = True # if True, vision based ranking is excluded
+
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
-                no_corrected+=1
+                no_corrected += 1
                 # If we detect a volume alpha times or more larger/smaller
                 # than object predicted by baseline, then hypothesise object needs correction
                 # actually need to correct, gives upper bound
@@ -158,23 +163,55 @@ class ObjectReasoner():
                 from predict import pred_by_size
                 # compare estimated dims with ground truth dims
                 # first possible permutation
-
                 dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
                 #second possible permutation
                 p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
                 vol_ranking = pred_by_vol(self,volume, i)
-                #Set of classes from both rankings
+                # Set of classes from both rankings
+                """
+                union_list = list(current_ranking[:,0])+list(dims_ranking[:,0])+\
+                                    list(p2_rank[:,0]) + list(vol_ranking[:,0])
+                class_set= list(set(union_list))
+                """
                 class_set = list(np.unique(current_min_ranking[:,0]))
+
                 final_rank= Counter()
                 for cname in class_set:
-                    base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
-                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                    final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
+
+                    try:
+                        # base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
+                        base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
+                    except:
+                        #class is not in the base top-5
+                        base_score = 0.
+
+                    if combined:
+                        if novision:
+                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                            vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                            final_rank[cname] = sum([dim_p1_score, dim_p2_score, vol_score]) / 3
+                        else:
+                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                            vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                            final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
+                    else:
+                        if volOnly and not novision:
+                            vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                            final_rank[cname] = sum([base_score, vol_score]) / 2
+                        elif volOnly and novision:
+                            final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                        elif not volOnly and novision:
+                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                            final_rank[cname] = sum([dim_p1_score, dim_p2_score]) / 2
+                        else:
+                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                            final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
 
                 final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
-
                 self.predictions[i, :] = final_rank
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time

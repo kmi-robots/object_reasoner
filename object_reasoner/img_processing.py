@@ -29,8 +29,10 @@ def extract_foreground_2D(dm):
             cbin[i, :] = 255
         else: #either background or no value, treated the same
             cbin[i, :] = 0
-    # plt.imshow(np.reshape(cbin, dm.shape), cmap='Greys_r')
-    # plt.show()
+    """
+    plt.imshow(np.reshape(cbin, dm.shape), cmap='Greys_r')
+    plt.show()
+    """
     return np.reshape(cbin, dm.shape)
 
 
