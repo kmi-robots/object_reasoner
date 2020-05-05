@@ -88,7 +88,6 @@ def main():
         print(test_set.prod_data.shape)
         #TODO save as HDF5 / (This is the input expected by object_reasoner.py)
 
-
         return 0
 
 

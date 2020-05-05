@@ -69,7 +69,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             # and then pick closest train/camera/real-world img from different class as negative example
             # i.e., hardest one to disambiguate
             # [The approach by Zeng et al. uses a random pick from different class instead]
-            all_distances = torch.matmul(positive, self.prod_data.t())
+            all_distances = torch.matmul(positive, self.data.t())
             rgb_ranking, rgb_indices = torch.sort(all_distances, descending=True)
             #Note: picking from different class automatically excludes the embedding itself (most similar to itself)
             for k in range(rgb_ranking.shape[0]):
