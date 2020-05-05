@@ -1,20 +1,24 @@
 import numpy as np
+import sys
 
-def pred_singlemodel(ReasonerObj, args, model=None):
+def pred_singlemodel(ReasonerObj, args):
     """A Python re-writing of part of the procedure followed in
     https://github.com/andyzeng/arc-robot-vision/image-matching/evaluateModel.m"
     """
     #Find NN based on the embeddings of a single model
-    if model is None:
-        model = args.baseline   #use the one specified from cli
 
-    if model =='k-net':
+    if args.baseline =='k-net':
         tgt_space = ReasonerObj.ktest_emb
         prod_space = ReasonerObj.kprod_emb
 
-    elif model=='n-net':
+    elif args.baseline=='n-net':
         tgt_space = ReasonerObj.ntest_emb
         prod_space = ReasonerObj.nprod_emb
+
+    else:
+        #TODO add imprinted K-net case
+        print("model not supported yet")
+        sys.exit(0)
 
     #Add L2 normalization of vectors to normalise scores
     tgt_space = tgt_space / np.linalg.norm(tgt_space)

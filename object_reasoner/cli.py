@@ -9,9 +9,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('test_base', help="Base path to test imgs and product data")
     parser.add_argument('test_res', help="Base path to test predictions")
-    parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage'],
+    parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage','imprk-net'],
                         default="k-net",
-                        help="Baseline method to retrieve predictions from")
+                        help="Baseline method to retrieve predictions from."
+                        "Imprk-net adds weight imprinting based on our pytorch re-implementation of k-net")
     parser.add_argument('--mode', nargs='?', choices=['size'],
                         default="size",
                         help="Reasoning mode. Only reasoning on obj sizes is currently supported.")
@@ -19,7 +20,6 @@ def main():
     args = parser.parse_args()
     reasoner = ObjectReasoner(args)
     reasoner.run()
-
     return 0
 
 

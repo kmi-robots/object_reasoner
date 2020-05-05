@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/object_reasoner.iml" filepath="$PROJECT_DIR$/.idea/object_reasoner.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker/.idea/semantic-map-docker.iml" filepath="$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker/.idea/semantic-map-docker.iml" />
     </modules>
   </component>
 </project>

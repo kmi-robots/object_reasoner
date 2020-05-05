@@ -6,6 +6,8 @@ import json
 import h5py
 import numpy as np
 import csv
+import cv2
+from PIL import Image
 # import matplotlib.pyplot as plt
 
 def init_obj_catalogue(path_to_data):
@@ -71,3 +73,16 @@ def BGRtoRGB(img_array):
     img[:, :, 2] = img_array[:, :, 0]
 
     return img
+
+
+
+def img_preproc(path_to_image, transform, array_form=False):
+    if not array_form:
+        path_to_image = cv2.imread(path_to_image)
+
+    img = BGRtoRGB(path_to_image)
+    try:
+        x = Image.fromarray(img, mode='RGB')
+    except:
+        return None
+    return transform(x)

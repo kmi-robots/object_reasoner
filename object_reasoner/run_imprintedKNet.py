@@ -1,0 +1,96 @@
+import torch
+from torch import optim
+from torchvision import transforms
+import argparse
+import sys
+import os
+
+from models import ImprintedKNet
+import data_loaders
+from imprinting import imprint
+
+""" Hardcoded training params
+    as set in
+    https://github.com/andyzeng/arc-robot-vision/blob/master/image-matching/train.lua
+"""
+batch_size = 6
+epochs = 10000000
+lr = 0.001
+momentum = 0.99
+wdecay = 0.000001
+# Mean and variance values for torchvision modules pre-trained on ImageNet
+means = [0.485, 0.456, 0.406]
+stds = [0.229, 0.224, 0.225]
+img_w, img_h = 224, 224 # img size required for input to Net
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path_to_arc',
+                        help='path to root folder where ARC2017 files are kept')
+
+    parser.add_argument('mode', choices=['train','predict'],
+                        help='run mode')
+    parser.add_argument('--numknownobj', default=41,
+                        help='No. of object classes to train on')
+    parser.add_argument('--out', default='./data/imprintedKnet',
+                        help='path where to save outputs. defaults to data/imprintedKnet')
+    parser.add_argument('--chkp', default=None,
+                        help='path to model checkpoint. Required when running in predict mode')
+
+    args = parser.parse_args()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    model = ImprintedKNet(feature_extraction=False, num_classes=args.numknownobj).to(device)
+    params_to_update = model.parameters()  # all params
+
+    """Img transformations for pre-processing """
+
+    base_trans = transforms.Compose([
+        transforms.Resize((img_w, img_h)),
+        transforms.ToTensor(),
+        transforms.Normalize(means, stds)])
+
+    if args.mode =='train':
+
+        from train import train
+        model.eval() # eval mode before loading embeddings
+        train_loader = torch.utils.data.DataLoader(
+            data_loaders.ImageMatchingDataset(model, device, args, base_trans), batch_size=batch_size,
+            shuffle=True)
+        # no validation set in original training code
+        model.train() # back to train mode
+        optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
+
+        imprint(model, device, train_loader, num_classes=args.numknownobj)
+
+        for epoch in range(epochs):
+            train(model, device, train_loader, epoch, optimizer, args)
+            if epoch % 1000 == 0:
+                filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
+                #save snapshot locally every x - so epochs
+                torch.save(model.state_dict(), filepath)
+
+        return 0
+
+    else:
+        """ Test/inference stage
+        """
+        if args.chkp is None or not os.path.isfile(args.chkp):
+            print("Please provide a path to pre-trained model checkpoint")
+            return 0
+        model.load_state_dict(torch.load(args.chkp))
+        model.eval()
+        # Extract all product embeddings
+        # as well as test imgs embeddings
+        test_set = data_loaders.ImageMatchingDataset(model, device, args, base_trans)
+        print(test_set.data.shape)
+        print(test_set.prod_data.shape)
+        #TODO save as HDF5 / (This is the input expected by object_reasoner.py)
+
+
+        return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

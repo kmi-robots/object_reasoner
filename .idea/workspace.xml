@@ -2,9 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="cf129bdc-c411-499f-b9c8-8e52e9708cb4" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/object_reasoner/data_loaders.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/object_reasoner/imprinting.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/object_reasoner/models.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/object_reasoner/run_imprintedKNet.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/object_reasoner/train.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/object_reasoner.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/object_reasoner.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/img_processing.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/img_processing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/object_reasoner.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/object_reasoner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/object_reasoner/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/cli.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/object_reasoner/predict.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/predict.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/object_reasoner/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,7 +54,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker" />
     <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
   </component>
   <component name="RecentsManager">
@@ -54,7 +62,7 @@
       <recent name="$PROJECT_DIR$/object_reasoner" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.cli">
+  <component name="RunManager" selected="Python.run_imprintedKNet">
     <configuration name="DH_IO" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="object_reasoner" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -99,12 +107,60 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="run_imprintedKNet" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="object_reasoner" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/object_reasoner" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/object_reasoner/run_imprintedKNet.py" />
+      <option name="PARAMETERS" value="../../arc-robot-vision/image-matching/data train" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="siamese_main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="semantic-map-docker" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker/siamese_main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Python.cli" />
       <item itemvalue="Python.DH_IO" />
+      <item itemvalue="Python.siamese_main" />
+      <item itemvalue="Python.run_imprintedKNet" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.run_imprintedKNet" />
+        <item itemvalue="Python.siamese_main" />
         <item itemvalue="Python.DH_IO" />
       </list>
     </recent_temporary>
@@ -147,6 +203,8 @@
       <workItem from="1588008900210" duration="1887000" />
       <workItem from="1588153470028" duration="19144000" />
       <workItem from="1588326115243" duration="4827000" />
+      <workItem from="1588603487703" duration="3048000" />
+      <workItem from="1588680609262" duration="18573000" />
     </task>
     <servers />
   </component>
@@ -158,62 +216,62 @@
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
     <state x="555" y="200" width="800" height="677" key="#Notifications/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587377075868" />
-    <state x="454" y="396" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1588339217971">
+    <state x="549" y="237" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1588686092801">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state x="454" y="396" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339217971" />
+    <state x="549" y="237" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588686092801" />
     <state width="1851" height="440" key="DebuggerActiveHint" timestamp="1588006544573">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
     <state width="1851" height="440" key="DebuggerActiveHint/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588006544573" />
-    <state x="779" y="496" width="424" height="484" key="FileChooserDialogImpl" timestamp="1587121036786">
+    <state x="779" y="496" width="424" height="484" key="FileChooserDialogImpl" timestamp="1588681041380">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state x="779" y="496" width="424" height="484" key="FileChooserDialogImpl/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587121036786" />
-    <state width="1868" height="310" key="GridCell.Tab.0.bottom" timestamp="1588339567220">
+    <state x="779" y="496" width="424" height="484" key="FileChooserDialogImpl/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588681041380" />
+    <state width="1868" height="248" key="GridCell.Tab.0.bottom" timestamp="1588699138990">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.0.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567220" />
-    <state width="1868" height="310" key="GridCell.Tab.0.center" timestamp="1588339567220">
+    <state width="1868" height="248" key="GridCell.Tab.0.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699138990" />
+    <state width="1868" height="248" key="GridCell.Tab.0.center" timestamp="1588699138990">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.0.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567220" />
-    <state width="1868" height="310" key="GridCell.Tab.0.left" timestamp="1588339567220">
+    <state width="1868" height="248" key="GridCell.Tab.0.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699138990" />
+    <state width="1868" height="248" key="GridCell.Tab.0.left" timestamp="1588699138990">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.0.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567220" />
-    <state width="1868" height="310" key="GridCell.Tab.0.right" timestamp="1588339567220">
+    <state width="1868" height="248" key="GridCell.Tab.0.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699138990" />
+    <state width="1868" height="248" key="GridCell.Tab.0.right" timestamp="1588699138990">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.0.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567220" />
-    <state width="1868" height="310" key="GridCell.Tab.1.bottom" timestamp="1588339567143">
+    <state width="1868" height="248" key="GridCell.Tab.0.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699138990" />
+    <state width="1868" height="248" key="GridCell.Tab.1.bottom" timestamp="1588699172504">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.1.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567143" />
-    <state width="1868" height="310" key="GridCell.Tab.1.center" timestamp="1588339567143">
+    <state width="1868" height="248" key="GridCell.Tab.1.bottom/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699172504" />
+    <state width="1868" height="248" key="GridCell.Tab.1.center" timestamp="1588699172503">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.1.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567143" />
-    <state width="1868" height="310" key="GridCell.Tab.1.left" timestamp="1588339567143">
+    <state width="1868" height="248" key="GridCell.Tab.1.center/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699172503" />
+    <state width="1868" height="248" key="GridCell.Tab.1.left" timestamp="1588699172503">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.1.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567143" />
-    <state width="1868" height="310" key="GridCell.Tab.1.right" timestamp="1588339567143">
+    <state width="1868" height="248" key="GridCell.Tab.1.left/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699172503" />
+    <state width="1868" height="248" key="GridCell.Tab.1.right" timestamp="1588699172504">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="1868" height="310" key="GridCell.Tab.1.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588339567143" />
+    <state width="1868" height="248" key="GridCell.Tab.1.right/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699172504" />
     <state x="295" y="243" key="SettingsEditor" timestamp="1587118395746">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
     <state x="295" y="243" key="SettingsEditor/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1587118395746" />
-    <state width="960" height="541" key="XDebugger.FullValuePopup" timestamp="1588007470860">
+    <state width="960" height="541" key="XDebugger.FullValuePopup" timestamp="1588699204319">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state width="960" height="541" key="XDebugger.FullValuePopup/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588007470860" />
-    <state x="616" y="366" key="com.intellij.ide.util.TipDialog" timestamp="1588326116049">
+    <state width="960" height="541" key="XDebugger.FullValuePopup/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588699204319" />
+    <state x="616" y="366" key="com.intellij.ide.util.TipDialog" timestamp="1588680623701">
       <screen x="67" y="0" width="1853" height="1080" />
     </state>
-    <state x="616" y="366" key="com.intellij.ide.util.TipDialog/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588326116049" />
+    <state x="616" y="366" key="com.intellij.ide.util.TipDialog/0.1080.1920.1080/67.0.1853.1080@67.0.1853.1080" timestamp="1588680623701" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -243,6 +301,21 @@
           <line>119</line>
           <option name="timeStamp" value="73" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker/embedding_extractor.py</url>
+          <line>29</line>
+          <option name="timeStamp" value="74" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/object_reasoner/run_imprintedKNet.py</url>
+          <line>60</line>
+          <option name="timeStamp" value="80" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/object_reasoner/data_loaders.py</url>
+          <line>86</line>
+          <option name="timeStamp" value="91" />
+        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -259,7 +332,9 @@
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/object_reasoner$run_imprintedKNet.coverage" NAME="run_imprintedKNet Coverage Results" MODIFIED="1588699138898" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner" />
+    <SUITE FILE_PATH="coverage/object_reasoner$siamese_main.coverage" NAME="siamese_main Coverage Results" MODIFIED="1588684094024" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker" />
     <SUITE FILE_PATH="coverage/object_reasoner$DH_IO.coverage" NAME="DH_IO Coverage Results" MODIFIED="1587653625489" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner/DH" />
-    <SUITE FILE_PATH="coverage/object_reasoner$cli.coverage" NAME="cli Coverage Results" MODIFIED="1588339567103" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner" />
+    <SUITE FILE_PATH="coverage/object_reasoner$cli.coverage" NAME="cli Coverage Results" MODIFIED="1588684020260" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/object_reasoner" />
   </component>
 </project>
