@@ -63,7 +63,7 @@ class ObjectReasoner():
         start = time.time()
         if not os.path.isfile(('./data/test_predictions_%s.npy' % args.baseline)):
             # then retrieve from raw embeddings
-            self.kprod_emb, self.nprod_emb, self.ktest_emb, self.ntest_emb = load_emb_space(args.test_res)
+            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = load_emb_space(args)
             if args.baseline == 'two-stage':
                 self.predictions = pred_twostage(self, args)
             else:

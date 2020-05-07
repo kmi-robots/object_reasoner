@@ -7,7 +7,7 @@ def pred_singlemodel(ReasonerObj, args):
     """
     #Find NN based on the embeddings of a single model
 
-    if args.baseline =='k-net':
+    if args.baseline =='k-net' or args.baseline =="imprk-net":
         tgt_space = ReasonerObj.ktest_emb
         prod_space = ReasonerObj.kprod_emb
 
@@ -16,7 +16,6 @@ def pred_singlemodel(ReasonerObj, args):
         prod_space = ReasonerObj.nprod_emb
 
     else:
-        #TODO add imprinted K-net case
         print("model not supported yet")
         sys.exit(0)
 

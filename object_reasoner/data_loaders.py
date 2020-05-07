@@ -80,7 +80,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
             triplet_data.append(torch.stack([positive, anchor, negative]))
             #And class label as one-hot encoding among the N known classes
-            temp = torch.zeros(self.args.numknownobj)
+            temp = torch.zeros(self.args.numobj)
             temp[self.labels[i].item()-1] = 1  #labels in range 1-41, indices in range 0-40
             labels.append(temp)
 

@@ -4,6 +4,8 @@ from torchvision import transforms
 import argparse
 import sys
 import os
+import h5py
+import numpy as np
 
 from models import ImprintedKNet
 import data_loaders
@@ -31,7 +33,7 @@ def main():
 
     parser.add_argument('mode', choices=['train','predict'],
                         help='run mode')
-    parser.add_argument('--numknownobj', default=41,
+    parser.add_argument('--numobj', default=41,
                         help='No. of object classes to train on')
     parser.add_argument('--out', default='./data/imprintedKnet',
                         help='path where to save outputs. defaults to data/imprintedKnet')
@@ -41,7 +43,7 @@ def main():
     args = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = ImprintedKNet(feature_extraction=False, num_classes=args.numknownobj).to(device)
+    model = ImprintedKNet(feature_extraction=False, num_classes=args.numobj).to(device)
     params_to_update = model.parameters()  # all params
 
     """Img transformations for pre-processing """
@@ -62,7 +64,7 @@ def main():
         model.train() # back to train mode
         optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
 
-        imprint(model, device, train_loader, num_classes=args.numknownobj)
+        imprint(model, device, train_loader, num_classes=args.numobj)
 
         for epoch in range(epochs):
             train(model, device, train_loader, epoch, optimizer, args)
@@ -84,10 +86,17 @@ def main():
         # Extract all product embeddings
         # as well as test imgs embeddings
         test_set = data_loaders.ImageMatchingDataset(model, device, args, base_trans)
-        print(test_set.data.shape)
-        print(test_set.prod_data.shape)
-        #TODO save as HDF5 / (This is the input expected by object_reasoner.py)
+        # print(test_set.data.shape)
+        # print(test_set.prod_data.shape)
 
+        #Save results as HDF5 / (This is the input expected by object_reasoner.py)
+        test_results = {}
+        test_results['testFeat'] = test_set.data
+        test_results['prodFeat']= test_set.prod_data
+
+        hfile = h5py.File(os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-test-results.h5'))
+        for k, v in test_results.items():
+            hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
         return 0
 
 

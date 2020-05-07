@@ -33,20 +33,30 @@ def init_obj_catalogue(path_to_data):
 
     return obj_dict
 
-def load_emb_space(path_to_hdf5):
+def load_emb_space(args):
     """
     Assumes the input are the HDF5 files
     as produced by the baselines provided at
     https://github.com/andyzeng/arc-robot-vision/image-matching
     """
-    tgt_novel = os.path.join(path_to_hdf5, 'snapshots-no-class', 'results-snapshot-8000.h5') #default folder structure by Zeng et al.
-    tgt_known = os.path.join(path_to_hdf5, 'snapshots-with-class', 'results-snapshot-170000.h5')
 
-    nnetf = h5py.File(tgt_novel, 'r')
-    knetf = h5py.File(tgt_known, 'r')
+    if args.baseline =="imprk-net":
 
-    return np.array(knetf['prodFeat'], dtype='<f4'), np.array(nnetf['prodFeat'], dtype='<f4'), \
-           np.array(knetf['testFeat'], dtype='<f4'), np.array(nnetf['testFeat'], dtype='<f4')
+        path_to_hdf5 = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-test-results.h5')
+        tgt_impr = h5py.File(path_to_hdf5, 'r')
+        return np.array(tgt_impr['prodFeat'], dtype='<f4'), np.array(tgt_impr['prodFeat'], dtype='<f4'),\
+               None, None
+
+    else:
+        path_to_hdf5 = args.test_res
+        tgt_novel = os.path.join(path_to_hdf5, 'snapshots-no-class', 'results-snapshot-8000.h5') #default folder structure by Zeng et al.
+        tgt_known = os.path.join(path_to_hdf5, 'snapshots-with-class', 'results-snapshot-170000.h5')
+
+        nnetf = h5py.File(tgt_novel, 'r')
+        knetf = h5py.File(tgt_known, 'r')
+
+        return np.array(knetf['prodFeat'], dtype='<f4'), np.array(knetf['testFeat'], dtype='<f4'), \
+               np.array(nnetf['prodFeat'], dtype='<f4'), np.array(nnetf['testFeat'], dtype='<f4')
 
 def load_camera_intrinsics(path_to_intr):
     """
