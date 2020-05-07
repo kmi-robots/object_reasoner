@@ -9,8 +9,8 @@ def imprint(model, device, data_loader, num_classes=41):
 
         for batch_idx, (data, target) in enumerate(data_loader):
             target = torch.max(target, 1)[1]
-            input_anchor = data[0].to(device)
-            l2norm_emb = model.extract(input_anchor)
+            input_positive = data[0].to(device)
+            l2norm_emb = model.extract(input_positive)
 
             if batch_idx == 0:
                 output_stack = l2norm_emb

@@ -65,8 +65,10 @@ def main():
         optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
 
         imprint(model, device, train_loader, num_classes=args.numobj)
+        print("Weights have been imprinted based on training classes")
 
         for epoch in range(epochs):
+            print("Epoch %i of %i starts..." % (epoch, epochs))
             train(model, device, train_loader, epoch, optimizer, args)
             if epoch % 1000 == 0:
                 filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
