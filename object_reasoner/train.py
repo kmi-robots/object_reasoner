@@ -22,14 +22,12 @@ def train(model, device, train_loader, epoch, optimizer, num_epochs, metric_avg 
     predictions = []
 
     for batch_idx, (data, target) in enumerate(train_loader):
-        for i in range(len(data)):
-            data[i] = data[i].to(device)
 
         optimizer.zero_grad()
         target = target.type(torch.LongTensor).to(device)
 
         target = torch.max(target, 1)[1]
-        emb_a, emb_p, emb_n, output_logits = model(data)
+        emb_a, emb_p, emb_n, output_logits = model(data.to(device))
         classif_loss = F.cross_entropy(output_logits, target)
 
         triplet_loss = criterion(emb_a, emb_p, emb_n)

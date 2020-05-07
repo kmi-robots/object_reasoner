@@ -55,9 +55,9 @@ class ImprintedKNet(nn.Module):
 
     def forward(self, data):
 
-        x0 = self.forward_once(data[0])
-        x1 = self.forward_branch2(data[1])
-        x2 = self.forward_branch2(data[2])
+        x0 = self.forward_once(data[:,0,:])
+        x1 = self.forward_branch2(data[:,1,:])
+        x2 = self.forward_branch2(data[:,2,:])
 
         res = self.scale * self.l2_norm(self.fcs1(x0))
 

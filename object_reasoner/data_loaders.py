@@ -1,6 +1,8 @@
 import torch
 import os
+import sys
 from utils import img_preproc
+import cv2
 
 class ImageMatchingDataset(torch.utils.data.Dataset):
 
@@ -19,6 +21,12 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             self.data, self.data_emb, self.labels = (self.read_files(model,'train-imgs.txt','train-labels.txt')) # read all camera training imgs and labels firts
             self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model,'train-product-imgs.txt','train-product-labels.txt'))
             self.triplets, self.final_labels = self.generate_multianchor_triplets(model) # create training triplets based on product images
+            print(self.data.shape)
+            print(self.labels.shape)
+            print(self.prod_data.shape) 
+            print(self.prod_labels.shape)
+            print(self.triplets.shape)
+            print(self.final_labels.shape)
         else:
             #just pre-compute embeddings
             self.data, self.data_emb, self.labels = (self.read_files(model, 'test-imgs.txt','test-labels.txt'))
@@ -34,9 +42,9 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         # used by the data loader
         # implemented only for training data here
-        imgs, target = self.triplets[index], self.final_labels[index]
-
-        return [imgs[i] for i in range(len(imgs))], target  # triplet data + related label
+        # return , target  # triplet data + related label
+        #sys.exit(0)
+        return self.triplets[index], self.final_labels[index]
 
     def read_files(self, model, pathtxt, labeltxt):
 
