@@ -41,7 +41,7 @@ def main():
                         help='path to model checkpoint. Required when running in predict mode')
 
     args = parser.parse_args()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     model = ImprintedKNet(feature_extraction=False, num_classes=args.numobj).to(device)
     params_to_update = model.parameters()  # all params

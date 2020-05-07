@@ -6,9 +6,11 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
     def __init__(self,model, device, args, transforms):
 
-        self.device = device
+        self.device = torch.device("cuda:1")
         self.args = args
         self.trans = transforms
+        model.to(self.device)
+        model.evaluate()
 
         """
         Assumes same format and file naming convention as ARC17 image-matching
@@ -50,13 +52,13 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             data[iteration, :] = img_tensor
             # Pre-compute embeddings on a ResNet without retrain
             # for all train imgs
-            #img_tensor = img_tensor.view(1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2])
-            # embeddings[iteration, :] = model.get_embedding(img_tensor.to(self.device))
+            img_tensor = img_tensor.view(1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2]).to(self.device)
+            embeddings[iteration, :] = model.get_embedding(img_tensor)
+            del img_tensor
 
         return data, embeddings, torch.stack(labels)
 
     def generate_multianchor_triplets(self, model):
-
 
         triplet_data = []
         labels = []
