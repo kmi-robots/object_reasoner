@@ -6,11 +6,11 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
     def __init__(self,model, device, args, transforms):
 
-        self.device = torch.device("cuda:1")
+        self.device = device #torch.device("cuda:1")
         self.args = args
         self.trans = transforms
-        model.to(self.device)
-        model.evaluate()
+        # model.to(self.device)
+        # model.eval()
 
         """
         Assumes same format and file naming convention as ARC17 image-matching
