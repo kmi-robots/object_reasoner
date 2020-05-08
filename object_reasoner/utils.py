@@ -93,6 +93,7 @@ def img_preproc(path_to_image, transform, cropping_flag=False, array_form=False)
         x = Image.fromarray(img, mode='RGB')
         if cropping_flag:
             x = x.crop((120,30,520,430)) #as hardcoded in Zeng et al for ARC 2017
+
     except:
         return None
     return transform(x)

@@ -15,27 +15,29 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
     def __init__(self,model, device, args):
 
-        self.device = device #torch.device("cuda:1")
+        self.device = device
         self.args = args
+        
+
         if self.args.mode == 'train':
             #observed camera imgs were cropped and random hflipped on train
             #cropping done in PIL see utils.img_preproc
             self.trans = transforms.Compose([
                         transforms.RandomHorizontalFlip(p=0.7),
                         transforms.Resize((img_w, img_h)),
-                        transforms.ToTensor(),
-                        transforms.Normalize(means, stds)])
+                        transforms.ToTensor()])#,
+                        #transforms.Normalize(means, stds)])
             """
             Assumes same format and file naming convention as ARC17 image-matching
             """
 
-            self.data, self.data_emb, self.labels = (self.read_files(model,'train-imgs.txt','train-labels.txt')) # read all camera training imgs and labels firts
+            self.data, self.data_emb, self.labels = self.read_files(model,'train-imgs.txt','train-labels.txt') # read all camera training imgs and labels firts
             #change transform for prod imgs
             self.trans = transforms.Compose([
                 transforms.Resize((img_w, img_h)),
-                transforms.ToTensor(),
-                transforms.Normalize(means, stds)])
-            self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model,'train-product-imgs.txt','train-product-labels.txt'))
+                transforms.ToTensor()])#,
+                #transforms.Normalize(means, stds)])
+            self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model,'train-product-imgs.txt','train-product-labels.txt')
             self.triplets, self.final_labels = self.generate_multianchor_triplets(model) # create training triplets based on product images
             print(self.data.shape)
             print(self.labels.shape)
@@ -80,15 +82,32 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             imglist = [os.path.join(self.args.path_to_arc, '..', pth) for pth in imgfile.read().splitlines()]
 
         data = torch.empty((len(imglist), 3, 224, 224))
-        embeddings = torch.empty((len(imglist), 2048)) #3, 224, 224))
-        for iteration, img_path in enumerate(imglist[:10]):
+        embeddings = torch.empty((len(imglist), 2048)) #.cpu() #3, 224, 224))
+        #model.cpu()
+        #model.eval()
+        #import resource
+        #soft, hard = resource.getrlimit(resource.RLIMIT_AS) 
+        #resource.setrlimit(resource.RLIMIT_AS, (get_memory()*1024/2, hard)) 
+        print(str(torch.cuda.memory_allocated(self.device)/(1024*1024*1024)))#[allocated_bytes.all])
+        
+        for iteration, img_path in enumerate(imglist):
             img_tensor = img_preproc(img_path, self.trans, cropping_flag=doCrop)
             data[iteration, :] = img_tensor
             # Pre-compute embeddings on a ResNet without retrain
             # for all train imgs
             img_tensor = img_tensor.view(1, img_tensor.shape[0], img_tensor.shape[1], img_tensor.shape[2]).to(self.device)
-            embeddings[iteration, :] = model.get_embedding(img_tensor)
-            del img_tensor
+        
+            try:
+                with torch.no_grad():
+                     emb =  model.get_embedding(img_tensor) 
+                embeddings[iteration, :] = emb
+                del img_tensor,emb
+                torch.cuda.empty_cache()
+            except RuntimeError:
+                print(str(torch.cuda.memory_allocated(self.device)/(1024*1024*1024)))#[allocated_bytes.all])
+                print(str(iteration))
+                import sys
+                sys.exit(0)
 
         return data, embeddings, torch.stack(labels)
 
@@ -97,6 +116,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         triplet_data = []
         labels = []
         for i in range(self.data.shape[0]):
+            
             # for each camera/real-world image embedding
             current_e = self.data_emb[i, :]
             positive = self.data[i,:]
@@ -123,9 +143,11 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
             triplet_data.append(torch.stack([positive, anchor, negative]))
             #And class label as one-hot encoding among the N known classes
+
             temp = torch.zeros(self.args.numobj)
             temp[self.labels[i].item()-1] = 1  #labels in range 1-41, indices in range 0-40
             labels.append(temp)
         print("Image triplets formed")
         return torch.stack(triplet_data), torch.stack(labels)
+
 
