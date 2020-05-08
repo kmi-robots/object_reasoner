@@ -19,6 +19,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         self.args = args
         if self.args.mode == 'train':
             #observed camera imgs were cropped and random hflipped on train
+            #cropping done in PIL see utils.img_preproc
             self.trans = transforms.Compose([
                         transforms.RandomHorizontalFlip(p=0.7),
                         transforms.Resize((img_w, img_h)),
