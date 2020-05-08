@@ -13,7 +13,7 @@ img_w, img_h = 224, 224 # img size required for input to Net
 
 class ImageMatchingDataset(torch.utils.data.Dataset):
 
-    def __init__(self,model, device, args, transforms):
+    def __init__(self,model, device, args):
 
         self.device = device #torch.device("cuda:1")
         self.args = args
