@@ -43,6 +43,8 @@ def main():
 
     if args.mode =='train':
 
+        if not os.path.isdir('./data/imprintedKnet/snapshots-with-class'):
+            os.makedirs('./data/imprintedKnet/snapshots-with-class', exist_ok=True)
         from train import train
         model.eval() # eval mode before loading embeddings
         train_loader = torch.utils.data.DataLoader(
