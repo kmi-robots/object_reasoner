@@ -1,6 +1,5 @@
 import torch
 from torch import optim
-from torchvision import transforms
 import argparse
 import sys
 import os
@@ -20,10 +19,6 @@ epochs = 10000000
 lr = 0.001
 momentum = 0.99
 wdecay = 0.000001
-# Mean and variance values for torchvision modules pre-trained on ImageNet
-means = [0.485, 0.456, 0.406]
-stds = [0.229, 0.224, 0.225]
-img_w, img_h = 224, 224 # img size required for input to Net
 
 
 def main():
@@ -46,19 +41,12 @@ def main():
     model = ImprintedKNet(feature_extraction=False, num_classes=args.numobj).to(device)
     params_to_update = model.parameters()  # all params
 
-    """Img transformations for pre-processing """
-
-    base_trans = transforms.Compose([
-        transforms.Resize((img_w, img_h)),
-        transforms.ToTensor(),
-        transforms.Normalize(means, stds)])
-
     if args.mode =='train':
 
         from train import train
         model.eval() # eval mode before loading embeddings
         train_loader = torch.utils.data.DataLoader(
-            data_loaders.ImageMatchingDataset(model, device, args, base_trans), batch_size=batch_size,
+            data_loaders.ImageMatchingDataset(model, device, args), batch_size=batch_size,
             shuffle=True)
         # no validation set in original training code
         model.train() # back to train mode
@@ -87,7 +75,7 @@ def main():
         model.eval()
         # Extract all product embeddings
         # as well as test imgs embeddings
-        test_set = data_loaders.ImageMatchingDataset(model, device, args, base_trans)
+        test_set = data_loaders.ImageMatchingDataset(model, device, args)
         # print(test_set.data.shape)
         # print(test_set.prod_data.shape)
 

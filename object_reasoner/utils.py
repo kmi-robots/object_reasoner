@@ -84,15 +84,15 @@ def BGRtoRGB(img_array):
 
     return img
 
+def img_preproc(path_to_image, transform, cropping_flag=False, array_form=False):
 
-
-def img_preproc(path_to_image, transform, array_form=False):
     if not array_form:
         path_to_image = cv2.imread(path_to_image)
-
     img = BGRtoRGB(path_to_image)
     try:
         x = Image.fromarray(img, mode='RGB')
+        if cropping_flag:
+            x = x.crop((120,30,520,430)) #as hardcoded in Zeng et al for ARC 2017
     except:
         return None
     return transform(x)

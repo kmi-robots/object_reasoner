@@ -1,8 +1,15 @@
 import torch
+from torchvision import transforms
 import os
 import sys
 from utils import img_preproc
 import cv2
+
+# Mean and variance values for torchvision modules pre-trained on ImageNet
+means = [0.485, 0.456, 0.406]
+stds = [0.229, 0.224, 0.225]
+img_w, img_h = 224, 224 # img size required for input to Net
+
 
 class ImageMatchingDataset(torch.utils.data.Dataset):
 
@@ -10,25 +17,37 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
         self.device = device #torch.device("cuda:1")
         self.args = args
-        self.trans = transforms
-        # model.to(self.device)
-        # model.eval()
-
-        """
-        Assumes same format and file naming convention as ARC17 image-matching
-        """
         if self.args.mode == 'train':
+            #observed camera imgs were cropped and random hflipped on train
+            self.trans = transforms.Compose([
+                        transforms.RandomHorizontalFlip(p=0.7),
+                        transforms.Resize((img_w, img_h)),
+                        transforms.ToTensor(),
+                        transforms.Normalize(means, stds)])
+            """
+            Assumes same format and file naming convention as ARC17 image-matching
+            """
+
             self.data, self.data_emb, self.labels = (self.read_files(model,'train-imgs.txt','train-labels.txt')) # read all camera training imgs and labels firts
+            #change transform for prod imgs
+            self.trans = transforms.Compose([
+                transforms.Resize((img_w, img_h)),
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds)])
             self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model,'train-product-imgs.txt','train-product-labels.txt'))
             self.triplets, self.final_labels = self.generate_multianchor_triplets(model) # create training triplets based on product images
             print(self.data.shape)
             print(self.labels.shape)
-            print(self.prod_data.shape) 
+            print(self.prod_data.shape)
             print(self.prod_labels.shape)
             print(self.triplets.shape)
             print(self.final_labels.shape)
         else:
             #just pre-compute embeddings
+            self.trans = transforms.Compose([
+                transforms.Resize((img_w, img_h)),
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds)])
             self.data, self.data_emb, self.labels = (self.read_files(model, 'test-imgs.txt','test-labels.txt'))
             self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model, 'test-product-imgs.txt','test-product-labels.txt'))
 
@@ -46,7 +65,13 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         #sys.exit(0)
         return self.triplets[index], self.final_labels[index]
 
-    def read_files(self, model, pathtxt, labeltxt):
+    def read_files(self, model, pathtxt, labeltxt,doCrop=False):
+        try:
+            self.data
+        except NameError:
+            #camera data are being read
+            if self.args.baseline=='train':
+                doCrop=True
 
         with open(os.path.join(self.args.path_to_arc, pathtxt)) as imgfile, \
             open(os.path.join(self.args.path_to_arc, labeltxt)) as labelfile:
@@ -56,7 +81,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         data = torch.empty((len(imglist), 3, 224, 224))
         embeddings = torch.empty((len(imglist), 2048)) #3, 224, 224))
         for iteration, img_path in enumerate(imglist[:10]):
-            img_tensor = img_preproc(img_path, self.trans)
+            img_tensor = img_preproc(img_path, self.trans, cropping_flag=doCrop)
             data[iteration, :] = img_tensor
             # Pre-compute embeddings on a ResNet without retrain
             # for all train imgs
