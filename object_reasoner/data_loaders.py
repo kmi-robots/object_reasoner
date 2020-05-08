@@ -69,7 +69,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
     def read_files(self, model, pathtxt, labeltxt,doCrop=False):
         try:
             self.data
-        except NameError:
+        except AttributeError:
             #camera data are being read
             if self.args.baseline=='train':
                 doCrop=True
