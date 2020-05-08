@@ -59,19 +59,6 @@ class ImprintedKNet(nn.Module):
         x1 = self.forward_branch2(data[:,1,:])
         x2 = self.forward_branch2(data[:,2,:])
 
-        
-        
-
-        import torchvision.transforms as transforms
-        x0v = transforms.ToPILImage()(data[0,0,:].cpu())
-        x0v.save('positive_prefed.png')
-        x1v = transforms.ToPILImage()(x1[0,1,:].cpu())
-        x1v.save('anchor_prefed.png')
-        x2v = transforms.ToPILImage()(x2[0,2,:].cpu())
-        x2v.save('negative_prefed.png')
-        import sys
-        sys.exit(0)
-
         res = self.scale * self.l2_norm(self.fcs1(x0))
 
         return x0, x1, x2, self.fc2(res)
