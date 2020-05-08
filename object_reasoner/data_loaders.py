@@ -71,7 +71,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             self.data
         except AttributeError:
             #camera data are being read
-            if self.args.baseline=='train':
+            if self.args.mode=='train':
                 doCrop=True
 
         with open(os.path.join(self.args.path_to_arc, pathtxt)) as imgfile, \
