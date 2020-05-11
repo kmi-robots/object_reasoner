@@ -83,10 +83,10 @@ def main():
 
         #Save results as HDF5 / (This is the input expected by object_reasoner.py)
         test_results = {}
-        test_results['testFeat'] = test_set.data
-        test_results['prodFeat']= test_set.prod_data
+        test_results['testFeat'] = test_set.data_emb
+        test_results['prodFeat']= test_set.prod_emb
 
-        hfile = h5py.File(os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-test-results.h5'))
+        hfile = h5py.File(os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-test-results.h5'),'w')
         for k, v in test_results.items():
             hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
         return 0
