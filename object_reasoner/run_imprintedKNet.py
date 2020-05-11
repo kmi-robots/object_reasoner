@@ -60,7 +60,7 @@ def main():
         for epoch in range(epochs):
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
             train(model, device, train_loader, epoch, optimizer, epochs)
-            if epoch % 1000 == 0:
+            if epoch % 10 == 0:  
                 filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 #save snapshot locally every x - so epochs
                 torch.save(model.state_dict(), filepath)
