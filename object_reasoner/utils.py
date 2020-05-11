@@ -44,7 +44,7 @@ def load_emb_space(args):
 
         path_to_hdf5 = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-test-results.h5')
         tgt_impr = h5py.File(path_to_hdf5, 'r')
-        return np.array(tgt_impr['prodFeat'], dtype='<f4'), np.array(tgt_impr['prodFeat'], dtype='<f4'),\
+        return np.array(tgt_impr['prodFeat'], dtype='<f4'), np.array(tgt_impr['testFeat'], dtype='<f4'),\
                None, None
 
     else:
