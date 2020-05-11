@@ -52,11 +52,9 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
                 transforms.ToTensor(),
                 transforms.Normalize(means, stds)])
             self.data, self.data_emb, self.labels = (self.read_files(model, 'test-imgs.txt','test-labels.txt'))
-            print(self.data_emb.shape)
+            # print(self.data_emb.shape)
             self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model, 'test-product-imgs.txt','test-product-labels.txt'))
-            print(self.prod_emb.shape)
-            import sys
-            sys.exit(0)
+            # print(self.prod_emb.shape)
         return
 
     def __len__(self):
