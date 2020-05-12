@@ -44,6 +44,7 @@ def main():
     if args.mode =='train':
 
         if not os.path.isdir('./data/imprintedKnet/snapshots-with-class'):
+            #os.makedirs('./data/Knet/snapshots-with-class', exist_ok=True)
             os.makedirs('./data/imprintedKnet/snapshots-with-class', exist_ok=True)
         from train import train
         model.eval() # eval mode before loading embeddings
@@ -60,7 +61,8 @@ def main():
         for epoch in range(epochs):
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
             train(model, device, train_loader, epoch, optimizer, epochs)
-            if epoch % 10 == 0:  
+            if epoch % 100 == 0:  
+                # filepath = os.path.join('./data/Knet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 #save snapshot locally every x - so epochs
                 torch.save(model.state_dict(), filepath)
