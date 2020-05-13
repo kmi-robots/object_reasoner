@@ -15,8 +15,7 @@ class ImprintedKNet(nn.Module):
         super().__init__()
 
         self.embed = NetForEmbedding(feature_extraction)
-        self.embed2 = NetForEmbedding(feature_extraction)
-        self.embed3 = NetForEmbedding(feature_extraction)
+        self.embed_prod = NetForEmbedding(feature_extraction=True)
 
         self.norm = norm
 
@@ -43,21 +42,22 @@ class ImprintedKNet(nn.Module):
 
         return F.normalize(x)  # #x.view(x.size(0), -1) #self.fc(x.view(x.size(0), -1)) #self.drop(self.linear2(x))
 
-    def forward_branch2(self, x):
-        x = self.embed2(x)
+    def forward_prod_branch(self, x):
+        x = self.embed_prod(x)
 
         return F.normalize(x)
 
+    """
     def forward_branch3(self, x):
         x = self.embed3(x)
 
         return F.normalize(x)
-
+    """
     def forward(self, data):
 
         x0 = self.forward_once(data[:,0,:])
-        x1 = self.forward_branch2(data[:,1,:])
-        x2 = self.forward_branch2(data[:,2,:])
+        x1 = self.forward_prod_branch(data[:,1,:]) # feature extracted in prod branch
+        x2 = self.forward_once(data[:,2,:])
 
         res = self.scale * self.l2_norm(self.fcs1(x0))
 

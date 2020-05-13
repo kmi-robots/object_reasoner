@@ -38,7 +38,7 @@ def main():
     args = parser.parse_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    model = ImprintedKNet(feature_extraction=False, num_classes=args.numobj).to(device)
+    model = ImprintedKNet(num_classes=args.numobj).to(device)
     params_to_update = model.parameters()  # all params
 
     if args.mode =='train':
