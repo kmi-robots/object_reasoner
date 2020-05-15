@@ -75,7 +75,10 @@ def main():
         if args.chkp is None or not os.path.isfile(args.chkp):
             print("Please provide a path to pre-trained model checkpoint")
             return 0
+        
+        
         model.load_state_dict(torch.load(args.chkp))
+
         model.eval()
         # Extract all product embeddings
         # as well as test imgs embeddings
