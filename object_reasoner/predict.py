@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import torch
 
 def pred_singlemodel(ReasonerObj, args):
     """A Python re-writing of part of the procedure followed in
@@ -87,3 +88,13 @@ def pred_by_vol(ReasonerObj,volume,current_index):
     ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
 
     return ranking #[:5, :] # keep track of top 5
+
+
+def predict_imprinted(test_data, model, device):
+    predictions = []
+    with torch.no_grad():
+        for i in range(test_data.data.shape[0]):
+            data_point = test_data.data[i,:].to(device)
+            class_prob = model.forward(data_point, trainmode=False)
+            predictions.append(class_prob.numpy()) #torch.argmax(class_prob, dim=1).tolist())
+    return predictions
