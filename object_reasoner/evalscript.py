@@ -34,18 +34,26 @@ def eval_twostage():
     return
 
 
-def eval_imprinted(all_gt_labels, knownclasses, predicted_proba):
+def eval_imprinted(all_gt_labels, knownclasses, predicted):
     """
     similar to eval_singlemodel but
     can be called even without a ObjectReasoner object
     """
-    allclasses = set([int(l_tensor.item()) for l_tensor in all_gt_labels]) # known + novel
+    all_gt_labels = [int(l.item()) for l in all_gt_labels]
+    print(all_gt_labels)
+
+    allclasses = set(all_gt_labels) # known + novel
+    print(allclasses)
     newclasses = list(allclasses-knownclasses)
+    print(newclasses)
     knownclasses = list(knownclasses)
 
-    all_preds = [int(np.argmax(prob_vector)) for prob_vector in predicted_proba]
+    all_preds = [pred+1 for pred in predicted] # from 0-40 to 1-41
+    print(all_preds)
     known_labels = [l for l in all_gt_labels if l in knownclasses]
     new_labels = [l for l in all_gt_labels if l in newclasses]
+    print(known_labels)
+    print(new_labels)
     all_sum = 0
     k_sum = 0
     n_sum = 0

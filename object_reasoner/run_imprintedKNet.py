@@ -77,32 +77,38 @@ def main():
             print("Please provide a path to pre-trained model checkpoint")
             return 0
 
+        device = torch.device('cuda:1')
         #All classes at test time: known + novel
-        model = ImprintedKNet(num_classes=61).to(device)
+        model = ImprintedKNet(feature_extraction=True,num_classes=61).to(device)
         pretrained_dict = torch.load(args.chkp)
         model_dict = model.state_dict()
         # store/keep weight imprinted during training separately
         old_weights = pretrained_dict['fc2.weight']
         # load all pre-trained params except last layer (different num of classes now)
-        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+        pretrained_dict = {k: (v if v.size()== model_dict[k].size() else model_dict[k]) for k, v in pretrained_dict.items()} 
         # overwrite entries in the existing state dict
         model_dict.update(pretrained_dict)
         # load the new state dict
         model.load_state_dict(pretrained_dict)
 
         model.eval()
+        print("Loaded pre-trained model")
         # Extract all product embeddings
         # as well as test imgs embeddings
         test_set = data_loaders.ImageMatchingDataset(model, device, args)
+        print("Test data loaded")
+        print("Starting imprinting on both known and novel classes")
         # init weights based on both known and novel classes
         imprinted_model = imprint_fortest(model, device, test_set, old_weights)
         imprinted_model.eval()
-
+        print("Imprinting complete")
+        
         # If KNN matching based on embeddings
         KNN=False
         if KNN:
             """ Eval done in the ObjectReasoner class
             """
+            print("Producing embeddings for KNN matching")
             #Save results as HDF5 / (This is the input expected by object_reasoner.py)
             test_results = {}
             test_results['testFeat'] = test_set.data_emb
@@ -113,11 +119,14 @@ def main():
                 hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
             return 0
         else:
+            print("Predicting based on imprinted classifier")
             test_results = predict_imprinted(test_set, imprinted_model, device) # list of numpy arrays in this case
             # each array is the prob distribution output by the imprinted classif layer
             # provide the list of classes seen at training
+        
             with open(os.path.join(args.path_to_arc, 'train-labels.txt')) as txtf:
                 knownclasses = set([int(l) for l in txtf.read().splitlines()])
+            print("There are %i known classes" % len(knownclasses))
             eval_imprinted(test_set.labels, knownclasses, test_results)
             return 0
 

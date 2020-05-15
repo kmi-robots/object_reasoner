@@ -94,7 +94,7 @@ def predict_imprinted(test_data, model, device):
     predictions = []
     with torch.no_grad():
         for i in range(test_data.data.shape[0]):
-            data_point = test_data.data[i,:].to(device)
-            class_prob = model.forward(data_point, trainmode=False)
-            predictions.append(class_prob.numpy()) #torch.argmax(class_prob, dim=1).tolist())
+            data_point = test_data.data[i,:].unsqueeze(0).to(device)
+            out_logits = model.forward(data_point, trainmode=False)
+            predictions.append(int(np.argmax(out_logits.cpu().numpy()))) #torch.argmax(class_prob, dim=1).tolist())
     return predictions
