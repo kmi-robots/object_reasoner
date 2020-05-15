@@ -53,15 +53,20 @@ class ImprintedKNet(nn.Module):
 
         return F.normalize(x)
     """
-    def forward(self, data):
 
-        x0 = self.forward_once(data[:,0,:])
-        x1 = self.forward_prod_branch(data[:,1,:]) # feature extracted in prod branch
-        x2 = self.forward_once(data[:,2,:])
+    def forward(self, data, trainmode=True):
+        if trainmode:
+            # Triplet as input
+            x0 = self.forward_once(data[:,0,:])
+            x1 = self.forward_prod_branch(data[:,1,:]) # feature extracted in prod branch
+            x2 = self.forward_once(data[:,2,:])
+
+        else: x0 = self.forward_once(data) # just one test img as input
 
         res = self.scale * self.l2_norm(self.fcs1(x0))
 
-        return x0, x1, x2, self.fc2(res)
+        if trainmode: return x0, x1, x2, self.fc2(res)
+        else: return self.fc2(res)
 
     def get_embedding(self, x):
         x = self.embed(x)
@@ -80,7 +85,6 @@ class ImprintedKNet(nn.Module):
         output = _output.view(input_size)
 
         return output
-
 
     def weight_norm(self):
 
