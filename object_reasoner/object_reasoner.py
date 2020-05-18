@@ -1,4 +1,5 @@
 """Main module."""
+import open3d as o3d
 import json
 import os
 import time
@@ -11,7 +12,7 @@ from predict import pred_singlemodel, pred_twostage, pred_by_vol
 from evalscript import eval_singlemodel
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
-import open3d as o3d
+
 import matplotlib.pyplot as plt
 
 class ObjectReasoner():
