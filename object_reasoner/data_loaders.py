@@ -4,6 +4,7 @@ import os
 import sys
 from utils import img_preproc
 import cv2
+import random
 
 # Mean and variance values for torchvision modules pre-trained on ImageNet
 means = [0.485, 0.456, 0.406]
@@ -13,10 +14,11 @@ img_w, img_h = 224, 224 # img size required for input to Net
 
 class ImageMatchingDataset(torch.utils.data.Dataset):
 
-    def __init__(self,model, device, args):
+    def __init__(self,model, device, args, randomised=False):
 
         self.device = device
         self.args = args
+        self.randomised = randomised
 
         if self.args.mode == 'train':
             #observed camera imgs were cropped and random hflipped on train
@@ -38,7 +40,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
                 transforms.Normalize(means, stds)])
 
             self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model,'train-product-imgs.txt','train-product-labels.txt')
-            self.triplets, self.final_labels = self.generate_multianchor_triplets(model) # create training triplets based on product images
+            self.triplets, self.final_labels = self.generate_multianchor_triplets(model, self.randomised) # create training triplets based on product images
             print(self.data.shape)
             print(self.labels.shape)
             print(self.prod_data.shape)
@@ -100,10 +102,12 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
         return data, embeddings, torch.stack(labels)
 
-    def generate_multianchor_triplets(self, model):
+    def generate_multianchor_triplets(self, model, randomised):
 
         triplet_data = []
-        labels = []
+        triplet_labels = []
+        single_label_list =  [(k,lt[0]) for k,lt in enumerate(self.labels.tolist())]
+
         for i in range(self.data.shape[0]):
 
             # for each camera/real-world image embedding
@@ -123,19 +127,29 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             # [The approach by Zeng et al. uses a random pick from different class instead]
             all_rgb_distances = torch.matmul(current_e, self.data_emb.t()) #self.data.t())
             rgb_ranking, rgb_indices = torch.sort(all_rgb_distances, descending=True)
-            #Note: picking from different class automatically excludes the embedding itself (most similar to itself)
-            for k in range(rgb_ranking.shape[0]):
-                kNN_index = rgb_indices[k].item()
-                if self.labels[kNN_index].item() != self.labels[i].item():
-                    negative = self.data[kNN_index, :]
-                    break
+            
+            if not randomised:
+                #Note: picking from different class automatically excludes the embedding itself (most similar to itself)
+                for k in range(rgb_ranking.shape[0]):
+                    kNN_index = rgb_indices[k].item()
+                    if self.labels[kNN_index].item() != self.labels[i].item():
+                        negative = self.data[kNN_index, :]
+                        break
+            else:
+                #Negative is picked at random, as in original paper
+                neg_lab = self.labels[i].item()
+                while neg_lab == self.labels[i].item():
+                    # keep picking until from different class
+                    neg_idx, neg_lab = random.choice(single_label_list)
+
+                negative = self.data[neg_idx,:]
 
             triplet_data.append(torch.stack([positive, anchor, negative]))
             #Add class label as one-hot encoding among the N known classes
             temp = torch.zeros(self.args.numobj)
             temp[self.labels[i].item()-1] = 1  #labels in range 1-41, indices in range 0-40
-            labels.append(temp)
+            triplet_labels.append(temp)
         print("Image triplets formed")
-        return torch.stack(triplet_data), torch.stack(labels)
+        return torch.stack(triplet_data), torch.stack(triplet_labels)
 
 

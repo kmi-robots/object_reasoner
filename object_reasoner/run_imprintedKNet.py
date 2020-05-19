@@ -49,9 +49,11 @@ def main():
             os.makedirs('./data/imprintedKnet/snapshots-with-class', exist_ok=True)
         from train import train
         model.eval() # eval mode before loading embeddings
+        print("Loading training data")
         train_loader = torch.utils.data.DataLoader(
-            data_loaders.ImageMatchingDataset(model, device, args), batch_size=batch_size,
+            data_loaders.ImageMatchingDataset(model, device, args, randomised=True), batch_size=batch_size,
             shuffle=True)
+        print("Train batches loaded!")
         # no validation set in original training code
         model.train() # back to train mode
         optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
@@ -62,9 +64,9 @@ def main():
         for epoch in range(epochs):
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
             train(imprinted_model, device, train_loader, epoch, optimizer, epochs)
-            if epoch % 100 == 0:
+            if epoch % 1000 == 0:
                 # filepath = os.path.join('./data/Knet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
-                filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
+                filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'-randomised.pth')
                 #save snapshot locally every x - so epochs
                 torch.save(imprinted_model.state_dict(), filepath)
 
@@ -77,7 +79,6 @@ def main():
             print("Please provide a path to pre-trained model checkpoint")
             return 0
 
-        device = torch.device('cuda:1')
         #All classes at test time: known + novel
         model = ImprintedKNet(feature_extraction=True,num_classes=61).to(device)
         pretrained_dict = torch.load(args.chkp)
@@ -104,7 +105,7 @@ def main():
         print("Imprinting complete")
         
         # If KNN matching based on embeddings
-        KNN=False
+        KNN=True
         if KNN:
             """ Eval done in the ObjectReasoner class
             """
@@ -113,8 +114,8 @@ def main():
             test_results = {}
             test_results['testFeat'] = test_set.data_emb
             test_results['prodFeat']= test_set.prod_emb
-
-            hfile = h5py.File(os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-test-results.h5'),'w')
+            print("saving resulting embeddings under %s" % '/'.join(args.chkp.split('/')[:-1]))
+            hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test-results.h5'),'w')
             for k, v in test_results.items():
                 hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
             return 0
