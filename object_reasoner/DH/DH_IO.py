@@ -27,6 +27,11 @@ except:
     print("Please create a local file named DHauth.py containing your Data Hub credentials")
     sys.exit(0)
 
+if not os.path.isfile(dh.path_to_log):
+    # create log file
+    f = open(dh.path_to_log, 'w+')
+    f.close()
+
 def get_imgs():
     # print(type(DHdict['url']))
     t = datetime.datetime.fromtimestamp(time.time())
@@ -49,6 +54,7 @@ def post_img(input, tstamp, fbase, rgb=True):
 
     else: #depth img
         buffer = open(input, 'rb').read()
+        fbase ="depth_" +fbase
 
     bstring = base64.b64encode(buffer).decode('utf-8')  # .encode('utf-8')
 
@@ -107,7 +113,6 @@ def main():
         except AttributeError: continue
 
         if topic =='/camera/rgb/image_raw':
-
             rgb_img = bridge.imgmsg_to_cv2(msg, "passthrough")
             filename = fname + ".jpg"
             if not os.path.isfile(os.path.join(args.path_out,'rgb', filename)):
@@ -115,9 +120,15 @@ def main():
                 #send img to DH
                 res = post_img(rgb_img, timestamp, fname)
                 print(res.content)
+                if not res.ok:
+                    #Log if KO
+                    with open(dh.path_to_log, 'a') as logf:
+                        logf.write("Problem sending image %s to DH \n" % fname)
+                        logf.write("Timestamp %s \n" % timestamp)
+                        logf.write("Error returned: \n")
+                        logf.write(str(res.content))
 
         elif topic=='/camera/depth/image_raw':
-
             depth_data = bridge.imgmsg_to_cv2(msg, "32FC1")
             # print(depth_data.dtype)
             filename = fname + "-depth.tiff"
@@ -127,9 +138,15 @@ def main():
                 #send to DH
                 res= post_img(os.path.join(args.path_out, 'depth', filename),timestamp, fname, rgb=False)
                 print(res.content)
+                if not res.ok:
+                    # Log if KO
+                    with open(dh.path_to_log, 'a') as logf:
+                        logf.write("Problem sending image %s to DH \n" % fname)
+                        logf.write("Timestamp %s \n" % timestamp)
+                        logf.write("Error returned: \n")
+                        logf.write(str(res.content))
 
         else: continue
-
 
     print("RGB and depth images saved under %s" % args.path_out)
     return 0
