@@ -26,10 +26,11 @@ wdecay = 0.000001
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('path_to_arc',
-                        help='path to root folder where ARC2017 files are kept')
+                        help='path to root folder where img files are kept'
+                             'Expects same folder structure as ARC2017')
     parser.add_argument('mode', choices=['train','predict'],
                         help='run mode')
-    parser.add_argument('--numobj', default=41,
+    parser.add_argument('--numobj', default=65,
                         help='No. of object classes to train on')
     parser.add_argument('--out', default='./data/imprintedKnet',
                         help='path where to save outputs. defaults to data/imprintedKnet')
@@ -45,7 +46,6 @@ def main():
     if args.mode =='train':
 
         if not os.path.isdir('./data/imprintedKnet/snapshots-with-class'):
-            #os.makedirs('./data/Knet/snapshots-with-class', exist_ok=True)
             os.makedirs('./data/imprintedKnet/snapshots-with-class', exist_ok=True)
         from train import train
         model.eval() # eval mode before loading embeddings
@@ -64,7 +64,7 @@ def main():
         for epoch in range(epochs):
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
             train(imprinted_model, device, train_loader, epoch, optimizer, epochs)
-            if epoch % 1000 == 0:
+            if epoch % 10 == 0:
                 # filepath = os.path.join('./data/Knet/snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 filepath = os.path.join('./data/imprintedKnet/snapshots-with-class', 'snapshot-'+str(epoch)+'-randomised.pth')
                 #save snapshot locally every x - so epochs
@@ -86,7 +86,7 @@ def main():
         # store/keep weight imprinted during training separately
         old_weights = pretrained_dict['fc2.weight']
         # load all pre-trained params except last layer (different num of classes now)
-        pretrained_dict = {k: (v if v.size()== model_dict[k].size() else model_dict[k]) for k, v in pretrained_dict.items()} 
+        pretrained_dict = {k: (v if v.size()== model_dict[k].size() else model_dict[k]) for k, v in pretrained_dict.items()}
         # overwrite entries in the existing state dict
         model_dict.update(pretrained_dict)
         # load the new state dict
@@ -103,7 +103,7 @@ def main():
         imprinted_model = imprint_fortest(model, device, test_set, old_weights)
         imprinted_model.eval()
         print("Imprinting complete")
-        
+
         # If KNN matching based on embeddings
         KNN=True
         if KNN:
@@ -124,7 +124,7 @@ def main():
             test_results = predict_imprinted(test_set, imprinted_model, device) # list of numpy arrays in this case
             # each array is the prob distribution output by the imprinted classif layer
             # provide the list of classes seen at training
-        
+
             with open(os.path.join(args.path_to_arc, 'train-labels.txt')) as txtf:
                 knownclasses = set([int(l) for l in txtf.read().splitlines()])
             print("There are %i known classes" % len(knownclasses))

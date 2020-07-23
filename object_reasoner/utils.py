@@ -97,3 +97,37 @@ def img_preproc(path_to_image, transform, cropping_flag=False, array_form=False)
     except:
         return None
     return transform(x)
+
+##################################################################
+#
+#  Creating txt ground truth files in the same format as ARC2017
+#
+##################################################################
+
+def arcify(root_img_path):
+
+    base = root_img_path.split('/')[-1]
+    for root, dirs, files in os.walk(root_img_path):
+            for name in dirs:
+                imgpaths=[]
+                imglabels=[]
+                first =True
+                for sroot, sdirs, sfiles in os.walk(os.path.join(root_img_path,name)):
+                    if first:
+                        obj_classes=sdirs
+                        first = False
+                    if sfiles:
+                        classname = sroot.split('/')[-1]
+                        label = obj_classes.index(classname) + 1
+                        imgpaths.extend([os.path.join(base,name,f) for f in sfiles])
+                        imglabels.extend([str(label) for f in sfiles]) # as many labels an no of files in that subfolder
+
+                with open(os.path.join(root_img_path,name+'.txt'), mode='w') as outf, \
+                    open(os.path.join(root_img_path,name+'-labels.txt'), mode='w') as outl:
+                    outf.write('\n'.join(imgpaths))
+                    outl.write('\n'.join(imglabels))
+
+            break # skip after first folder level
+
+    return
+

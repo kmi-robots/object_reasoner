@@ -86,11 +86,11 @@ class ObjectReasoner():
         eval_singlemodel(self)
 
         """
-        # print("Results if matches are average by class / across views")
-        print("Results if min across views is taken")
+        print("Results if matches are average by class / across views")
+        # print("Results if min across views is taken")
         tmp_copy = self.predictions
-        # self.predictions = self.avg_predictions
-        self.predictions = self.min_predictions
+        self.predictions = self.avg_predictions
+        # self.predictions = self.min_predictions
         eval_singlemodel(self)
         self.predictions = tmp_copy
         del tmp_copy
@@ -112,10 +112,12 @@ class ObjectReasoner():
 
             dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
 
-            # plt.imshow(cv2.imread(self.imglist[i],cv2.IMREAD_UNCHANGED)) #, cmap='Greys_r')
-            # plt.show()
+            """
+            plt.imshow(dimage, cmap='Greys_r')
+            plt.show()
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
-            # o3d.visualization.draw_geometries([origpcl])
+            o3d.visualization.draw_geometries([origpcl])
+            """
 
             cluster_bw = extract_foreground_2D(dimage)
             if cluster_bw is None: #problem with 2D clustering

@@ -1,8 +1,11 @@
+"""
+    Assumes same format and file naming convention as ARC17 image-matching
+"""
 import torch
 from torchvision import transforms
 import os
 import sys
-from utils import img_preproc
+from utils import img_preproc, arcify
 import cv2
 import random
 
@@ -20,7 +23,13 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         self.args = args
         self.randomised = randomised
 
+        # Check that ground truth txts exist
+        # check only on one file, the others are generated together
+        if not os.path.exists('./train-imgs.txt'):
+            arcify(self.args.path_to_arc)
+
         if self.args.mode == 'train':
+
             #observed camera imgs were cropped and random hflipped on train
             #cropping done in PIL see utils.img_preproc
             self.trans = transforms.Compose([
@@ -28,9 +37,6 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
                         transforms.Resize((img_w, img_h)),
                         transforms.ToTensor(),
                         transforms.Normalize(means, stds)])
-            """
-            Assumes same format and file naming convention as ARC17 image-matching
-            """
 
             self.data, self.data_emb, self.labels = self.read_files(model,'train-imgs.txt','train-labels.txt') # read all camera training imgs and labels firts
             #change transform for prod imgs
@@ -48,6 +54,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             print(self.triplets.shape)
             print(self.final_labels.shape)
         else:
+
             #just pre-compute embeddings
             self.trans = transforms.Compose([
                 transforms.Resize((img_w, img_h)),
@@ -109,7 +116,6 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         single_label_list =  [(k,lt[0]) for k,lt in enumerate(self.labels.tolist())]
 
         for i in range(self.data.shape[0]):
-
             # for each camera/real-world image embedding
             current_e = self.data_emb[i, :]
             positive = self.data[i,:]
@@ -127,7 +133,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             # [The approach by Zeng et al. uses a random pick from different class instead]
             all_rgb_distances = torch.matmul(current_e, self.data_emb.t()) #self.data.t())
             rgb_ranking, rgb_indices = torch.sort(all_rgb_distances, descending=True)
-            
+
             if not randomised:
                 #Note: picking from different class automatically excludes the embedding itself (most similar to itself)
                 for k in range(rgb_ranking.shape[0]):
@@ -149,6 +155,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             temp = torch.zeros(self.args.numobj)
             temp[self.labels[i].item()-1] = 1  #labels in range 1-41, indices in range 0-40
             triplet_labels.append(temp)
+
         print("Image triplets formed")
         return torch.stack(triplet_data), torch.stack(triplet_labels)
 
