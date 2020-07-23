@@ -30,7 +30,7 @@ def main():
                              'Expects same folder structure as ARC2017')
     parser.add_argument('mode', choices=['train','predict'],
                         help='run mode')
-    parser.add_argument('--numobj', default=65,
+    parser.add_argument('--numobj', default=65, type=int,
                         help='No. of object classes to train on')
     parser.add_argument('--out', default='./data/imprintedKnet',
                         help='path where to save outputs. defaults to data/imprintedKnet')
