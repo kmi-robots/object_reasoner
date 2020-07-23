@@ -25,7 +25,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
         # Check that ground truth txts exist
         # check only on one file, the others are generated together
-        if not os.path.exists('./train-imgs.txt'):
+        if not os.path.exists(os.path.join(self.args.path_to_arc,'./train-imgs.txt')):
             arcify(self.args.path_to_arc)
 
         if self.args.mode == 'train':
