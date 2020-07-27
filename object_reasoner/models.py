@@ -11,13 +11,11 @@ class ImprintedKNet(nn.Module):
     https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching
     """
 
-    def __init__(self, feature_extraction=False, norm=True, num_classes=25):
+    def __init__(self, feature_extraction=False, num_classes=25):
         super().__init__()
 
         self.embed = NetForEmbedding(feature_extraction)
         self.embed_prod = NetForEmbedding(feature_extraction=True)
-
-        self.norm = norm
 
         self.fcs1 = nn.Sequential(
 
@@ -44,15 +42,8 @@ class ImprintedKNet(nn.Module):
 
     def forward_prod_branch(self, x):
         x = self.embed_prod(x)
-
         return F.normalize(x)
 
-    """
-    def forward_branch3(self, x):
-        x = self.embed3(x)
-
-        return F.normalize(x)
-    """
 
     def forward(self, data, trainmode=True):
         if trainmode:
@@ -94,7 +85,6 @@ class ImprintedKNet(nn.Module):
 
 
 class NetForEmbedding(nn.Module):
-
     """
     Pre-trained Net used to generate img embeddings
     on each siamese pipeline
@@ -137,3 +127,91 @@ class TripletLoss(nn.Module):
         losses = F.relu(distance_positive - distance_negative + self.margin)
 
         return losses.mean() if size_average else losses.sum()
+
+
+"""=======================================
+Re-implemented from paper by Zeng et al. (2018)
+============================================="""
+
+class KNet(nn.Module):
+
+    def __init__(self, feature_extraction=False, num_classes=10):
+        super().__init__()
+
+        self.embed = NetForEmbedding(feature_extraction)
+        self.embed_prod = NetForEmbedding(feature_extraction=True)
+
+        self.classifier = nn.Sequential(
+
+            nn.Linear(2048, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(512, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(128, num_classes)
+        )
+
+    def forward_once(self, x):
+        x = self.embed(x)
+
+        return F.normalize(x)  # #x.view(x.size(0), -1) #self.fc(x.view(x.size(0), -1)) #self.drop(self.linear2(x))
+
+    def forward_prod_branch(self, x):
+        x = self.embed_prod(x)
+        return F.normalize(x)
+
+    def forward(self, data, trainmode=True):
+        if trainmode:
+            # Triplet as input
+            x0 = self.forward_once(data[:, 0, :])
+            x1 = self.forward_prod_branch(data[:, 1, :])  # feature extracted in prod branch
+            x2 = self.forward_once(data[:, 2, :])
+            return x0, x1, x2, self.classifier(x0)
+
+        else:
+            x0 = self.forward_once(data)  # just one test img as input
+            return self.classifier(x0)
+
+    def get_embedding(self, x):
+        x = self.embed(x)
+        return F.normalize(x)
+
+
+class NNet(nn.Module):
+    """same as K-net but without auxiliary classification layer"""
+
+    def __init__(self, feature_extraction=False):
+        super().__init__()
+
+        self.embed = NetForEmbedding(feature_extraction)
+        self.embed_prod = NetForEmbedding(feature_extraction=True)
+
+    def forward_once(self, x):
+        x = self.embed(x)
+
+        return F.normalize(x)  # #x.view(x.size(0), -1) #self.fc(x.view(x.size(0), -1)) #self.drop(self.linear2(x))
+
+    def forward_prod_branch(self, x):
+        x = self.embed_prod(x)
+        return F.normalize(x)
+
+    def forward(self, data, trainmode=True):
+        if trainmode:
+            # Triplet as input
+            x0 = self.forward_once(data[:, 0, :])
+            x1 = self.forward_prod_branch(data[:, 1, :])  # feature extracted in prod branch
+            x2 = self.forward_once(data[:, 2, :])
+            return x0, x1, x2
+
+        else:
+            x0 = self.forward_once(data)  # just one test img as input
+            return x0
+
+    def get_embedding(self, x):
+        x = self.embed(x)
+        return F.normalize(x)
+
+

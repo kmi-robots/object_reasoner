@@ -34,7 +34,7 @@ def eval_twostage():
     return
 
 
-def eval_imprinted(all_gt_labels, knownclasses, predicted):
+def eval_classifier(all_gt_labels, knownclasses, predicted):
     """
     similar to eval_singlemodel but
     can be called even without a ObjectReasoner object

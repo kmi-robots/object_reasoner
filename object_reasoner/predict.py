@@ -90,7 +90,7 @@ def pred_by_vol(ReasonerObj,volume,current_index):
     return ranking #[:5, :] # keep track of top 5
 
 
-def predict_imprinted(test_data, model, device):
+def predict_classifier(test_data, model, device):
     predictions = []
     with torch.no_grad():
         for i in range(test_data.data.shape[0]):
