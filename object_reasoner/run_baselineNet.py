@@ -51,7 +51,7 @@ def main():
         model.eval() # eval mode before loading embeddings
         print("Loading training data")
         train_loader = torch.utils.data.DataLoader(
-            data_loaders.ImageMatchingDataset(model, device, args, randomised=True), batch_size=batch_size,
+            data_loaders.ImageMatchingDataset(model, device, args, randomised=False), batch_size=batch_size,
             shuffle=True)
         print("Train batches loaded!")
         # no validation set in original training code
@@ -80,7 +80,7 @@ def main():
             return 0
 
         #All classes at test time: known + novel
-        model = ImprintedKNet(feature_extraction=True,num_classes=61).to(device)
+        model = ImprintedKNet(feature_extraction=True,num_classes=args.numobj).to(device)
         pretrained_dict = torch.load(args.chkp)
         model_dict = model.state_dict()
         # store/keep weight imprinted during training separately
@@ -100,7 +100,7 @@ def main():
         print("Test data loaded")
         print("Starting imprinting on both known and novel classes")
         # init weights based on both known and novel classes
-        imprinted_model = imprint_fortest(model, device, test_set, old_weights)
+        imprinted_model = imprint_fortest(model, device, test_set, old_weights,num_classes=args.numobj)
         imprinted_model.eval()
         print("Imprinting complete")
 
@@ -113,7 +113,7 @@ def main():
             #Save results as HDF5 / (This is the input expected by object_reasoner.py)
             test_results = {}
             test_results['testFeat'] = test_set.data_emb
-            test_results['prodFeat']= test_set.prod_emb
+            test_results['prodFeat'] = test_set.prod_emb
             print("saving resulting embeddings under %s" % '/'.join(args.chkp.split('/')[:-1]))
             hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test-results.h5'),'w')
             for k, v in test_results.items():

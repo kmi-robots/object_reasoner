@@ -84,7 +84,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         except AttributeError:
             #camera data are being read, apply cropping on read
             if self.args.mode=='train':
-                doCrop=True
+                doCrop= False #Set to True for ARC2017 set
 
         with open(os.path.join(self.args.path_to_arc, pathtxt)) as imgfile, \
             open(os.path.join(self.args.path_to_arc, labeltxt)) as labelfile:
@@ -113,7 +113,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
         triplet_data = []
         triplet_labels = []
-        single_label_list =  [(k,lt[0]) for k,lt in enumerate(self.labels.tolist())]
+        single_label_list = [(k,lt[0]) for k,lt in enumerate(self.labels.tolist())]
 
         for i in range(self.data.shape[0]):
             # for each camera/real-world image embedding
@@ -153,7 +153,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             triplet_data.append(torch.stack([positive, anchor, negative]))
             #Add class label as one-hot encoding among the N known classes
             temp = torch.zeros(self.args.numobj)
-            temp[self.labels[i].item()-1] = 1  #labels in range 1-41, indices in range 0-40
+            temp[self.labels[i].item()-1] = 1  #labels in range 1-N, indices in range 0-N
             triplet_labels.append(temp)
 
         print("Image triplets formed")

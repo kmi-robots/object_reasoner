@@ -48,7 +48,7 @@ def eval_imprinted(all_gt_labels, knownclasses, predicted):
     print(newclasses)
     knownclasses = list(knownclasses)
 
-    all_preds = [pred+1 for pred in predicted] # from 0-40 to 1-41
+    all_preds = [pred+1 for pred in predicted] # from 0-N to 1-N
     print(all_preds)
     known_labels = [l for l in all_gt_labels if l in knownclasses]
     new_labels = [l for l in all_gt_labels if l in newclasses]

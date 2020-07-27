@@ -116,6 +116,7 @@ def arcify(root_img_path):
                     if first:
                         obj_classes=sdirs
                         first = False
+                        continue
                     if sfiles:
                         classname = sroot.split('/')[-1]
                         label = obj_classes.index(classname) + 1
@@ -127,7 +128,7 @@ def arcify(root_img_path):
                     outf.write('\n'.join(imgpaths))
                     outl.write('\n'.join(imglabels))
 
-            break # skip after first folder level
+            break # skip outer for, after first folder level
 
     return
 
