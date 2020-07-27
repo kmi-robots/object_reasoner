@@ -20,6 +20,7 @@ def train(args, model, device, train_loader, epoch, optimizer, num_epochs, metri
     running_loss = 0
     labels = []
     predictions = []
+    epsilon = 0.01 #loss threshold for stopping
 
     for batch_idx, (data, target) in enumerate(train_loader):
 
@@ -58,12 +59,11 @@ def train(args, model, device, train_loader, epoch, optimizer, num_epochs, metri
     epoch_loss = running_loss / all_labels
     if args.model =='n-net':
         # No classification layer, only loss can be computed
-        print("Epoch {}/{}, Loss: {:.6f}, Accuracy: {:.6f}%, Precision: {:.6f}, Recall: {:.6f}".format(epoch + 1,
-                                                                                                       num_epochs,
-                                                                                                       epoch_loss,
-                                                                                                        0.0, 0.0, 0.0))
+        print("Epoch {}/{}, Loss: {:.6f}, Accuracy: {:.6f}%, Precision: {:.6f}, Recall: {:.6f}".format(epoch + 1,num_epochs,epoch_loss,0.0, 0.0, 0.0))
     else:
         # Compute epoch-level metrics with sklearn
         p, r, f1, sup = precision_recall_fscore_support(np.asarray(labels), np.asarray(predictions), average=metric_avg)
         print("Epoch {}/{}, Loss: {:.6f}, Accuracy: {:.6f}%, Precision: {:.6f}, Recall: {:.6f}".format(epoch + 1, num_epochs, epoch_loss, accuracy, p, r))
 
+    if epoch_loss <= epsilon: return True #stop training
+    else: return False
