@@ -72,7 +72,8 @@ def main():
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
             doStop, ep_loss = train(args, model, device, train_loader, epoch, optimizer, epochs)
 
-            if ep_loss<min_loss or doStop:
+            if epoch > 10 and (ep_loss<min_loss or doStop):
+                # skipping first 10 epochs
                 print("Training loss decreased. Saving model...")
                 filepath = os.path.join('./data/',args.model,'snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 torch.save(model.state_dict(), filepath)
