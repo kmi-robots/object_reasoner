@@ -32,18 +32,21 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
             #observed camera imgs were cropped and random hflipped on train
             #cropping done in PIL see utils.img_preproc
+
             self.trans = transforms.Compose([
                         transforms.RandomHorizontalFlip(p=0.7),
                         transforms.Resize((img_w, img_h)),
-                        transforms.ToTensor(),
-                        transforms.Normalize(means, stds)])
+                        transforms.ToTensor()
+                        ,transforms.Normalize(means, stds)
+                        ])
 
             self.data, self.data_emb, self.labels = self.read_files(model,'train-imgs.txt','train-labels.txt') # read all camera training imgs and labels firts
             #change transform for prod imgs
             self.trans = transforms.Compose([
                 transforms.Resize((img_w, img_h)),
-                transforms.ToTensor(),
-                transforms.Normalize(means, stds)])
+                transforms.ToTensor()
+                ,transforms.Normalize(means, stds)
+                ])
 
             self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model,'train-product-imgs.txt','train-product-labels.txt')
             self.triplets, self.final_labels = self.generate_multianchor_triplets(model, self.randomised) # create training triplets based on product images
@@ -150,6 +153,15 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
                 negative = self.data[neg_idx,:]
 
+            """
+            #Uncomment to visually inspect loaded triplet
+            import matplotlib.pyplot as plt
+            f, axarr = plt.subplots(2, 2)
+            axarr[0, 0].imshow(positive.permute(1, 2, 0))
+            axarr[0, 1].imshow(anchor.permute(1, 2, 0))
+            axarr[1, 0].imshow(negative.permute(1, 2, 0))
+            plt.show()
+            """
             triplet_data.append(torch.stack([positive, anchor, negative]))
             #Add class label as one-hot encoding among the N known classes
             temp = torch.zeros(self.args.numobj)
