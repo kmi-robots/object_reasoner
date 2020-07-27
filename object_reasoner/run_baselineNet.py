@@ -66,13 +66,17 @@ def main():
             model = imprint(model, device, train_loader, num_classes=args.numobj)
             print("Weights have been imprinted based on training classes")
 
+        min_loss = 10.0
         for epoch in range(epochs):
+
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
-            doStop= train(args, model, device, train_loader, epoch, optimizer, epochs)
-            if epoch % 10 == 0 or doStop:
+            doStop, ep_loss = train(args, model, device, train_loader, epoch, optimizer, epochs)
+
+            if ep_loss<min_loss or doStop:
+                print("Training loss decreased. Saving model...")
                 filepath = os.path.join('./data/',args.model,'snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
-                #save snapshot locally every x - so epochs
                 torch.save(model.state_dict(), filepath)
+                min_loss = ep_loss
                 if doStop: return 0 #loss close to zero
 
         return 0

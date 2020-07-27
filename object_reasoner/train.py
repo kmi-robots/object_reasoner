@@ -65,5 +65,5 @@ def train(args, model, device, train_loader, epoch, optimizer, num_epochs, metri
         p, r, f1, sup = precision_recall_fscore_support(np.asarray(labels), np.asarray(predictions), average=metric_avg)
         print("Epoch {}/{}, Loss: {:.6f}, Accuracy: {:.6f}%, Precision: {:.6f}, Recall: {:.6f}".format(epoch + 1, num_epochs, epoch_loss, accuracy, p, r))
 
-    if epoch_loss <= epsilon: return True #stop training
-    else: return False
+    if epoch_loss <= epsilon: return True, epoch_loss #stop training
+    else: return False, epoch_loss
