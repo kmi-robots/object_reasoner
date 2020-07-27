@@ -120,7 +120,7 @@ def arcify(root_img_path):
                     if sfiles:
                         classname = sroot.split('/')[-1]
                         label = obj_classes.index(classname) + 1
-                        imgpaths.extend([os.path.join(base,name,f) for f in sfiles])
+                        imgpaths.extend([os.path.join(base,name,classname,f) for f in sfiles])
                         imglabels.extend([str(label) for f in sfiles]) # as many labels an no of files in that subfolder
 
                 lname = name.split("-imgs")[0]
