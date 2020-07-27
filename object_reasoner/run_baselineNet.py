@@ -70,7 +70,7 @@ def main():
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
             doStop= train(args, model, device, train_loader, epoch, optimizer, epochs)
             if epoch % 10 == 0 or doStop:
-                filepath = os.path.join('./data/',args.model,'snapshots-with-class', 'snapshot-'+str(epoch)+'-randomised.pth')
+                filepath = os.path.join('./data/',args.model,'snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 #save snapshot locally every x - so epochs
                 torch.save(model.state_dict(), filepath)
                 if doStop: return 0 #loss close to zero
