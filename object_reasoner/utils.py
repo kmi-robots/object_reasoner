@@ -123,8 +123,9 @@ def arcify(root_img_path):
                         imgpaths.extend([os.path.join(base,name,f) for f in sfiles])
                         imglabels.extend([str(label) for f in sfiles]) # as many labels an no of files in that subfolder
 
+                lname = name.split("-imgs")[0]
                 with open(os.path.join(root_img_path,name+'.txt'), mode='w') as outf, \
-                    open(os.path.join(root_img_path,name+'-labels.txt'), mode='w') as outl:
+                    open(os.path.join(root_img_path,lname+'-labels.txt'), mode='w') as outl:
                     outf.write('\n'.join(imgpaths))
                     outl.write('\n'.join(imglabels))
 
