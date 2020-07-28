@@ -29,10 +29,10 @@ def train(args, model, device, train_loader, epoch, optimizer, num_epochs, metri
 
         if args.model =='k-net' or args.model =='imprk-net':
             target = torch.max(target, 1)[1]
-            emb_a, emb_p, emb_n, output_logits = model(data.to(device))
+            emb_p, emb_a, emb_n, output_logits = model(data.to(device))
             classif_loss = F.cross_entropy(output_logits, target)
         elif args.model =='n-net':
-            emb_a, emb_p, emb_n = model(data)
+            emb_p, emb_a, emb_n = model(data.to(device))
             classif_loss = 0.0
 
         triplet_loss = criterion(emb_a, emb_p, emb_n)
