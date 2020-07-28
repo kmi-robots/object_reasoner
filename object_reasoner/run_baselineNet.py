@@ -44,7 +44,7 @@ def main():
 
     if args.model =='imprk-net': model = ImprintedKNet(num_classes=args.numobj).to(device)
     elif args.model =='k-net': model = KNet(num_classes=args.numobj).to(device)
-    elif args.model == 'n-net': model = NNet(num_classes=args.numobj).to(device)
+    elif args.model == 'n-net': model = NNet().to(device)
 
     params_to_update = model.parameters()  # all params
 
@@ -95,7 +95,7 @@ def main():
         elif args.model == 'k-net':
             model = KNet(feature_extraction=True,num_classes=args.numobj).to(device)
         elif args.model == 'n-net':
-            model = NNet(num_classes=args.numobj).to(device)
+            model = NNet().to(device)
 
         pretrained_dict = torch.load(args.chkp)
         model_dict = model.state_dict()
