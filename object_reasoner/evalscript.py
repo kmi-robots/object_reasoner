@@ -1,4 +1,7 @@
-import numpy as np
+from sklearn.metrics import classification_report, accuracy_score
+import pprint
+import os
+import json
 """
 Evaluation script - top-1 eval accuracy
 to reproduce results in https://github.com/andyzeng/arc-robot-vision/image-matching
@@ -70,3 +73,21 @@ def eval_classifier(all_gt_labels, knownclasses, predicted):
     print("Novel object accuracy: %f" % float(n_sum / len(new_labels)))
 
     return
+
+
+def eval_KMi(ReasonerObj, args):
+    """
+    Used for KMi test set when all classes are known, based on scikit-learn
+    """
+    print("Class-wise test results \n")
+    y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
+    with open(os.path.join(args.test_base, 'class_to_index.json')) as jf:
+        allclasses = json.load(jf)
+        backbook = dict((v, k) for k, v in allclasses.items())  # swap keys with indices
+    print(classification_report(ReasonerObj.labels, y_pred))
+    print(accuracy_score(ReasonerObj.labels, y_pred))
+    pp = pprint.PrettyPrinter(indent=4)
+    cdict = classification_report(ReasonerObj.labels, y_pred, output_dict=True)  # , target_names=allclasses))
+    remapped_dict = dict(
+        (backbook[k], v) for k, v in cdict.items() if k not in ['accuracy', 'macro avg', 'weighted avg'])
+    pp.pprint(remapped_dict)

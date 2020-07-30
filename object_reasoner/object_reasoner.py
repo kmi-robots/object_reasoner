@@ -9,10 +9,10 @@ import cv2
 from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics
 from predict import pred_singlemodel, pred_twostage, pred_by_vol
-from evalscript import eval_singlemodel
+from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
-from sklearn.metrics import classification_report, accuracy_score
+
 
 import matplotlib.pyplot as plt
 
@@ -92,18 +92,7 @@ class ObjectReasoner():
         print("%s detection results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
         print("Double checking top-1 accuracies to reproduce baseline...")
         if args.set == 'KMi': #class-wise report
-            print("Class-wise test results \n")
-            y_pred = self.predictions[:, 0, 0].astype('int').astype('str').tolist()
-            with open(os.path.join(args.test_base,'class_to_index.json')) as jf:
-                allclasses = json.load(jf)
-                backbook = dict((v, k) for k, v in allclasses.items()) # swap keys with indices
-            print(classification_report(self.labels, y_pred))
-            print(accuracy_score(self.labels, y_pred))
-            import pprint
-            pp = pprint.PrettyPrinter(indent=4)
-            cdict = classification_report(self.labels, y_pred, output_dict=True)#, target_names=allclasses))
-            remapped_dict = dict((backbook[k], v) for k,v in cdict.items() if k not in ['accuracy', 'macro avg', 'weighted avg'])
-            pp.pprint(remapped_dict)
+            eval_KMi(self, args)
             sys.exit(0)
         else: #separate eval for known vs novel
             eval_singlemodel(self)
