@@ -11,6 +11,7 @@ import data_loaders
 from imprinting import imprint, imprint_fortest
 from predict import predict_classifier
 from evalscript import eval_classifier
+from utils import crop_test, create_class_map
 
 """ Hardcoded training params
     as set in
@@ -36,19 +37,24 @@ def main():
                         help='Image Matching model to use')
     parser.add_argument('--out', default='./data/imprintedKnet',
                         help='path where to save outputs. defaults to data/imprintedKnet')
+    parser.add_argument('--set', default='arc', choices=['arc','KMi'],
+                        help='Dataset to run on')
     parser.add_argument('--chkp', default=None,
                         help='path to model checkpoint. Required when running in predict mode')
 
     args = parser.parse_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    if args.model =='imprk-net': model = ImprintedKNet(num_classes=args.numobj).to(device)
-    elif args.model =='k-net': model = KNet(num_classes=args.numobj).to(device)
-    elif args.model == 'n-net': model = NNet().to(device)
-
-    params_to_update = model.parameters()  # all params
-
     if args.mode =='train':
+
+        if args.model == 'imprk-net':
+            model = ImprintedKNet(num_classes=args.numobj).to(device)
+        elif args.model == 'k-net':
+            model = KNet(num_classes=args.numobj).to(device)
+        elif args.model == 'n-net':
+            model = NNet().to(device)
+
+        params_to_update = model.parameters()  # all params
 
         if not os.path.isdir(os.path.join('./data',args.model, 'snapshots-with-class')):
             os.makedirs(os.path.join('./data',args.model, 'snapshots-with-class'), exist_ok=True)
@@ -89,6 +95,16 @@ def main():
             print("Please provide a path to pre-trained model checkpoint")
             return 0
 
+        if args.set == 'KMi':
+            if not os.path.exists(os.path.join(args.out, '../class_to_index.json')):
+                res = create_class_map(os.path.join(args.out, '../class_to_index.json'))
+                if res is not None:  # stopping because reference training files are missing
+                    return res
+            if not os.path.exists(os.path.join(args.out, '../test-imgs.txt')):
+                # crop test images to annotate bbox/polygon
+                print("Preparing ground truth annotations...")
+                crop_test(args)
+
         #All classes at test time: known + novel
         if args.model == 'imprk-net':
             model = ImprintedKNet(feature_extraction=True,num_classes=args.numobj).to(device)
@@ -97,7 +113,7 @@ def main():
         elif args.model == 'n-net':
             model = NNet().to(device)
 
-        pretrained_dict = torch.load(args.chkp)
+        pretrained_dict = torch.load(args.chkp, map_location=torch.device(device))
         model_dict = model.state_dict()
         if args.model == 'imprk-net':
             # store/keep weight imprinted during training separately
@@ -110,6 +126,7 @@ def main():
         model.load_state_dict(pretrained_dict)
         model.eval()
         print("Loaded pre-trained model")
+
         # Extract all product embeddings
         # as well as test imgs embeddings
         test_set = data_loaders.ImageMatchingDataset(model, device, args)
