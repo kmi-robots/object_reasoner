@@ -65,7 +65,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
                 transforms.Normalize(means, stds)])
             self.data, self.data_emb, self.labels = (self.read_files(model, 'test-imgs.txt','test-labels.txt'))
             # print(self.data_emb.shape)
-            self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model, 'test-product-imgs.txt','test-product-labels.txt'))
+            self.prod_data, self.prod_emb, self.prod_labels = (self.read_files(model, 'test-product-imgs.txt','test-product-labels.txt', product=True))
             # print(self.prod_emb.shape)
         return
 
@@ -80,7 +80,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
         # return , target  # triplet data + related label
         return self.triplets[index], self.final_labels[index]
 
-    def read_files(self, model, pathtxt, labeltxt,doCrop=False):
+    def read_files(self, model, pathtxt, labeltxt,doCrop=False, product=False):
 
         try:
             self.data
@@ -88,16 +88,27 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             #camera data are being read, apply cropping on read
             if self.args.mode=='train':
                 doCrop= False #Set to True for ARC2017 set
-
-        with open(os.path.join(self.args.path_to_arc, pathtxt)) as imgfile, \
-            open(os.path.join(self.args.path_to_arc, labeltxt)) as labelfile:
-            labels = [torch.LongTensor([int(l)]) for l in labelfile.read().splitlines()]
-            imglist = [os.path.join(self.args.path_to_arc, '..', pth) for pth in imgfile.read().splitlines()]
+        try:
+            # ARC2017 set case
+            with open(os.path.join(self.args.path_to_arc, pathtxt)) as imgfile, \
+                open(os.path.join(self.args.path_to_arc, labeltxt)) as labelfile:
+                labels = [torch.LongTensor([int(l)]) for l in labelfile.read().splitlines()]
+                imglist = [os.path.join(self.args.path_to_arc, '..', pth) for pth in imgfile.read().splitlines()]
+        except FileNotFoundError:
+            #KMi set case
+            with open(os.path.join(self.args.out, '..', pathtxt)) as imgfile, \
+                open(os.path.join(self.args.out, '..', labeltxt)) as labelfile:
+                labels = [torch.LongTensor([int(l)]) for l in labelfile.read().splitlines()]
+                if product: #product img list
+                    imglist =[os.path.join(self.args.out,'../..', pth) for pth in imgfile.read().splitlines()]
+                else: #test img list
+                    imglist = imgfile.read().splitlines()
 
         data = torch.empty((len(imglist), 3, 224, 224))
         embeddings = torch.empty((len(imglist), 2048)) #.cpu() #3, 224, 224))
 
         for iteration, img_path in enumerate(imglist):
+
             img_tensor = img_preproc(img_path, self.trans, cropping_flag=doCrop)
             data[iteration, :] = img_tensor
             # Pre-compute embeddings on a ResNet without retrain

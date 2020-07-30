@@ -131,16 +131,16 @@ def main():
         # as well as test imgs embeddings
         test_set = data_loaders.ImageMatchingDataset(model, device, args)
         print("Test data loaded")
-        print("Starting imprinting on both known and novel classes")
-        # init weights based on both known and novel classes
-        if args.model == 'imprk-net':
-            model = imprint_fortest(model, device, test_set, old_weights,num_classes=args.numobj)
-            model.eval()
-        print("Imprinting complete")
 
         # If KNN matching based on embeddings
         KNN=True
         if not KNN and (args.model == 'imprk-net' or args.model == 'k-net'):
+            print("Starting imprinting on both known and novel classes")
+            # init weights based on both known and novel classes
+            if args.model == 'imprk-net':
+                model = imprint_fortest(model, device, test_set, old_weights, num_classes=args.numobj)
+                model.eval()
+            print("Imprinting complete")
             print("Predicting based on classifier layer")
             test_results = predict_classifier(test_set, model, device) # list of numpy arrays in this case
             # each array is the prob distribution output by the classif layer
@@ -162,6 +162,7 @@ def main():
             hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test-results.h5'),'w')
             for k, v in test_results.items():
                 hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
+            print("Test embeddings saved")
             return 0
 
 
