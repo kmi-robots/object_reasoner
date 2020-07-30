@@ -27,22 +27,34 @@ def pred_singlemodel(ReasonerObj, args):
     # For each test embedding, find Nearest Neighbour in prod space
     # Filter out classes which are not in the current N=20 test sample
     predictions = np.empty((tgt_space.shape[0],5,2),dtype="object")
-    avg_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
-    min_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
-    for i,classlist in enumerate(ReasonerObj.tsamples):
-        t_emb = tgt_space[i,:] #1x2048
-        l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
-        all_dists = np.column_stack((ReasonerObj.plabels, l2dist.astype(np.object)))    # keep 2nd column as numeric
-        valid_dists = all_dists[np.isin(all_dists, classlist)[:,0]]
-        ranking = valid_dists[np.argsort(valid_dists[:, 1])]                            # sort by distance, ascending
-        predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
-        valid_classes = list(np.unique(ranking[:,0]))
-        #avg by class
-        avg_ranking= np.array([(c,np.mean(ranking[ranking[:,0]==c][:,1])) for c in valid_classes], dtype='object')
-        avg_predictions[i,:] = avg_ranking[np.argsort(avg_ranking[:, 1])]  # and redo sorting
-        #select min for each class
-        min_ranking = np.array([(c, np.min(ranking[ranking[:, 0] == c][:, 1])) for c in valid_classes], dtype='object')
-        min_predictions[i, :] = min_ranking[np.argsort(avg_ranking[:, 1])]  # and redo sorting
+
+    if args.set=='arc': # ARC2017 (simplified case) - 20 valid classes per run
+        avg_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
+        min_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
+        for i,classlist in enumerate(ReasonerObj.tsamples):
+            t_emb = tgt_space[i,:] #1x2048
+            l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
+            all_dists = np.column_stack((ReasonerObj.plabels, l2dist.astype(np.object)))    # keep 2nd column as numeric
+            valid_dists = all_dists[np.isin(all_dists, classlist)[:,0]]
+            ranking = valid_dists[np.argsort(valid_dists[:, 1])]                            # sort by distance, ascending
+            predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
+            valid_classes = list(np.unique(ranking[:,0]))
+            #avg by class
+            avg_ranking= np.array([(c,np.mean(ranking[ranking[:,0]==c][:,1])) for c in valid_classes], dtype='object')
+            avg_predictions[i,:] = avg_ranking[np.argsort(avg_ranking[:, 1])]  # and redo sorting
+            #select min for each class
+            min_ranking = np.array([(c, np.min(ranking[ranking[:, 0] == c][:, 1])) for c in valid_classes], dtype='object')
+            min_predictions[i, :] = min_ranking[np.argsort(avg_ranking[:, 1])]  # and redo sorting
+    else:
+        #KMi set case, all classes are valid in all runs
+        avg_predictions = None
+        min_predictions = None
+        for i in range(len(ReasonerObj.imglist)):
+            t_emb = tgt_space[i,:] #1x2048/
+            l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
+            all_dists = np.column_stack((ReasonerObj.plabels, l2dist.astype(np.object)))    # keep 2nd column as numeric
+            ranking = all_dists[np.argsort(all_dists[:, 1])]                            # sort by distance, ascending
+            predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
 
     return predictions, avg_predictions, min_predictions
 

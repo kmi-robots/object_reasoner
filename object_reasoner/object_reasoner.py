@@ -12,6 +12,7 @@ from predict import pred_singlemodel, pred_twostage, pred_by_vol
 from evalscript import eval_singlemodel
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
+from sklearn.metrics import classification_report, accuracy_score
 
 import matplotlib.pyplot as plt
 
@@ -45,20 +46,20 @@ class ObjectReasoner():
 
         # load metadata from txt files provided
         with open(os.path.join(args.test_base,'test-labels.txt')) as txtf, \
-            open(os.path.join(args.test_base,'test-other-objects-list.txt')) as smpf, \
             open(os.path.join(args.test_base,'test-product-labels.txt')) as prf, \
             open(os.path.join(args.test_base,'test-imgs.txt')) as imgf:
             self.labels = txtf.read().splitlines()       #gt labels for each test img
-            self.tsamples = [l.split(',') for l in smpf.read().splitlines()]     # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
+              # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
             self.imglist = [os.path.join(args.test_res, pth) for pth in imgf.read().splitlines()]
+            #TODO handle depth images for KMi set
             self.dimglist = [p.replace('color','depth') for p in self.imglist]       # paths to test depth imgs
 
-        # Camera intrinsics
-        # replace values for custom setups
-        self.camintr = load_camera_intrinsics(os.path.join(args.test_res,'./camera-intrinsics.txt'))
-        self.camera = o3d.camera.PinholeCameraIntrinsic()
-        self.camera.set_intrinsics(640,480,self.camintr[0],self.camintr[4],self.camintr[2],self.camintr[5])
+        if args.set == 'KMi': #dataset without chosen subset per test run
+            self.tsamples = None
+        else:
+            with open(os.path.join(args.test_base, 'test-other-objects-list.txt')) as smpf:
+                self.tsamples = [l.split(',') for l in smpf.read().splitlines()]
 
         # Load predictions from baseline algo
         start = time.time()
@@ -71,19 +72,48 @@ class ObjectReasoner():
                 self.predictions,self.avg_predictions, self.min_predictions = pred_singlemodel(self, args)
             if self.predictions is not None:
                 np.save(('./data/test_predictions_%s.npy' % args.baseline), self.predictions)
-                np.save(('./data/test_avg_predictions_%s.npy' % args.baseline), self.avg_predictions)
-                np.save(('./data/test_min_predictions_%s.npy' % args.baseline), self.min_predictions)
             else:
                 print("Prediction mode not supported yet. Please choose a different one.")
                 sys.exit(0)
+            if self.avg_predictions is not None:
+                np.save(('./data/test_avg_predictions_%s.npy' % args.baseline), self.avg_predictions)
+            if self.min_predictions is not None:
+                np.save(('./data/test_min_predictions_%s.npy' % args.baseline), self.min_predictions)
+
         else:
             self.predictions = np.load(('./data/test_predictions_%s.npy' % args.baseline),allow_pickle=True)
-            self.avg_predictions = np.load(('./data/test_avg_predictions_%s.npy' % args.baseline), allow_pickle=True)
-            self.min_predictions = np.load(('./data/test_min_predictions_%s.npy' % args.baseline), allow_pickle=True)
+            try:
+                self.avg_predictions = np.load(('./data/test_avg_predictions_%s.npy' % args.baseline), allow_pickle=True)
+                self.min_predictions = np.load(('./data/test_min_predictions_%s.npy' % args.baseline), allow_pickle=True)
+            except FileNotFoundError:
+                self.avg_predictions = None
+                self.min_predictions = None
 
         print("%s detection results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
         print("Double checking top-1 accuracies to reproduce baseline...")
-        eval_singlemodel(self)
+        if args.set == 'KMi': #class-wise report
+            print("Class-wise test results \n")
+            y_pred = self.predictions[:, 0, 0].astype('int').astype('str').tolist()
+            with open(os.path.join(args.test_base,'class_to_index.json')) as jf:
+                allclasses = json.load(jf)
+                backbook = dict((v, k) for k, v in allclasses.items()) # swap keys with indices
+            print(classification_report(self.labels, y_pred))
+            print(accuracy_score(self.labels, y_pred))
+            import pprint
+            pp = pprint.PrettyPrinter(indent=4)
+            cdict = classification_report(self.labels, y_pred, output_dict=True)#, target_names=allclasses))
+            remapped_dict = dict((backbook[k], v) for k,v in cdict.items() if k not in ['accuracy', 'macro avg', 'weighted avg'])
+            pp.pprint(remapped_dict)
+            sys.exit(0)
+        else: #separate eval for known vs novel
+            eval_singlemodel(self)
+
+        # Camera intrinsics
+        # replace values for custom setups
+        # TODO handle camera intrinsics for KMi set
+        self.camintr = load_camera_intrinsics(os.path.join(args.test_res, './camera-intrinsics.txt'))
+        self.camera = o3d.camera.PinholeCameraIntrinsic()
+        self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
 
         """
         print("Results if matches are average by class / across views")
