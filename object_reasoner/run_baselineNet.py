@@ -101,7 +101,7 @@ def main():
             val_improved, early_stopping = validate(args, model, device, val_loader, optimizer, early_stopping, metric_avg=eval_metric)
 
             if val_improved:
-                print("Validation loss decreased. Saving model...")
+                # print("Validation loss decreased. Saving model...")
                 filepath = os.path.join('./data/',args.model,'snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 torch.save(model.state_dict(), filepath)
 
