@@ -58,7 +58,6 @@ def main():
 
         params_to_update = model.parameters()  # all params
 
-
         if not os.path.isdir(os.path.join('./data',args.model, 'snapshots-with-class')):
             os.makedirs(os.path.join('./data',args.model, 'snapshots-with-class'), exist_ok=True)
         from train import train
@@ -68,7 +67,13 @@ def main():
             data_loaders.ImageMatchingDataset(model, device, args, randomised=False), batch_size=batch_size,
             shuffle=True)
         print("Train batches loaded!")
-        # no validation set in original training code
+        # no validation set in original ARC training code/ dataset
+        if args.set =='KMi':
+            print("Loading validation data")
+            val_loader = torch.utils.data.DataLoader(
+                data_loaders.ImageMatchingDataset(model, device, args, randomised=False, load_validation=True), batch_size=batch_size,
+                shuffle=False)
+            print("Validation batches loaded!")
         model.train() # back to train mode
         # optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
         optimizer = adabound.AdaBound(params_to_update, lr=lr, final_lr=upper_lr)

@@ -17,7 +17,7 @@ img_w, img_h = 224, 224 # img size required for input to Net
 
 class ImageMatchingDataset(torch.utils.data.Dataset):
 
-    def __init__(self,model, device, args, randomised=False):
+    def __init__(self,model, device, args, randomised=False, load_validation=False):
 
         self.device = device
         self.args = args
@@ -32,30 +32,44 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
 
             #observed camera imgs were cropped and random hflipped on train
             #cropping done in PIL see utils.img_preproc
+            if not load_validation:
+                self.trans = transforms.Compose([
+                            transforms.RandomHorizontalFlip(p=0.7),
+                            transforms.Resize((img_w, img_h)),
+                            transforms.ToTensor()
+                            ,transforms.Normalize(means, stds)
+                            ])
 
-            self.trans = transforms.Compose([
-                        transforms.RandomHorizontalFlip(p=0.7),
-                        transforms.Resize((img_w, img_h)),
-                        transforms.ToTensor()
-                        ,transforms.Normalize(means, stds)
-                        ])
+                self.data, self.data_emb, self.labels = self.read_files(model,'train-imgs.txt','train-labels.txt') # read all camera training imgs and labels firts
+                #change transform for prod imgs
+                self.trans = transforms.Compose([
+                    transforms.Resize((img_w, img_h)),
+                    transforms.ToTensor()
+                    ,transforms.Normalize(means, stds)
+                    ])
 
-            self.data, self.data_emb, self.labels = self.read_files(model,'train-imgs.txt','train-labels.txt') # read all camera training imgs and labels firts
-            #change transform for prod imgs
-            self.trans = transforms.Compose([
-                transforms.Resize((img_w, img_h)),
-                transforms.ToTensor()
-                ,transforms.Normalize(means, stds)
-                ])
+                self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model,'train-product-imgs.txt','train-product-labels.txt')
 
-            self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model,'train-product-imgs.txt','train-product-labels.txt')
-            self.triplets, self.final_labels = self.generate_multianchor_triplets(model, self.randomised) # create training triplets based on product images
+            else:
+                self.trans = transforms.Compose([
+                    transforms.Resize((img_w, img_h)),
+                    transforms.ToTensor(),
+                    transforms.Normalize(means, stds)])
+
+                self.data, self.data_emb, self.labels = self.read_files(model, 'val-imgs.txt',
+                                                                        'val-labels.txt')# read all camera training imgs and labels first
+                self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model, 'val-product-imgs.txt',
+                                                                                  'val-product-labels.txt')
+
+            self.triplets, self.final_labels = self.generate_multianchor_triplets(model,
+                                                                                  self.randomised)  # create training triplets based on product images
             print(self.data.shape)
             print(self.labels.shape)
             print(self.prod_data.shape)
             print(self.prod_labels.shape)
             print(self.triplets.shape)
             print(self.final_labels.shape)
+
         else:
 
             #just pre-compute embeddings
