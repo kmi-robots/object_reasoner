@@ -13,6 +13,7 @@ from imprinting import imprint, imprint_fortest
 from predict import predict_classifier
 from evalscript import eval_classifier
 from utils import crop_test, create_class_map
+from pytorchtools import EarlyStopping
 
 """ Hardcoded training params
     as set in
@@ -24,6 +25,7 @@ lr = 0.0001
 upper_lr = 0.01
 momentum = 0.9
 wdecay = 0.000001
+patience = 100
 
 
 def main():
@@ -61,6 +63,8 @@ def main():
         if not os.path.isdir(os.path.join('./data',args.model, 'snapshots-with-class')):
             os.makedirs(os.path.join('./data',args.model, 'snapshots-with-class'), exist_ok=True)
         from train import train
+        from validate import validate
+        early_stopping = EarlyStopping(patience=patience, verbose=True)
         model.eval() # eval mode before loading embeddings
         print("Loading training data")
         train_loader = torch.utils.data.DataLoader(
@@ -82,19 +86,24 @@ def main():
             model = imprint(model, device, train_loader, num_classes=args.numobj)
             print("Weights have been imprinted based on training classes")
 
-        min_loss = 10.0
+        if args.model == 'n-net':
+            eval_metric='binary' #binary classification
+        else:
+            eval_metric ='weighted' #multi-class classification (k-net, imprk-net)
+
         for epoch in range(epochs):
 
+            if early_stopping.early_stop:
+                print("Early stopping") # number of epochs without improvement exceeded
+                break
             print("Epoch %i of %i starts..." % (epoch+1, epochs))
-            doStop, ep_loss = train(args, model, device, train_loader, epoch, optimizer, epochs)
+            train(args, model, device, train_loader, epoch, optimizer, epochs, metric_avg=eval_metric)
+            val_improved, early_stopping = validate(args, model, device, val_loader, optimizer, early_stopping, metric_avg=eval_metric)
 
-            if epoch > 10 and (ep_loss<min_loss or doStop):
-                # skipping first 10 epochs
-                print("Training loss decreased. Saving model...")
+            if val_improved:
+                print("Validation loss decreased. Saving model...")
                 filepath = os.path.join('./data/',args.model,'snapshots-with-class', 'snapshot-'+str(epoch)+'.pth')
                 torch.save(model.state_dict(), filepath)
-                min_loss = ep_loss
-                if doStop: return 0 #loss close to zero
 
         return 0
 

@@ -2,257 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="cf129bdc-c411-499f-b9c8-8e52e9708cb4" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/backpack/backpack_KMiold.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/bicycle/bike5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/big_screen/big_screen_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/book/book11.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/bookcase/bookcase.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/bottle/bottle_KMi_old5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/box/boxes4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/chair/chairs8.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/chest_of_drawers/chest_of_drawers_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/coat_stand/cstand9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/cupboard/cupboard1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/desk/desk_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/desk_phone/dphone1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/desktop_computer/desktop_PC5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/door/door_KMi_old5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/drink_can/c1#.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/electric_heater/electric_heater_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/emergency_exit_sign/exit-sign_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/fan/fan2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/fire_alarm_assembly_sign/fassembly10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/fire_extinguisher/fire-extinguisher3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/fire_extinguisher_sign/fire-label1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/food_snack/snack9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/foosball_table/ftable5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/glass/g1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/guitar/guitar_KMi_old2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/handbag/hbag1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/hanged_coat_sweater/coats_3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/hat/hat6.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/headphones/hphones2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/keyboard/kboard1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/lamp/lamp_KMi_old4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/laptop/ltop4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/microphone/mike5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/mobile_phone/mphone8.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/monitor/monitor_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/mouse/mouse9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/mug/mug9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/office_signs/office_sign9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/person/people10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/pigeon_holes/pholes9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/pile_of_papers/paper_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/plant/plant_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/plant_vase/vase_KMi_old2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/podium/podium7.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/power_cord/power_cord_KMi_old5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/power_socket/power_socket_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/printer/printer1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/projector/projector_KMi_old6.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/radiator/radiator4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/recording_sign/rsign10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/robot/robots_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/rubbish_bin/bin1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/shoes/shoes8.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/sofa/sofa_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/toilet_sign/tsign6.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/wallpaper/wallpaper_KMi_old2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/welcome_pod/wpod5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/whiteboard/whiteboard10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-imgs/window/windows_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-labels.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/backpack/bpack5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/bicycle/bike6.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/big_screen/big_screen7.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/book/book12.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/bookcase/bookcase_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/bottle/bottle_sanp.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/box/boxes5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/chair/chairs3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/chest_of_drawers/cdraws6.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/coat_stand/coat-racks3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/cupboard/cupboard7.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/desk/desk_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/desk_phone/dphone1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/desktop_computer/desktop-pcs5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/door/door_KMi_old2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/drink_can/c5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/electric_heater/electric-heater3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/emergency_exit_sign/fire-exit5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/fan/fan9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/fire_alarm_assembly_sign/fassembly_KMi_old6.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/fire_extinguisher/fire-extinguisher5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/fire_extinguisher_sign/fire_sign_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/food_snack/snack10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/foosball_table/ftable10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/glass/g9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/guitar/guitar4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/handbag/hbag9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/hanged_coat_sweater/coats_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/hat/hat_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/headphones/hphones10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/keyboard/kboard11.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/lamp/lamp5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/laptop/ltop9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/microphone/microphone8.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/mobile_phone/mphone9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/monitor/monitor4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/mouse/mouse7.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/mug/mug10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/office_signs/office_sign5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/person/people5.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/pigeon_holes/pigeon_holes_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/pile_of_papers/theone.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/plant/plant_KMi_old4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/plant_vase/pvase8.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/podium/podium10.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/power_cord/power_cord_KMi_old3.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/power_socket/power_cables1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/printer/printer2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/projector/proj_KMi_old.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/radiator/radiator_KMi_old2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/recording_sign/rsign9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/robot/robot1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/rubbish_bin/bin2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/shoes/shoes7.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/sofa/sofa_KMi_old4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/toilet_sign/tsign9_rot.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/wallpaper/wallpaper9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/welcome_pod/wpod4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/whiteboard/whiteboard9.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-imgs/window/window_KMi_old4.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/val-product-labels.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/object_reasoner/pytorchtools.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/object_reasoner/validate.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs.txt" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/backpack/backpack_KMiold.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/bicycle/bike5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/big_screen/big_screen_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/book/book11.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/bookcase/bookcase.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/bottle/bottle_KMi_old5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/box/boxes4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/chair/chairs8.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/chest_of_drawers/chest_of_drawers_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/coat_stand/cstand9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/cupboard/cupboard1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/desk/desk_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/desk_phone/dphone1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/desktop_computer/desktop_PC5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/door/door_KMi_old5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/drink_can/c1#.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/electric_heater/electric_heater_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/emergency_exit_sign/exit-sign_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/fan/fan2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/fire_alarm_assembly_sign/fassembly10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/fire_extinguisher/fire-extinguisher3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/fire_extinguisher_sign/fire-label1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/food_snack/snack9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/foosball_table/ftable5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/glass/g1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/guitar/guitar_KMi_old2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/handbag/hbag1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/hanged_coat_sweater/coats_3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/hat/hat6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/headphones/hphones2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/keyboard/kboard1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/lamp/lamp_KMi_old4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/laptop/ltop4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/microphone/mike5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/mobile_phone/mphone8.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/monitor/monitor_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/mouse/mouse9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/mug/mug9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/office_signs/office_sign9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/person/people10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/pigeon_holes/pholes9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/pile_of_papers/paper_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/plant/plant_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/plant_vase/vase_KMi_old2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/podium/podium7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/power_cord/power_cord_KMi_old5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/power_socket/power_socket_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/printer/printer1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/projector/projector_KMi_old6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/radiator/radiator4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/recording_sign/rsign10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/robot/robots_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/rubbish_bin/bin1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/shoes/shoes8.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/sofa/sofa_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/toilet_sign/tsign6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/wallpaper/wallpaper_KMi_old2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/welcome_pod/wpod5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/whiteboard/whiteboard10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-imgs/window/windows_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-labels.txt" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-labels.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs.txt" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/backpack/bpack5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/bicycle/bike6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/big_screen/big_screen7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/book/book12.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/bookcase/bookcase_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/bottle/bottle_sanp.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/box/boxes5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/chair/chairs3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/chest_of_drawers/cdraws6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/coat_stand/coat-racks3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/cupboard/cupboard7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/desk/desk_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/desk_phone/dphone1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/desktop_computer/desktop-pcs5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/door/door_KMi_old2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/drink_can/c5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/electric_heater/electric-heater3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/emergency_exit_sign/fire-exit5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/fan/fan9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/fire_alarm_assembly_sign/fassembly_KMi_old6.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/fire_extinguisher/fire-extinguisher5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/fire_extinguisher_sign/fire_sign_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/food_snack/snack10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/foosball_table/ftable10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/glass/g9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/guitar/guitar4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/handbag/hbag9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/hanged_coat_sweater/coats_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/hat/hat_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/headphones/hphones10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/keyboard/kboard11.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/lamp/lamp5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/laptop/ltop9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/microphone/microphone8.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/mobile_phone/mphone9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/monitor/monitor4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/mouse/mouse7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/mug/mug10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/office_signs/office_sign5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/person/people5.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/pigeon_holes/pigeon_holes_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/pile_of_papers/theone.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/plant/plant_KMi_old4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/plant_vase/pvase8.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/podium/podium10.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/power_cord/power_cord_KMi_old3.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/power_socket/power_cables1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/printer/printer2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/projector/proj_KMi_old.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/radiator/radiator_KMi_old2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/recording_sign/rsign9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/robot/robot1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/rubbish_bin/bin2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/shoes/shoes7.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/sofa/sofa_KMi_old4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/toilet_sign/tsign9_rot.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/wallpaper/wallpaper9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/welcome_pod/wpod4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/whiteboard/whiteboard9.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-imgs/window/window_KMi_old4.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-labels.txt" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/data/KMi-set-2020/train-product-labels.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/object_reasoner/data_loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/data_loaders.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/object_reasoner/run_baselineNet.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/run_baselineNet.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/object_reasoner/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/object_reasoner/train.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -294,10 +48,13 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../semantic-map-object-recognition/semantic-map-docker" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/object_reasoner" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/object_reasoner" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/object_reasoner" />
     </key>
@@ -540,7 +297,7 @@
       <workItem from="1596097463560" duration="1889000" />
       <workItem from="1596099911440" duration="6404000" />
       <workItem from="1596108533688" duration="12993000" />
-      <workItem from="1596181660066" duration="8049000" />
+      <workItem from="1596181660066" duration="9752000" />
     </task>
     <servers />
   </component>
@@ -644,7 +401,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/object_reasoner/run_baselineNet.py</url>
-          <line>76</line>
+          <line>80</line>
           <option name="timeStamp" value="92" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -654,17 +411,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/object_reasoner/run_baselineNet.py</url>
-          <line>141</line>
+          <line>150</line>
           <option name="timeStamp" value="155" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/object_reasoner/run_baselineNet.py</url>
-          <line>118</line>
+          <line>127</line>
           <option name="timeStamp" value="169" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/object_reasoner/run_baselineNet.py</url>
-          <line>107</line>
+          <line>116</line>
           <option name="timeStamp" value="176" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -689,13 +446,17 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/object_reasoner/run_baselineNet.py</url>
-          <line>123</line>
+          <line>132</line>
           <option name="timeStamp" value="194" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/object_reasoner/run_baselineNet.py</url>
-          <line>70</line>
+          <line>74</line>
           <option name="timeStamp" value="198" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/object_reasoner/validate.py</url>
+          <option name="timeStamp" value="199" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
