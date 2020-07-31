@@ -5,6 +5,7 @@ import sys
 import os
 import h5py
 import numpy as np
+import adabound
 
 from models import ImprintedKNet, KNet, NNet
 import data_loaders
@@ -17,10 +18,11 @@ from utils import crop_test, create_class_map
     as set in
     https://github.com/andyzeng/arc-robot-vision/blob/master/image-matching/train.lua
 """
-batch_size = 6
-epochs = 10000000
-lr = 0.001
-momentum = 0.99
+batch_size = 16
+epochs = 10000
+lr = 0.0001
+upper_lr = 0.01
+momentum = 0.9
 wdecay = 0.000001
 
 
@@ -56,6 +58,7 @@ def main():
 
         params_to_update = model.parameters()  # all params
 
+
         if not os.path.isdir(os.path.join('./data',args.model, 'snapshots-with-class')):
             os.makedirs(os.path.join('./data',args.model, 'snapshots-with-class'), exist_ok=True)
         from train import train
@@ -67,7 +70,9 @@ def main():
         print("Train batches loaded!")
         # no validation set in original training code
         model.train() # back to train mode
-        optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
+        # optimizer = optim.SGD(params_to_update, lr=lr, momentum=momentum)
+        optimizer = adabound.AdaBound(params_to_update, lr=lr, final_lr=upper_lr)
+
         if args.model == 'imprk-net':
             model = imprint(model, device, train_loader, num_classes=args.numobj)
             print("Weights have been imprinted based on training classes")
