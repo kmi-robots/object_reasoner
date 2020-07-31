@@ -51,7 +51,7 @@ class ObjectReasoner():
             self.labels = txtf.read().splitlines()       #gt labels for each test img
               # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
-            self.imglist = [os.path.join(args.test_res, pth) for pth in imgf.read().splitlines()]
+            self.imglist = [os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
             #TODO handle depth images for KMi set
             self.dimglist = [p.replace('color','depth') for p in self.imglist]       # paths to test depth imgs
 

@@ -8,7 +8,7 @@ def pred_singlemodel(ReasonerObj, args):
     """
     #Find NN based on the embeddings of a single model
 
-    if args.baseline =='k-net' or args.baseline =="imprk-net":
+    if args.baseline =='k-net' or args.baseline =="imprk-net" or args.set=='KMi':
         tgt_space = ReasonerObj.ktest_emb
         prod_space = ReasonerObj.kprod_emb
 
