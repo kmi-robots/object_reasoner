@@ -124,6 +124,7 @@ def main():
                 print("Preparing ground truth annotations...")
                 crop_test(args)
 
+
         #All classes at test time: known + novel
         if args.model == 'imprk-net':
             model = ImprintedKNet(feature_extraction=True,num_classes=args.numobj).to(device)

@@ -84,6 +84,7 @@ def eval_KMi(ReasonerObj, args):
     with open(os.path.join(args.test_base, 'class_to_index.json')) as jf:
         allclasses = json.load(jf)
         backbook = dict((v, k) for k, v in allclasses.items())  # swap keys with indices
+
     print(classification_report(ReasonerObj.labels, y_pred))
     print(accuracy_score(ReasonerObj.labels, y_pred))
     pp = pprint.PrettyPrinter(indent=4)
@@ -91,3 +92,4 @@ def eval_KMi(ReasonerObj, args):
     remapped_dict = dict(
         (backbook[k], v) for k, v in cdict.items() if k not in ['accuracy', 'macro avg', 'weighted avg'])
     pp.pprint(remapped_dict)
+    print(len(remapped_dict.keys()))
