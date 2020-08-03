@@ -215,3 +215,30 @@ class NNet(nn.Module):
         return F.normalize(x)
 
 
+class BaselineNet(nn.Module):
+    """Base Triplet Net, where weights are shared across branches
+    """
+
+    def __init__(self, feature_extraction=True):
+        super().__init__()
+        self.embed = NetForEmbedding(feature_extraction)
+
+    def forward_once(self, x):
+        x = self.embed(x)
+        return F.normalize(x)  # #x.view(x.size(0), -1) #self.fc(x.view(x.size(0), -1)) #self.drop(self.linear2(x))
+
+    def forward(self, data, trainmode=True):
+        if trainmode:
+            # Triplet as input
+            x0 = self.forward_once(data[:, 0, :])
+            x1 = self.forward_once(data[:, 1, :])  # feature extracted in prod branch
+            x2 = self.forward_once(data[:, 2, :])
+            return x0, x1, x2
+
+        else:
+            x0 = self.forward_once(data)  # just one test img as input
+            return x0
+
+    def get_embedding(self, x):
+        x = self.embed(x)
+        return F.normalize(x)

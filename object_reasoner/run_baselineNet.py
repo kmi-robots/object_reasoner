@@ -7,7 +7,7 @@ import h5py
 import numpy as np
 import adabound
 
-from models import ImprintedKNet, KNet, NNet
+from models import ImprintedKNet, KNet, NNet, BaselineNet
 import data_loaders
 from imprinting import imprint, imprint_fortest
 from predict import predict_classifier
@@ -33,11 +33,11 @@ def main():
     parser.add_argument('path_to_arc',
                         help='path to root folder where img files are kept'
                              'Expects same folder structure as ARC2017')
-    parser.add_argument('mode', choices=['train','predict'],
+    parser.add_argument('mode', choices=['train','predict', 'predict_baseline'],
                         help='run mode')
     parser.add_argument('--numobj', default=60, type=int,
                         help='No. of object classes to train on')
-    parser.add_argument('--model', default="imprk-net", choices=['imprk-net', 'k-net','n-net'],
+    parser.add_argument('--model', default="imprk-net", choices=['imprk-net', 'k-net','n-net', 'triplet'],
                         help='Image Matching model to use')
     parser.add_argument('--out', default='./data/imprintedKnet',
                         help='path where to save outputs. defaults to data/imprintedKnet')
@@ -57,6 +57,8 @@ def main():
             model = KNet(num_classes=args.numobj).to(device)
         elif args.model == 'n-net':
             model = NNet().to(device)
+        elif args.model == 'triplet':
+            model = BaselineNet().to(device)
 
         params_to_update = model.parameters()  # all params
 
@@ -86,7 +88,7 @@ def main():
             model = imprint(model, device, train_loader, num_classes=args.numobj)
             print("Weights have been imprinted based on training classes")
 
-        if args.model == 'n-net':
+        if args.model == 'n-net' or args.model =='triplet':
             eval_metric='binary' #binary classification
         else:
             eval_metric ='weighted' #multi-class classification (k-net, imprk-net)
@@ -110,9 +112,14 @@ def main():
     else:
         """ Test/inference stage
         """
-        if args.chkp is None or not os.path.isfile(args.chkp):
-            print("Please provide a path to pre-trained model checkpoint")
-            return 0
+        if args.mode !='predict_baseline':
+            if args.chkp is None or not os.path.isfile(args.chkp):
+                print("Please provide a path to pre-trained model checkpoint")
+                return 0
+        else:
+            args.chkp = os.path.join('./data', args.model,'snapshots-with-class')
+            if not os.path.isdir(args.chkp):
+                os.makedirs(args.chkp)
 
         if args.set == 'KMi':
             if not os.path.exists(os.path.join(args.out, '../class_to_index.json')):
@@ -124,28 +131,32 @@ def main():
                 print("Preparing ground truth annotations...")
                 crop_test(args)
 
-
         #All classes at test time: known + novel
         if args.model == 'imprk-net':
             model = ImprintedKNet(feature_extraction=True,num_classes=args.numobj).to(device)
         elif args.model == 'k-net':
             model = KNet(feature_extraction=True,num_classes=args.numobj).to(device)
         elif args.model == 'n-net':
-            model = NNet().to(device)
+            model = NNet(feature_extraction=True).to(device)
+        elif args.model == 'triplet':
+            model = BaselineNet(feature_extraction=True).to(device)
 
-        pretrained_dict = torch.load(args.chkp, map_location=torch.device(device))
-        model_dict = model.state_dict()
-        if args.model == 'imprk-net':
-            # store/keep weight imprinted during training separately
-            old_weights = pretrained_dict['fc2.weight']
-            # load all pre-trained params except last layer (different num of classes now)
-            pretrained_dict = {k: (v if v.size()== model_dict[k].size() else model_dict[k]) for k, v in pretrained_dict.items()}
-            # overwrite entries in the existing state dict
-            model_dict.update(pretrained_dict)
-        # load the new state dict
-        model.load_state_dict(pretrained_dict)
+        if args.mode !='predict_baseline':
+
+            pretrained_dict = torch.load(args.chkp, map_location=torch.device(device))
+            model_dict = model.state_dict()
+            if args.model == 'imprk-net':
+                # store/keep weight imprinted during training separately
+                old_weights = pretrained_dict['fc2.weight']
+                # load all pre-trained params except last layer (different num of classes now)
+                pretrained_dict = {k: (v if v.size()== model_dict[k].size() else model_dict[k]) for k, v in pretrained_dict.items()}
+                # overwrite entries in the existing state dict
+                model_dict.update(pretrained_dict)
+            # load the new state dict
+            model.load_state_dict(pretrained_dict)
+            print("Loaded pre-trained model")
+
         model.eval()
-        print("Loaded pre-trained model")
 
         # Extract all product embeddings
         # as well as test imgs embeddings
@@ -178,13 +189,16 @@ def main():
             test_results = {}
             test_results['testFeat'] = test_set.data_emb
             test_results['prodFeat'] = test_set.prod_emb
-            print("saving resulting embeddings under %s" % '/'.join(args.chkp.split('/')[:-1]))
-            hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test-results.h5'),'w')
+            if args.mode != 'predict_baseline':
+                print("saving resulting embeddings under %s" % '/'.join(args.chkp.split('/')[:-1]))
+                hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test-results.h5'),'w')
+            else:
+                print("saving resulting embeddings under %s" % args.chkp)
+                hfile = h5py.File(os.path.join(args.chkp, 'snapshot-test-results.h5'), 'w')
             for k, v in test_results.items():
                 hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
             print("Test embeddings saved")
             return 0
-
 
 if __name__ == '__main__':
     sys.exit(main())
