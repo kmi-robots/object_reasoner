@@ -98,9 +98,9 @@ def main():
 
     #create 1 dir for rgb and 1 for depth imgs
     if not os.path.isdir(os.path.join(args.path_out,'rgb')):
-        os.makedirs(os.path.join(args.path_out,'rgb'), exist_ok=True)
+        os.makedirs(os.path.join(args.path_out,'rgb'))
     if not os.path.isdir(os.path.join(args.path_out,'depth')):
-        os.makedirs(os.path.join(args.path_out,'depth'), exist_ok=True)
+        os.makedirs(os.path.join(args.path_out,'depth'))
 
     print("Iterating through messages")
     for topic, msg, t in bag.read_messages():
@@ -110,9 +110,10 @@ def main():
             t = datetime.datetime.fromtimestamp(timestamp)
             timestamp = t.strftime("%Y-%m-%dT%H:%M:%SZ")
             fname = str(t).replace('.','_').replace(' ','-').replace(':','-')
+
         except AttributeError: continue
 
-        if topic =='/camera/rgb/image_raw':
+        if topic == '/camera/rgb/image_raw':
             rgb_img = bridge.imgmsg_to_cv2(msg, "passthrough")
             filename = fname + ".jpg"
             if not os.path.isfile(os.path.join(args.path_out,'rgb', filename)):
@@ -128,7 +129,7 @@ def main():
                         logf.write("Error returned: \n")
                         logf.write(str(res.content))
 
-        elif topic=='/camera/depth/image_raw':
+        elif topic == '/camera/depth/image_raw':
             depth_data = bridge.imgmsg_to_cv2(msg, "32FC1")
             # print(depth_data.dtype)
             filename = fname + "-depth.tiff"
@@ -136,7 +137,7 @@ def main():
             if not os.path.isfile(os.path.join(args.path_out, 'depth', filename)):
                 dimg.save(os.path.join(args.path_out, 'depth', filename))
                 #send to DH
-                res= post_img(os.path.join(args.path_out, 'depth', filename),timestamp, fname, rgb=False)
+                res = post_img(os.path.join(args.path_out, 'depth', filename),timestamp, fname, rgb=False)
                 print(res.content)
                 if not res.ok:
                     # Log if KO

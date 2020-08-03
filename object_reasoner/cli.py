@@ -17,6 +17,8 @@ def main():
     parser.add_argument('--mode', nargs='?', choices=['size'],
                         default="size",
                         help="Reasoning mode. Only reasoning on obj sizes is currently supported.")
+    parser.add_argument('--bags', default=None,
+                        help='path to bag/bags where depth data are logged')
 
     args = parser.parse_args()
     reasoner = ObjectReasoner(args)

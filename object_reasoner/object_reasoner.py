@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import cv2
 from collections import Counter
-from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics
+from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics, call_python_version
 from predict import pred_singlemodel, pred_twostage, pred_by_vol
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
@@ -52,8 +52,16 @@ class ObjectReasoner():
               # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
             self.imglist = [os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
-            #TODO handle depth images for KMi set
-            self.dimglist = [p.replace('color','depth') for p in self.imglist]       # paths to test depth imgs
+            if args.set =='KMi':
+                if args.bags is None or not os.path.isdir(args.bags):
+                    print("Print provide a valid path to the bag files storing depth data")
+                    sys.exit(0)
+                # call python2 method from python3 script
+                self.dimglist, self.pcls = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags]) # retrieve data from bag
+
+            else:
+                self.dimglist = [cv2.imread(p.replace('color','depth'),cv2.IMREAD_UNCHANGED) for p in self.imglist]       # paths to test depth imgs
+                self.pcls = None
 
         if args.set == 'KMi': #dataset without chosen subset per test run
             self.tsamples = None
@@ -93,16 +101,16 @@ class ObjectReasoner():
         print("Double checking top-1 accuracies to reproduce baseline...")
         if args.set == 'KMi': #class-wise report
             eval_KMi(self, args)
-            sys.exit(0)
+
         else: #separate eval for known vs novel
             eval_singlemodel(self)
 
-        # Camera intrinsics
-        # replace values for custom setups
-        # TODO handle camera intrinsics for KMi set
-        self.camintr = load_camera_intrinsics(os.path.join(args.test_res, './camera-intrinsics.txt'))
-        self.camera = o3d.camera.PinholeCameraIntrinsic()
-        self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
+        if args.set !='KMi':
+            # Camera intrinsics
+            # replace values for custom setups
+            self.camintr = load_camera_intrinsics(os.path.join(args.test_res, './camera-intrinsics.txt'))
+            self.camera = o3d.camera.PinholeCameraIntrinsic()
+            self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
 
         """
         print("Results if matches are average by class / across views")
@@ -127,10 +135,8 @@ class ObjectReasoner():
         start = time.time()
         non_processed_pcls = 0
         no_corrected =0
-        for i in range(len(self.dimglist)):  # for each depth image
 
-            dimage = cv2.imread(self.dimglist[i],cv2.IMREAD_UNCHANGED)
-
+        for i,dimage in enumerate(self.dimglist):  # for each depth image
             """
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()

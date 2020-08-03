@@ -1,5 +1,5 @@
 from sklearn.metrics import classification_report, accuracy_score
-import pprint
+#import pprint
 import os
 import json
 """
@@ -87,8 +87,10 @@ def eval_KMi(ReasonerObj, args):
 
     print(classification_report(ReasonerObj.labels, y_pred))
     print(accuracy_score(ReasonerObj.labels, y_pred))
+    """
     pp = pprint.PrettyPrinter(indent=4)
     cdict = classification_report(ReasonerObj.labels, y_pred, output_dict=True)  # , target_names=allclasses))
     remapped_dict = dict(
         (backbook[k], v) for k, v in cdict.items() if k not in ['accuracy', 'macro avg', 'weighted avg'])
     pp.pprint(remapped_dict)
+    """
