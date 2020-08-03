@@ -5,6 +5,7 @@ In Python 2 to use rosbag
 import rosbag
 import datetime
 import os
+from cv_bridge import CvBridge
 
 def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
     """
@@ -15,8 +16,10 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
     In our case param values where chosen based on a 30 fps sensor
     Based on how timestamps were formatted to create img files, see also DH_IO.py
     """
-    available_bags = [(datetime.datetime.strptime(objname[:-6], "%Y-%m-%d-%H-%M-%S"),objname[:-6]) for objname in os.listdir(str(path_to_bags)) if objname[-4:]=='.bag']
-    available_bags.sort(key=lambda x:x[0])
+    available_bags = [(datetime.datetime.strptime(objname[:-6], "%Y-%m-%d-%H-%M-%S"),objname[:-6], objname[-6:]) for objname in os.listdir(str(path_to_bags)) if objname[-4:]=='.bag']
+    available_bags.sort(key=lambda x:x[0]) # order chronologically
+    dimg_list =[]
+    pcls =[]
 
     for imgp in rgb_img_list:
 
@@ -27,18 +30,49 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
         timestring = basestamp+'.'+stampsecs
         rgb_time = datetime.datetime.strptime(timestring, "%Y-%m-%d %H:%M:%S.%f")
 
-        for n, (bdate, bname) in enumerate(available_bags):
+        for n, (bdate, bname, ext) in enumerate(available_bags): # find bag file the img belongs to (time-wise)
             try:
                 if rgb_time >= bdate and rgb_time < available_bags[n+1][0]:
-                    tgt_bag = bname
+                    tgt_bag = bname+ext
                     break
             except IndexError: # reached end of bag list
                 if rgb_time >= bdate:
-                    tgt_bag = bname
+                    tgt_bag = bname+ext
                     break
 
+        bag = rosbag.Bag(os.path.join(str(path_to_bags), tgt_bag))
 
-        continue
+        # iterate over bag within a certain time window before and after the rgb timestamp
+        t0_min,  t0_max = rgb_time - datetime.timedelta(seconds=tol_min), rgb_time + datetime.timedelta(seconds=tol_min)
+        d_img, pcloud = find_nearest_frame(bag, rgb_time, t0_min, t0_max, search_list = ['/camera/depth/image_raw','/camera/depth/points'])
+        # If none found, try again with less strict tolerance
+        t1_min, t1_max = rgb_time - datetime.timedelta(seconds=tol_max), rgb_time + datetime.timedelta(seconds=tol_max)
+        if d_img is None:
+            d_img, pcloud = find_nearest_frame(bag, rgb_time, t1_min, t1_max, search_list=['/camera/depth/image_raw'])
+        #if pcloud is None:
+        #    d_img, pcloud = find_nearest_frame(bag, rgb_time, t1_min, t1_max, search_list=['/camera/depth/points'])
 
-    return None, None
+        if d_img is None: print("No depth frame found for img %s" % imgp)
+        dimg_list.append(d_img)
+        pcls.append(pcloud)
 
+    return dimg_list, pcls
+
+def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=[]):
+    min_delta = float("inf")
+    bridge = CvBridge()
+    depth_img = None
+    pcl = None
+    for topic, msg, t in bagfile.read_messages():
+        if topic not in search_list: continue
+        timestamp = msg.header.stamp.to_sec()
+        t = datetime.datetime.fromtimestamp(timestamp)
+        delta = abs(t - rgb_time).total_seconds()
+        if t >= lower_bound and t <= upper_bound and delta< min_delta:
+            min_delta = delta  # find nearest frame in time
+            if topic == '/camera/depth/image_raw':
+                depth_img = bridge.imgmsg_to_cv2(msg, "32FC1")
+            elif topic == '/camera/depth/points':
+                pcl = msg
+
+    return depth_img, pcl
