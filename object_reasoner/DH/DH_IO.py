@@ -18,6 +18,7 @@ import cv2
 from PIL import Image
 import numpy as np
 import base64
+import png
 from io import BytesIO
 import matplotlib.pyplot as plt
 
@@ -53,7 +54,8 @@ def post_img(input, tstamp, fbase, rgb=True):
         _, buffer = cv2.imencode('.jpg', input)
 
     else: #depth img
-        buffer = open(input, 'rb').read()
+        # buffer = open(input, 'rb').read()
+        _, buffer = cv2.imencode('.png', input)
         fbase ="depth_" +fbase
 
     bstring = base64.b64encode(buffer).decode('utf-8')  # .encode('utf-8')
@@ -132,12 +134,22 @@ def main():
         elif topic == '/camera/depth/image_raw':
             depth_data = bridge.imgmsg_to_cv2(msg, "32FC1")
             # print(depth_data.dtype)
-            filename = fname + "-depth.tiff"
-            dimg = Image.fromarray(depth_data)
+            dimg = depth_data.astype(np.uint16)
+            # dimg = Image.fromarray(d_img)
+
+            filename = fname + "depth.png"
+            # dimg = Image.fromarray(depth_data)
             if not os.path.isfile(os.path.join(args.path_out, 'depth', filename)):
-                dimg.save(os.path.join(args.path_out, 'depth', filename))
+                # dimg.save(os.path.join(args.path_out, 'depth', filename))
+                # Save copy of depth image locally
+                with open(os.path.join(args.path_out, 'depth', filename), 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                    writer = png.Writer(width=dimg.shape[1], height=dimg.shape[0], bitdepth=16)
+                    # Convert array to the Python list of lists expected by the png writer.
+                    gray2list = dimg.tolist()
+                    writer.write(f, gray2list)
                 #send to DH
-                res = post_img(os.path.join(args.path_out, 'depth', filename),timestamp, fname, rgb=False)
+                #res = post_img(os.path.join(args.path_out, 'depth', filename),timestamp, fname, rgb=False)
+                res = post_img(dimg,timestamp, fname, rgb=False)
                 print(res.content)
                 if not res.ok:
                     # Log if KO

@@ -53,7 +53,11 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
             d_img, pcloud = find_nearest_frame(bag, rgb_time, t1_min, t1_max, search_list=['/camera/depth/image_raw'])
         #if pcloud is None:
         #    d_img, pcloud = find_nearest_frame(bag, rgb_time, t1_min, t1_max, search_list=['/camera/depth/points'])
-        if d_img is None: print("No depth frame found for img %s" % imgp)
+        if d_img is None:
+            print("No depth frame found for img %s" % imgp)
+            dimg_list.append(d_img)
+            continue
+
         #Save copy of depth image locally
         d_img.astype(np.uint16)
         # dimg = Image.fromarray(d_img)
