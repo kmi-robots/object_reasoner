@@ -148,6 +148,10 @@ class ObjectReasoner():
         no_corrected =0
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
+            if dimage is None:
+                # no synchronised depth data found
+                print("No depth data available for this RGB frame... Skipping size-based correction")
+                continue
             """
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()
