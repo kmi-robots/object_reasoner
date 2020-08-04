@@ -40,7 +40,7 @@ def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06
             img_index[rgb_time]["urls"].append(imgp)
 
 
-    for timekey, path_dict in img_index.items()[8:]:
+    for timekey, path_dict in img_index.items():
         # array of images for that timekey
         imgps = path_dict["urls"]
         for n, (bdate, bname, ext) in enumerate(available_bags): # find bag file the img belongs to (time-wise)

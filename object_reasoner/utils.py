@@ -301,8 +301,6 @@ def crop_polygonal(path_image, polygon, rgb=True):
         imArray = np.asarray(im)
     else:
         imArray = path_image #depth img matrix passed directly
-        dimg = Image.fromarray(path_image)
-        dimg.show()
 
     # create mask
     maskIm = Image.new('L', (imArray.shape[1], imArray.shape[0]), 0)
@@ -319,11 +317,7 @@ def crop_polygonal(path_image, polygon, rgb=True):
     else: #from depth, one-channeled
         #mask binary image
         newImArray = imArray.copy()
-        dimg = Image.fromarray(path_image)
-        dimg.show()
         newImArray[mask!=1]=0.
-        dimg = Image.fromarray(newImArray)
-        dimg.show()
 
     return newImArray
 
