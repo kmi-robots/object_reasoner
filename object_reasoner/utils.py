@@ -10,6 +10,8 @@ import csv
 import cv2
 from PIL import Image, ImageDraw
 import xml.etree.ElementTree as ET
+import execnet
+import png
 import matplotlib.pyplot as plt
 
 def init_obj_catalogue(path_to_data):
@@ -140,20 +142,31 @@ def arcify(root_img_path):
 #
 ##################################################################
 
-def crop_test(args):
-
-    path_to_annotations = os.path.join(args.path_to_arc, '../../exported')
-    fnames = os.listdir(args.path_to_arc)
-    with open(os.path.join(path_to_annotations, 'test-imgs-labels1.json')) as jf, \
-        open(os.path.join(args.out, '../class_to_index.json')) as jmap:
-        jtree = json.load(jf)  #JSON file with polygonal annotations
-        cmap = json.load(jmap) #JSON file with mapping from class name to number
+def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, dimg_list=None):
+    """
+    pass depth image to crop depth images, leave set to None to crop RGB images
+    """
+    if depth_img is None:
+        with open(os.path.join(path_to_annotations, 'test-imgs-labels1.json')) as jf, \
+            open(os.path.join(path_to_out, '../class_to_index.json')) as jmap:
+            jtree = json.load(jf)  #JSON file with polygonal annotations
+            cmap = json.load(jmap) #JSON file with mapping from class name to number
+    else:
+        with open(os.path.join(path_to_annotations, 'test-imgs-labels1.json')) as jf:
+            jtree = json.load(jf)
     test_imgs =[]
     test_labels =[]
-
-    for fname in fnames:
-        img = BGRtoRGB(cv2.imread(os.path.join(args.path_to_arc, fname)))
-        lname = fname[:-3]+'xml'
+    for pimg in path_to_imgs:
+        fname = str(pimg.split("/")[-1])
+        if depth_img is None:
+            img = BGRtoRGB(cv2.imread(pimg))
+            lname = fname[:-3] + 'xml'
+            cropname = fname
+        else:
+            cropname = fname
+            bname = fname[:26]
+            fname = bname +'.jpg'
+            lname = bname + '.xml' #already points to RGB crop and not to original fname
         try:
             tree = ET.parse(os.path.join(path_to_annotations, 'test-imgs-labels', lname))
             try:
@@ -172,88 +185,145 @@ def crop_test(args):
         if tree is not None:
             """Handling rectangular bbox first"""
             root = tree.getroot()
-            for n, object in enumerate(root.findall('object')):
+            if depth_img is None:
+                for n, object in enumerate(root.findall('object')):
+                    bbox = object.find('bndbox')
+                    label = object.find('name').text.replace('/', '_').replace(' ', '')
+                    xmin = int(bbox.find('xmin').text)
+                    ymin = int(bbox.find('ymin').text)
+                    xmax = int(bbox.find('xmax').text)
+                    ymax = int(bbox.find('ymax').text)
+                    roi = img[ymin:ymax, xmin:xmax]
+
+                    if not os.path.isdir(os.path.join(path_to_out, label)):
+                        os.mkdir(os.path.join(path_to_out, label))  # create class/category folder
+                    # save roi as separate img file
+                    pout = os.path.join(path_to_out, label, fname[:-4] + '_' + str(n) + '.png')
+                    pil_roi = Image.fromarray(roi)
+                    pil_roi.save(pout)  # cv2.imwrite(pout, roi) #cv2 gives BGR issues
+                    test_imgs.append(pout)
+                    try:
+                        test_labels.append(cmap[label])
+                    except KeyError:
+                        if label == "fire_alarm_call_assembly_point_sign":
+                            test_labels.append(cmap["fire_alarm_assembly_sign"])
+                        else:
+                            sys.exit(0)
+                    # plt.imshow(roi)
+                    # plt.title(label=label)
+                    # plt.show()
+            elif depth_img is not None and 'poly' not in cropname.split('_')[-1]:
+                #select just specific roi of that crop
+                img = depth_img.copy()  # copy for cropping
+                n = int(cropname.split('_')[-1][:-4])
+                object = root.findall('object')[n]
                 bbox = object.find('bndbox')
-                label = object.find('name').text.replace('/', '_').replace(' ','')
                 xmin = int(bbox.find('xmin').text)
                 ymin = int(bbox.find('ymin').text)
                 xmax = int(bbox.find('xmax').text)
                 ymax = int(bbox.find('ymax').text)
                 roi = img[ymin:ymax, xmin:xmax]
-                if not os.path.isdir(os.path.join(args.out, label)):
-                    os.mkdir(os.path.join(args.out, label))  # create class/category folder
-                # save roi as separate img file
-                pout = os.path.join(args.out, label, fname[:-4] + '_' + str(n) + '.png')
-                pil_roi = Image.fromarray(roi)
-                pil_roi.save(pout)  # cv2.imwrite(pout, roi) #cv2 gives BGR issues
-                test_imgs.append(pout)
-                try:
-                    test_labels.append(cmap[label])
-                except KeyError:
-                    if label == "fire_alarm_call_assembly_point_sign":
-                        test_labels.append(cmap["fire_alarm_assembly_sign"])
-                    else:
-                        sys.exit(0)
-                # plt.imshow(roi)
-                # plt.title(label=label)
-                # plt.show()
+                #dimg = Image.fromarray(roi)
+                #dimg.show()
+                # save as 16-bit one-channeled PNG
+                with open(pimg[:-4] +'depth.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                    writer = png.Writer(width=roi.shape[1], height=roi.shape[0], bitdepth=16)
+                    # Convert array to the Python list of lists expected by the png writer.
+                    gray2list = roi.tolist()
+                    writer.write(f, gray2list)
+                dimg_list.append(roi)
+            else:
+                pass #do nothing
 
         """Handling polygonal regions, if any"""
         if polyf is not None:
             rois = polyf["regions"]
-            for i, (k,v) in enumerate(rois.items()):
-                label = v["region_attributes"]["label"].replace('/', '_').replace(' ','')
+            if depth_img is None:
+                for i, (k, v) in enumerate(rois.items()):
+                    label = v["region_attributes"]["label"].replace('/', '_').replace(' ', '')
+                    all_x = v["shape_attributes"]["all_points_x"]
+                    all_y = v["shape_attributes"]["all_points_y"]
+                    cropped_img = crop_polygonal(pimg, list(zip(all_x, all_y)))
+                    if not os.path.isdir(os.path.join(path_to_out, label)):
+                        os.mkdir(os.path.join(path_to_out, label))
+                    pout = os.path.join(path_to_out, label, fname[:-4] + '_poly' + str(i) + '.png')
+                    # Save, but 3-channeled
+                    cropped_img = Image.fromarray(cropped_img, "RGBA")
+                    pil_roi = Image.new("RGB", cropped_img.size, (0, 0, 0))  # create black background
+                    pil_roi.paste(cropped_img, mask=cropped_img.split()[3])  # paste content of alpha channel in it
+                    pil_roi.save(pout)
+                    # pil_roi.show()
+                    test_imgs.append(pout)
+                    try:
+                        test_labels.append(cmap[label])
+                    except KeyError:
+                        if label == "fire_alarm_call_assembly_point_sign":
+                            test_labels.append(cmap["fire_alarm_assembly_sign"])
+                        else:
+                            sys.exit(0)
+            elif depth_img is not None and 'poly' in cropname.split('_')[-1]:
+                # select just specific roi of that crop
+                img = depth_img.copy()  # copy for cropping
+                t = cropname.split('_')[-1][:-4]
+                i = int(t.split('poly')[1])
+                _,v = rois.items()[i]
                 all_x = v["shape_attributes"]["all_points_x"]
                 all_y = v["shape_attributes"]["all_points_y"]
-                cropped_img = crop_polygonal(os.path.join(args.path_to_arc, fname), list(zip(all_x,all_y)))
-                if not os.path.isdir(os.path.join(args.out, label)):
-                    os.mkdir(os.path.join(args.out, label))
-                pout = os.path.join(args.out, label, fname[:-4] + '_poly' + str(i) + '.png')
-                #Save, but 3-channeled
-                cropped_img = Image.fromarray(cropped_img, "RGBA")
-                pil_roi = Image.new("RGB", cropped_img.size, (0, 0, 0)) #create black background
-                pil_roi.paste(cropped_img, mask=cropped_img.split()[3]) #paste content of alpha channel in it
-                pil_roi.save(pout)
-                # pil_roi.show()
-                test_imgs.append(pout)
-                try:
-                    test_labels.append(cmap[label])
-                except KeyError:
-                    if label == "fire_alarm_call_assembly_point_sign":
-                        test_labels.append(cmap["fire_alarm_assembly_sign"])
-                    else:
-                        sys.exit(0)
-
+                cropped_img = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                with open(pimg[:-4] + 'depth.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                    writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
+                    # Convert array to the Python list of lists expected by the png writer.
+                    gray2list = cropped_img.tolist()
+                    writer.write(f, gray2list)
+                dimg_list.append(cropped_img)
+            else: pass #do nothing
 
     #Create ARC-formatted txts
-    with open(os.path.join(args.out, '../test-imgs.txt'), mode='w') as outf, \
-        open(os.path.join(args.out, '../test-labels.txt'), mode='w') as outl:
-        outf.write('\n'.join(test_imgs))
-        outl.write('\n'.join(test_labels))
-    print("Test set ground truth annotations parsed and saved locally")
+    if depth_img is None:
+        with open(os.path.join(path_to_out, '../test-imgs.txt'), mode='w') as outf, \
+            open(os.path.join(path_to_out, '../test-labels.txt'), mode='w') as outl:
+            outf.write('\n'.join(test_imgs))
+            outl.write('\n'.join(test_labels))
+        print("Test set ground truth annotations parsed and saved locally")
+    else:
+        return dimg_list
 
-
-def crop_polygonal(path_image, polygon):
+def crop_polygonal(path_image, polygon, rgb=True):
     """
     Expects path to input image file
     and list of tuples, i.e., x,y points of polygon
-    returns a 4-channeled masked image
+    returns a 4-channeled masked image if rgb=True
+    masks a depth image if rgb=False
     """
-    # read image as RGB and add alpha (transparency)
-    im = Image.open(path_image).convert("RGBA")
-    imArray = np.asarray(im)
+    if rgb:
+        # read image as RGB and add alpha (transparency)
+        im = Image.open(path_image).convert("RGBA")
+        imArray = np.asarray(im)
+    else:
+        imArray = path_image #depth img matrix passed directly
+        dimg = Image.fromarray(path_image)
+        dimg.show()
 
     # create mask
     maskIm = Image.new('L', (imArray.shape[1], imArray.shape[0]), 0)
     ImageDraw.Draw(maskIm).polygon(polygon, outline=1, fill=1)
     mask = np.array(maskIm)
 
-    # assemble new image (uint8: 0-255)
-    newImArray = np.empty(imArray.shape, dtype='uint8')
-    # colors (three first columns, RGB)
-    newImArray[:, :, :3] = imArray[:, :, :3]
-    # transparency (4th column)
-    newImArray[:, :, 3] = mask * 255
+    if rgb:
+        # assemble new image (uint8: 0-255)
+        newImArray = np.empty(imArray.shape, dtype='uint8')
+        # colors (three first columns, RGB)
+        newImArray[:, :, :3] = imArray[:, :, :3]
+        # transparency (4th column)
+        newImArray[:, :, 3] = mask * 255
+    else: #from depth, one-channeled
+        #mask binary image
+        newImArray = imArray.copy()
+        dimg = Image.fromarray(path_image)
+        dimg.show()
+        newImArray[mask!=1]=0.
+        dimg = Image.fromarray(newImArray)
+        dimg.show()
 
     return newImArray
 
@@ -286,7 +356,7 @@ def create_class_map(path_to_json):
     return None
 
 
-import execnet
+
 
 def call_python_version(Version, Module, Function, ArgumentList):
     gw = execnet.makegateway("popen//python=python%s" % Version)

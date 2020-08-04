@@ -129,7 +129,8 @@ def main():
             if not os.path.exists(os.path.join(args.out, '../test-imgs.txt')):
                 # crop test images to annotate bbox/polygon
                 print("Preparing ground truth annotations...")
-                crop_test(args)
+                ilist = [os.path.join(args.path_to_arc, fname) for fname in os.listdir(args.path_to_arc)]
+                crop_test(ilist, os.path.join(args.path_to_arc, '../../exported'), args.out)
 
         #All classes at test time: known + novel
         if args.model == 'imprk-net':

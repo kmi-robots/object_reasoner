@@ -58,15 +58,21 @@ class ObjectReasoner():
                     if args.bags is None or not os.path.isdir(args.bags):
                         print("Print provide a valid path to the bag files storing depth data")
                         sys.exit(0)
+                    elif args.regions is None or not os.path.isdir(args.bags):
+                        print("Print provide a valid path to the region annotation files")
+                        sys.exit(0)
                     # call python2 method from python3 script
                     print("Starting depth image extraction from bag files... It may take long to complete")
-                    self.dimglist = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags]) # retrieve data from bag
+                    self.dimglist = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
                     print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
+                    print("Empty files:")
+                    print(len([d for d in self.dimglist if d is None]))
+
                 else:
                     self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
                                      self.imglist]
                 self.scale = 1000.0 #depth values in mm
-            else: #ARC set format for naming imgs
+            else: #ARC set naming format
                 self.dimglist = [cv2.imread(p.replace('color','depth'),cv2.IMREAD_UNCHANGED) for p in self.imglist]       # paths to test depth imgs
                 self.scale = 10000.0  # depth values in deci-mm
         if args.set == 'KMi': #dataset without chosen subset per test run

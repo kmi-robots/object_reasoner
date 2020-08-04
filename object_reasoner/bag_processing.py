@@ -7,10 +7,11 @@ import datetime
 import os
 from cv_bridge import CvBridge
 import numpy as np
+from utils import crop_test
 import png
 # from PIL import Image
 
-def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.06,tol_max=0.2): #tol_min=0.03,tol_max=0.07):
+def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06,tol_max=0.2):
     """
     Expects a list of paths to RGB data
     and the path to the folder containing the related bags with depth data
@@ -38,7 +39,8 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.06,tol_max=0.2): #tol_
             img_index[rgb_time]["urls"]= []
             img_index[rgb_time]["urls"].append(imgp)
 
-    for timekey, path_dict in img_index.items():
+
+    for timekey, path_dict in img_index.items()[8:]:
         # array of images for that timekey
         imgps = path_dict["urls"]
         for n, (bdate, bname, ext) in enumerate(available_bags): # find bag file the img belongs to (time-wise)
@@ -64,17 +66,12 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.06,tol_max=0.2): #tol_
         if d_img is None:
             dimg_list.append(d_img)
             continue
-        #TODO crop to 2D bbox or polygon
+
         #Save copy of depth image locally, one copy for each crop at that timestamp
         d_img.astype(np.uint16)
         # dimg = Image.fromarray(d_img)
-        for imgp in imgps:
-            with open(imgp[:-4]+'depth.png', 'wb') as f: #16-bit PNG img, with values in millimeters
-                writer = png.Writer(width=d_img.shape[1], height=d_img.shape[0], bitdepth=16)
-                # Convert array to the Python list of lists expected by the png writer.
-                gray2list = d_img.tolist()
-                writer.write(f, gray2list)
-        dimg_list.append(d_img)
+        # Crop to 2D bbox or polygon
+        dimg_list = crop_test(imgps, path_to_annotations, None, d_img, dimg_list)
         # pcls.append(pcloud)
     return dimg_list
 
@@ -96,3 +93,4 @@ def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=
                 pcl = msg
 
     return depth_img, pcl
+
