@@ -6,6 +6,9 @@ import rosbag
 import datetime
 import os
 from cv_bridge import CvBridge
+import numpy as np
+import png
+# from PIL import Image
 
 def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
     """
@@ -19,10 +22,9 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
     available_bags = [(datetime.datetime.strptime(objname[:-6], "%Y-%m-%d-%H-%M-%S"),objname[:-6], objname[-6:]) for objname in os.listdir(str(path_to_bags)) if objname[-4:]=='.bag']
     available_bags.sort(key=lambda x:x[0]) # order chronologically
     dimg_list =[]
-    pcls =[]
+    # pcls =[]
 
     for imgp in rgb_img_list:
-
         filename = str(imgp.split("/")[-1])
         basestamp = filename.split('_')[0]
         stampsecs = filename.split('_')[1]
@@ -51,12 +53,19 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.06):
             d_img, pcloud = find_nearest_frame(bag, rgb_time, t1_min, t1_max, search_list=['/camera/depth/image_raw'])
         #if pcloud is None:
         #    d_img, pcloud = find_nearest_frame(bag, rgb_time, t1_min, t1_max, search_list=['/camera/depth/points'])
-
         if d_img is None: print("No depth frame found for img %s" % imgp)
+        #Save copy of depth image locally
+        d_img.astype(np.uint16)
+        # dimg = Image.fromarray(d_img)
+        with open(imgp[:-4]+'depth.png', 'wb') as f: #16-bit PNG img, with values in millimeters
+            writer = png.Writer(width=d_img.shape[1], height=d_img.shape[0], bitdepth=16)
+            # Convert array to the Python list of lists expected by the png writer.
+            gray2list = d_img.tolist()
+            writer.write(f, gray2list)
         dimg_list.append(d_img)
-        pcls.append(pcloud)
+        # pcls.append(pcloud)
 
-    return dimg_list, pcls
+    return dimg_list
 
 def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=[]):
     min_delta = float("inf")

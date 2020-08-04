@@ -48,7 +48,7 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     # o3d.visualization.draw_geometries([new_pcl])
     return new_pcl
 
-def MatToPCL(imgMat, camera_intrinsics):
+def MatToPCL(imgMat, camera_intrinsics, scale=10000.0):
     """
     Convert depth matrix
     to pointcloud object
@@ -61,7 +61,7 @@ def MatToPCL(imgMat, camera_intrinsics):
     os.remove("./temp_depth.png")
     # plt.imshow(depth_raw,cmap='Greys_r')
     # plt.show()
-    pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_raw, camera_intrinsics,depth_scale=10000.0, depth_trunc=10000.0)
+    pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_raw, camera_intrinsics,depth_scale=scale, depth_trunc=scale)
     # plt.imshow(depth_raw)
     # plt.show()
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])

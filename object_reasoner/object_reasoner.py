@@ -41,7 +41,7 @@ class ObjectReasoner():
         self.labelset = []
         for i, (k, v) in enumerate(self.KB.items()):
             self.sizes[i] = np.array(v['dimensions'])
-            self.volumes[i] = v['dimensions'][0]*v['dimensions'][1]*v['dimensions'][2]
+            self.volumes[i] = v['dimensions'][0]*v['dimensions'][1]*v['dimensions'][2] # size catalogue in meters
             self.labelset.append(v['label'])
 
         # load metadata from txt files provided
@@ -53,16 +53,22 @@ class ObjectReasoner():
             self.plabels = prf.read().splitlines()       # product img labels
             self.imglist = [os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
             if args.set =='KMi':
-                if args.bags is None or not os.path.isdir(args.bags):
-                    print("Print provide a valid path to the bag files storing depth data")
-                    sys.exit(0)
-                # call python2 method from python3 script
-                self.dimglist, self.pcls = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags]) # retrieve data from bag
-
-            else:
+                #if no depth imgs stored locally, generate from bag
+                if not os.path.exists(self.imglist[0][:-4]+'depth.png'): # checking on 1st img of list for instance
+                    if args.bags is None or not os.path.isdir(args.bags):
+                        print("Print provide a valid path to the bag files storing depth data")
+                        sys.exit(0)
+                    # call python2 method from python3 script
+                    print("Starting depth image extraction from bag files... It may take long to complete")
+                    self.dimglist = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags]) # retrieve data from bag
+                    print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
+                else:
+                    self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
+                                     self.imglist]
+                self.scale = 1000.0 #depth values in mm
+            else: #ARC set format for naming imgs
                 self.dimglist = [cv2.imread(p.replace('color','depth'),cv2.IMREAD_UNCHANGED) for p in self.imglist]       # paths to test depth imgs
-                self.pcls = None
-
+                self.scale = 10000.0  # depth values in deci-mm
         if args.set == 'KMi': #dataset without chosen subset per test run
             self.tsamples = None
         else:
@@ -126,10 +132,15 @@ class ObjectReasoner():
 
     def run(self):
         """
-        Color images are saved as 24-bit RGB PNG.
+        ARC set: Color images are saved as 24-bit RGB PNG.
         Depth images and heightmaps are saved as 16-bit PNG, where depth values are saved in deci-millimeters (10-4m).
         Invalid depth is set to 0.
         Depth images are aligned to their corresponding color images.
+        """
+        """
+        KMi set: Picked nearest depth frame to RGB image, based on timestamp.
+        Depth images are saved as 16-bit PNG, where depth values are saved in millimeters (10-3m).
+        Invalid depth is set to 0.
         """
         print("Reasoning for correction ... ")
         start = time.time()
@@ -143,7 +154,6 @@ class ObjectReasoner():
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
             o3d.visualization.draw_geometries([origpcl])
             """
-
             cluster_bw = extract_foreground_2D(dimage)
             if cluster_bw is None: #problem with 2D clustering
                 non_processed_pcls += 1
@@ -152,7 +162,7 @@ class ObjectReasoner():
                 print(gt_label)
                 continue  # skip correction
             masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
-            obj_pcl = MatToPCL(masked_dmatrix, self.camera)
+            obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
             cluster_pcl = cluster_3D(obj_pcl)
             if cluster_pcl is None: #or with 3D clustering
                 non_processed_pcls+=1
