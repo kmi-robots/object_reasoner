@@ -173,7 +173,7 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                 polyf = jtree[fname]
             except KeyError:
                 polyf = None
-        except FileNotFoundError:
+        except:
             print("No rectangular annotations found for image %s" % fname)
             tree = None
             try:
