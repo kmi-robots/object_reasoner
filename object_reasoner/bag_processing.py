@@ -10,7 +10,7 @@ import numpy as np
 import png
 # from PIL import Image
 
-def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.07):
+def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.06,tol_max=0.2): #tol_min=0.03,tol_max=0.07):
     """
     Expects a list of paths to RGB data
     and the path to the folder containing the related bags with depth data
@@ -52,13 +52,13 @@ def extract_from_bag(rgb_img_list, path_to_bags,tol_min=0.03,tol_max=0.07):
                     break
         bag = rosbag.Bag(os.path.join(str(path_to_bags), tgt_bag))
         # iterate over bag within a certain time window before and after the rgb timestamp
-        t0_min,  t0_max = timekey - datetime.timedelta(seconds=tol_min), timekey + datetime.timedelta(seconds=tol_min)
+        #t0_min,  t0_max = timekey - datetime.timedelta(seconds=tol_min), timekey + datetime.timedelta(seconds=tol_min)
         t1_min, t1_max = timekey - datetime.timedelta(seconds=tol_max), timekey + datetime.timedelta(seconds=tol_max)
 
-        d_img, pcloud = find_nearest_frame(bag, timekey, t0_min, t0_max, search_list = ['/camera/depth/image_raw','/camera/depth/points'])
+        #d_img, pcloud = find_nearest_frame(bag, timekey, t0_min, t0_max, search_list = ['/camera/depth/image_raw','/camera/depth/points'])
         # If none found, try again with less strict tolerance
-        if d_img is None:
-            d_img, pcloud = find_nearest_frame(bag, timekey, t1_min, t1_max, search_list=['/camera/depth/image_raw'])
+        #if d_img is None:
+        d_img, pcloud = find_nearest_frame(bag, timekey, t1_min, t1_max, search_list=['/camera/depth/image_raw'])
         #if pcloud is None:
         #    d_img, pcloud = find_nearest_frame(bag, timekey, t1_min, t1_max, search_list=['/camera/depth/points'])
         if d_img is None:
