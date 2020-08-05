@@ -62,7 +62,7 @@ def load_emb_space(args):
         return np.array(knetf['prodFeat'], dtype='<f4'), np.array(knetf['testFeat'], dtype='<f4'), \
                np.array(nnetf['prodFeat'], dtype='<f4'), np.array(nnetf['testFeat'], dtype='<f4')
 
-def load_camera_intrinsics(path_to_intr):
+def load_camera_intrinsics_txt(path_to_intr):
     """
     Expects 3x3 intrinsics matrix as tab-separated txt
     """
@@ -76,7 +76,10 @@ def load_camera_intrinsics(path_to_intr):
                 try:
                     intrinsics.append(float(cell.split("  ")[1]))
                 except IndexError:
-                    intrinsics.append(float(cell.split(" ")[1]))
+                    try:
+                        intrinsics.append(float(cell.split(" ")[1]))
+                    except IndexError:
+                        intrinsics.append(float(cell))
     return intrinsics
 
 

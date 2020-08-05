@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import cv2
 from collections import Counter
-from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics, call_python_version
+from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version
 from predict import pred_singlemodel, pred_twostage, pred_by_vol
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
@@ -52,34 +52,51 @@ class ObjectReasoner():
               # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
             self.imglist = [os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
-            if args.set =='KMi':
-                #if no depth imgs stored locally, generate from bag
-                if not os.path.exists(self.imglist[0][:-4]+'depth.png'): # checking on 1st img of list for instance
-                    if args.bags is None or not os.path.isdir(args.bags):
-                        print("Print provide a valid path to the bag files storing depth data")
-                        sys.exit(0)
-                    elif args.regions is None or not os.path.isdir(args.bags):
-                        print("Print provide a valid path to the region annotation files")
-                        sys.exit(0)
-                    # call python2 method from python3 script
-                    print("Starting depth image extraction from bag files... It may take long to complete")
-                    self.dimglist = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
-                    print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
-                    print("Empty files:")
-                    print(len([d for d in self.dimglist if d is None]))
 
-                else:
-                    self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
-                                     self.imglist]
-                self.scale = 1000.0 #depth values in mm
-            else: #ARC set naming format
-                self.dimglist = [cv2.imread(p.replace('color','depth'),cv2.IMREAD_UNCHANGED) for p in self.imglist]       # paths to test depth imgs
-                self.scale = 10000.0  # depth values in deci-mm
-        if args.set == 'KMi': #dataset without chosen subset per test run
+        if args.set =='KMi':
+            if args.bags is None or not os.path.isdir(args.bags):
+                print("Print provide a valid path to the bag files storing depth data")
+                sys.exit(0)
             self.tsamples = None
-        else:
+            #if no depth imgs stored locally, generate from bag
+            if not os.path.exists(self.imglist[0][:-4]+'depth.png'): # checking on 1st img of list for instance
+                if args.regions is None or not os.path.isdir(args.bags):
+                    print("Print provide a valid path to the region annotation files")
+                    sys.exit(0)
+                # call python2 method from python3 script
+                print("Starting depth image extraction from bag files... It may take long to complete")
+                self.dimglist = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
+                print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
+                print("Empty files:")
+                print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
+
+            else:
+                self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
+                                 self.imglist]
+                print("Empty depth files:")
+                print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
+            self.scale = 1000.0 #depth values in mm
+
+        else: #supports ARC set
+            self.dimglist = [cv2.imread(p.replace('color','depth'),cv2.IMREAD_UNCHANGED) for p in self.imglist]       # paths to test depth imgs
+            self.scale = 10000.0  # depth values in deci-mm
             with open(os.path.join(args.test_base, 'test-other-objects-list.txt')) as smpf:
                 self.tsamples = [l.split(',') for l in smpf.read().splitlines()]
+
+        # Camera intrinsics
+        if not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt'))\
+            and not os.path.exists(os.path.join(args.test_res,'./camera-intrinsics.txt')):
+            bagpath = [os.path.join(args.bags, bagname) for bagname in os.listdir(args.bags) if bagname[-4:] == '.bag'][0]
+            self.camintr = self.dimglist = call_python_version("2.7", "bag_processing", "load_intrinsics",[bagpath,\
+                                                                os.path.join(args.test_base,'./camera-intrinsics.txt')])
+        elif not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt')) \
+            and os.path.exists(os.path.join(args.test_res, './camera-intrinsics.txt')):
+            self.camintr = load_camera_intrinsics_txt(os.path.join(args.test_res, './camera-intrinsics.txt'))
+        else:
+            self.camintr = load_camera_intrinsics_txt(os.path.join(args.test_base, './camera-intrinsics.txt'))
+
+        self.camera = o3d.camera.PinholeCameraIntrinsic()
+        self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
 
         # Load predictions from baseline algo
         start = time.time()
@@ -117,12 +134,6 @@ class ObjectReasoner():
         else: #separate eval for known vs novel
             eval_singlemodel(self)
 
-        if args.set !='KMi':
-            # Camera intrinsics
-            # replace values for custom setups
-            self.camintr = load_camera_intrinsics(os.path.join(args.test_res, './camera-intrinsics.txt'))
-            self.camera = o3d.camera.PinholeCameraIntrinsic()
-            self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
 
         """
         print("Results if matches are average by class / across views")

@@ -94,3 +94,24 @@ def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=
 
     return depth_img, pcl
 
+def load_intrinsics(path_to_bag, path_to_out):
+    """
+    Derives intrinsics from camera_info messages
+    of a provided bag
+    """
+    bag = rosbag.Bag(path_to_bag)
+    for topic, msg, t in bag.read_messages():
+        if topic == '/camera/depth/camera_info':
+            intrinsics = msg.K
+            break
+    K_matrix =[]
+
+    with open(path_to_out, 'w') as outf:
+        for i,cellv in enumerate(intrinsics,1): # 3x3 matrix #start count from 1
+            K_matrix.append(cellv)
+            if i%3 ==0:
+                outf.write(str(cellv)+"\n")
+            else:
+                outf.write(str(cellv)+"\t")
+
+    return K_matrix
