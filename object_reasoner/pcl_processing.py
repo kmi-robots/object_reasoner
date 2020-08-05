@@ -95,7 +95,7 @@ def estimate_dims(pcd,original_pcd):
     box_points = np.asarray(orthreedbox.get_box_points())
     box_center = np.asarray(orthreedbox.get_center())
     # box_axis = orthreedbox.R
-    # o3d.visualization.draw_geometries([original_pcd, orthreedbox])
+    #o3d.visualization.draw_geometries([original_pcd, orthreedbox])
 
     #cf = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01, origin= box_points[0])
     #cf2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=box_points[1])

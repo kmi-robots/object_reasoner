@@ -77,14 +77,18 @@ def pred_by_size(ReasonerObj, dims,current_index):
 
     """Find NN based on size catalogue"""
     prod_space = ReasonerObj.sizes
-    classlist = ReasonerObj.tsamples[current_index]
+    if ReasonerObj.set !='KMi':
+        classlist = ReasonerObj.tsamples[current_index]
     #normalize first
     t_emb = dims / np.linalg.norm(dims)  # 1x3
     prod_space = prod_space / np.linalg.norm(prod_space)
     l2dist = np.linalg.norm(t_emb - prod_space, axis=1).astype(np.object)   # keep as type numeric
     all_dists = np.column_stack((ReasonerObj.labelset, l2dist))
-    valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]
-    ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
+    if ReasonerObj.set != 'KMi':
+        valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]
+        ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
+    else:
+        ranking = all_dists[np.argsort(all_dists[:, 1])] # all classes valid across all test runs
 
     return ranking #[:5, :] # keep track of top 5
 
@@ -92,12 +96,16 @@ def pred_by_vol(ReasonerObj,volume,current_index):
 
     """Find NN based on volume catalogue"""
     prod_space = ReasonerObj.volumes
-    classlist = ReasonerObj.tsamples[current_index]
+    if ReasonerObj.set != 'KMi':
+        classlist = ReasonerObj.tsamples[current_index]
     t_emb = volume # 1-dim only
     l2dist = np.linalg.norm(t_emb - prod_space, axis=1).astype(np.object)    # keep as type numeric
     all_dists = np.column_stack((ReasonerObj.labelset, l2dist))   #list(ReasonerObj.KB.keys())
-    valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]        # filter by valid for this dataset only
-    ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
+    if ReasonerObj.set != 'KMi':
+        valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]        # filter by valid for this dataset only
+        ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
+    else:
+        ranking = all_dists[np.argsort(all_dists[:, 1])] # all classes valid across all test runs
 
     return ranking #[:5, :] # keep track of top 5
 

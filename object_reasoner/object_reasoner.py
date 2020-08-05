@@ -20,7 +20,9 @@ class ObjectReasoner():
 
     def __init__(self, args):
 
+        self.set = args.set
         start = time.time()
+
         try:
             with open('./data/obj_catalogue.json') as fin:
                 self.KB = json.load(fin) #where the ground truth knowledge is
@@ -129,7 +131,7 @@ class ObjectReasoner():
         print("%s detection results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
         print("Double checking top-1 accuracies to reproduce baseline...")
         if args.set == 'KMi': #class-wise report
-            eval_KMi(self, args)
+            eval_KMi(self, args, depth_aligned=True)
 
         else: #separate eval for known vs novel
             eval_singlemodel(self)
@@ -163,27 +165,37 @@ class ObjectReasoner():
         start = time.time()
         non_processed_pcls = 0
         no_corrected =0
+        alpha = 4
+        volOnly = True  # if True, dims based rankings are excluded
+        combined = False  # if True, all types of ranking used
+        novision = True  # if True, vision based ranking is excluded
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             if dimage is None:
                 # no synchronised depth data found
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 continue
+            #plt.imshow(dimage, cmap='Greys_r')
+            #plt.show()
             """
-            plt.imshow(dimage, cmap='Greys_r')
-            plt.show()
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
             o3d.visualization.draw_geometries([origpcl])
             """
+
             cluster_bw = extract_foreground_2D(dimage)
+            #plt.imshow(cluster_bw, cmap='Greys_r')
+            #plt.show()
             if cluster_bw is None: #problem with 2D clustering
                 non_processed_pcls += 1
                 print("There was a problem extracting a relevant cluster for img no %i, skipping correction" % i)
                 gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
                 print(gt_label)
                 continue  # skip correction
-            masked_dmatrix = detect_contours(dimage,cluster_bw)  #masks depth img based on largest contour
+            masked_dmatrix = detect_contours(dimage,cluster_bw) #masks depth img based on largest contour
+            #plt.imshow(masked_dmatrix, cmap='Greys_r')
+            #plt.show()
             obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+            #o3d.visualization.draw_geometries([obj_pcl])
             cluster_pcl = cluster_3D(obj_pcl)
             if cluster_pcl is None: #or with 3D clustering
                 non_processed_pcls+=1
@@ -194,18 +206,16 @@ class ObjectReasoner():
 
             d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
             current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
-            # current_avg_ranking = self.avg_predictions[i,:]
-            current_min_ranking = self.min_predictions[i, :]
+            if self.min_predictions is not None:
+                # current_avg_ranking = self.avg_predictions[i,:]
+                current_min_ranking = self.min_predictions[i, :]
+            else:
+                current_min_ranking=None
             current_prediction = int(self.predictions[i,0,0]) - 1   # class labels start at 1 but indexing starts at 0
             current_label = list(self.KB.keys())[current_prediction]
             gt_label = list(self.KB.keys())[int(self.labels[i])-1]
             pr_volume = self.volumes[current_prediction]    # ground truth volume and dims for current prediction
             # pr_dims = self.sizes[current_prediction]
-
-            alpha = 4
-            volOnly = True   # if True, dims based rankings are excluded
-            combined = False # if True, all types of ranking used
-            novision = True # if True, vision based ranking is excluded
 
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                 no_corrected += 1
@@ -232,14 +242,15 @@ class ObjectReasoner():
                                     list(p2_rank[:,0]) + list(vol_ranking[:,0])
                 class_set= list(set(union_list))
                 """
-                class_set = list(np.unique(current_min_ranking[:,0]))
-
+                if self.set =='KMi': class_set = list(np.unique(current_ranking[:,0]))
+                else: class_set = list(np.unique(current_min_ranking[:,0]))
                 final_rank= Counter()
                 for cname in class_set:
-
                     try:
-                        # base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
-                        base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
+                        if self.set =='KMi':
+                            base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
+                        else:
+                            base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
                     except:
                         #class is not in the base top-5
                         base_score = 0.
@@ -270,7 +281,11 @@ class ObjectReasoner():
                             dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
 
+
                 final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
+                delta = 5 - len(final_rank)
+                if delta> 0:
+                     final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
                 self.predictions[i, :] = final_rank
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time

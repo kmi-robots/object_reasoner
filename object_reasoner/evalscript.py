@@ -75,7 +75,7 @@ def eval_classifier(all_gt_labels, knownclasses, predicted):
     return
 
 
-def eval_KMi(ReasonerObj, args):
+def eval_KMi(ReasonerObj, args, depth_aligned=False):
     """
     Used for KMi test set when all classes are known, based on scikit-learn
     """
@@ -84,9 +84,14 @@ def eval_KMi(ReasonerObj, args):
     with open(os.path.join(args.test_base, 'class_to_index.json')) as jf:
         allclasses = json.load(jf)
         backbook = dict((v, k) for k, v in allclasses.items())  # swap keys with indices
-
-    print(classification_report(ReasonerObj.labels, y_pred))
-    print(accuracy_score(ReasonerObj.labels, y_pred))
+    if depth_aligned:
+        #eval only on those with a depth img associated
+        y_pred = [y for i,y in enumerate(y_pred) if ReasonerObj.dimglist[i] is not None]
+        y_true = [l for i,l in enumerate(ReasonerObj.labels) if ReasonerObj.dimglist[i] is not None]
+    else: #eval on full RGB test set
+        y_true = ReasonerObj.labels
+    print(classification_report(y_true, y_pred))
+    print(accuracy_score(y_true, y_pred))
     """
     pp = pprint.PrettyPrinter(indent=4)
     cdict = classification_report(ReasonerObj.labels, y_pred, output_dict=True)  # , target_names=allclasses))
