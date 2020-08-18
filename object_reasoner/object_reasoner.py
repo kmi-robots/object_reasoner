@@ -181,7 +181,6 @@ class ObjectReasoner():
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
             o3d.visualization.draw_geometries([origpcl])
             """
-
             cluster_bw = extract_foreground_2D(dimage)
             #plt.imshow(cluster_bw, cmap='Greys_r')
             #plt.show()
