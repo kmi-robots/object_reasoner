@@ -2,6 +2,7 @@
 Methods to extract size distributions from raw data
 """
 
+import os
 import csv
 import argparse
 import sys
@@ -13,8 +14,6 @@ import scipy.stats as stats
 import json
 
 # Distributions to check
-DISTRIBUTIONS = [stats.uniform, stats.norm, stats.lognorm, stats.foldcauchy
-    ]
 DISTRIBUTIONS = [
         stats.alpha,stats.anglit,stats.arcsine,stats.beta,stats.betaprime,stats.bradford,stats.burr,stats.cauchy,stats.chi,stats.chi2,stats.cosine,
         stats.dgamma,stats.dweibull,stats.erlang,stats.expon,stats.exponnorm,stats.exponweib,stats.exponpow,stats.f,stats.fatiguelife,stats.fisk,
@@ -44,12 +43,19 @@ def get_csv_data(filepath, source='DoQ'):
             for row in datareader: yield row
 
 def dict_from_csv(csv_gen, classes, base=None):
-
-    if base is None:
+    if base is None: #ShapeNet
         base = {}
         for row in csv_gen:
             obj_name = row[3]
-            tgts = [cat for cat in classes if cat in obj_name]
+            super_class = row[1]
+            tgts = [cat for cat in classes if cat in obj_name or cat in super_class.lower() \
+                    and "piano" not in obj_name \
+                    or (cat == 'big screen' and "tv" in obj_name) \
+                    or (cat == 'wallpaper' and "WallArt" in super_class)\
+                    or (cat == 'plant vase' and "vase" in obj_name)\
+                    or (cat == 'rubbish bin' and "can" in obj_name)\
+                    or ('food' in cat and "FoodItem" in super_class)]  #only keyboards, not piano keyboards
+
             if len(tgts)>0:
                 if len(tgts)==1: #row[3] in classes:
                     cat = tgts[0]
@@ -68,7 +74,7 @@ def dict_from_csv(csv_gen, classes, base=None):
                 vol = reduce(operator.mul, [float(dim) for dim in row[7].split('\,')], 1)
                 base[cat]['volume_cm3'].append(vol)
                 base[cat]['volume_m3'].append(float(vol / 10 ** 6))
-    else:
+    else: #DoQ
         for row in csv_gen:
             if row[0] in classes:
                 try:
@@ -87,7 +93,7 @@ def dict_from_csv(csv_gen, classes, base=None):
 def derive_distr(data_dict):
     for key in data_dict.keys():
         volumes = np.array(data_dict[key]['volume_m3']).astype('float')
-        if len(volumes)>=50:
+        if len(volumes)>=20:
             _, bins, _ = plt.hist(volumes, bins=100, density=True)
             y, x = np.histogram(volumes, bins=100, density=True)
             x = (x + np.roll(x, -1))[:-1] / 2.0
@@ -110,7 +116,6 @@ def derive_distr(data_dict):
                     best_params = params
                     best_sse = sse
 
-
             data_dict[key]['distribution'] = best_distribution.name
             data_dict[key]['params'] = best_params
             """
@@ -120,6 +125,7 @@ def derive_distr(data_dict):
             plot_pdf(plt,key, bins,volumes, best_fit_logn)
             """
         else:
+            # TODO uniform distribution between min and max
             data_dict[key]['distribution'] = None
             data_dict[key]['params'] = None
     return data_dict
@@ -151,24 +157,58 @@ def compute_size_proba(obj_name, obj_dict, estimated_size, tolerance = 0.000001)
         print("Please provide a valid object name / reference catalogue")
         sys.exit(0)
 
+def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.10): #10% of obj dim
+    # Add hardcoded entries first
+    for obj_name in bespoke_list:
+        obj_dict[obj_name] = {}
+        if obj_name == 'projector': dims = [11.8, 41.1, 26.8]
+        elif obj_name == 'electric heater': dims = [12.5, 24.5, 25.]
+        elif obj_name == 'podium': dims = [98.04, 46., 200.]
+        elif obj_name == 'welcome pod': dims = [86.36, 48.26, 24.64]
+        elif obj_name == 'printer': dims = [96.5, 119.4, 65.4]
+        elif obj_name == 'recording sign': dims = [19.5, 22., 135.]
+
+        dims_min = [(d - tolerance*d) for d in dims] #min-max range of dims
+        dims_max = [(d + tolerance * d) for d in dims]
+        obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
+        vol_min, vol_max = reduce(operator.mul,dims_min, 1),reduce(operator.mul,dims_min, 1)
+        obj_dict[obj_name]['volume_cm3'] = [vol_min, vol_max]
+        obj_dict[obj_name]['volume_m3'] = [float(vol_min / 10 ** 6), float(vol_max / 10 ** 6)]
+
+    return obj_dict
+
+def integrate_scraped(obj_dict, path_to_csvs):
+
+    return obj_dict
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('doq', help="Path to DoQ csv data")
-    parser.add_argument('shp', help="Path to ShapeNetSem csv data")
+    parser.add_argument('doq', help="Path to DoQ csv file")
+    parser.add_argument('shp', help="Path to ShapeNetSem csv file")
+    parser.add_argument('scrap', help="Path to Web-scraped csv files")
     parser.add_argument('classes', help="Path to txt file listing the target object classes")
+    parser.add_argument('--customc', nargs='+',
+                        default=['projector', 'electric heater', 'podium', 'welcome pod', 'printer',
+                                 'recording sign'],
+                        help="List of classes with custom dimensions", required=False)
     args = parser.parse_args()
     #default DoQ data header
     #HEADER = ['object', 'head', 'dim', 'mean', 'perc5', 'perc25', 'median', 'perc75', 'perc95', 'std']
     try:
         doq_gen = get_csv_data(args.doq)
         shp_gen = get_csv_data(args.shp, source='ShapeNet')
+        scrap_csvs = [os.path.join(args.scrap,fname) for fname in os.listdir(args.scrap)\
+                      if fname[-3:]=='csv']
         with open(args.classes) as clfile:
             CLASSES = [cl.split("\n")[0].replace("_", " ") for cl in clfile.readlines()]
-    except:
+    except Exception as e:
+        print(str(e))
         print("Please provide valid input paths as specified in the helper")
         return 0
 
     matches = dict_from_csv(shp_gen, CLASSES)
+    matches = add_hardcoded(matches, args.customc)
+    matches = integrate_scraped(matches, scrap_csvs)
     print("Starting distribution fit from raw data...This may take a while to complete")
     matches = derive_distr(matches)
     matches = dict_from_csv(doq_gen, CLASSES, base=matches)
@@ -176,7 +216,6 @@ def main():
     with open('./data/KMi_obj_catalogue.json', 'w') as fout:
         json.dump(matches, fout)
     print("File saved as KMi_object_catalogue.json")
-
     return 0
 
 if __name__ == "__main__":
