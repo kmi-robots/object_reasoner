@@ -13,7 +13,6 @@ from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
 
-
 import matplotlib.pyplot as plt
 
 class ObjectReasoner():
@@ -22,14 +21,16 @@ class ObjectReasoner():
 
         self.set = args.set
         start = time.time()
-
-        try:
-            with open('./data/obj_catalogue.json') as fin:
-                self.KB = json.load(fin) #where the ground truth knowledge is
-        except FileNotFoundError:
-            self.KB = init_obj_catalogue(args.test_base)
-            with open('./data/obj_catalogue.json', 'w') as fout:
-                json.dump(self.KB, fout)
+        if args.set =='arc':
+            try:
+                with open('./data/obj_catalogue.json') as fin:
+                    self.KB = json.load(fin) #where the ground truth knowledge is
+            except FileNotFoundError:
+                self.KB = init_obj_catalogue(args.test_base)
+                with open('./data/obj_catalogue.json', 'w') as fout:
+                    json.dump(self.KB, fout)
+        elif args.set == 'KMi':
+            pass
         print("Background KB initialized. Took %f seconds." % float(time.time() - start))
 
         # Filter only known/novel objects

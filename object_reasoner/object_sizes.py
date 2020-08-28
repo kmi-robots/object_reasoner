@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as stats
 import json
 import re
+import time
 
 # Distributions to check
 DISTRIBUTIONS = [
@@ -96,14 +97,13 @@ def dict_from_csv(csv_gen, classes, base=None):
 
 def derive_distr(data_dict):
     for key in data_dict.keys():
-        key ='shoes'
+        start = time.time()
         volumes = np.array(data_dict[key]['volume_m3']).astype('float')
         try:
             if len(volumes)>=20:
-                _, bins, _ = plt.hist(volumes, bins=100, density=True)
-                y, x = np.histogram(volumes, bins=100, density=True)
+                _, bins, _ = plt.hist(volumes, bins='auto', density=True)
+                y, x = np.histogram(volumes, bins='auto', density=True)
                 x = (x + np.roll(x, -1))[:-1] / 2.0
-
                 #if key not in clothing:
                 best_sse = np.inf
                 for distribution in DISTRIBUTIONS:
@@ -124,21 +124,16 @@ def derive_distr(data_dict):
                         best_params = params
                         best_sse = sse
 
-                #else: #follows human anthropometrics
-                #    best_distribution = stats.norm
-                #    best_params = stats.norm.fit(volumes)
-
+                #plot best distribution found
+                print("Found best fitting distribution for %s" % key)
+                print("Took %f seconds" % float(time.time()-start))
+                plot_pdf(plt,key,x,best_distribution,best_params)
                 data_dict[key]['distribution'] = best_distribution.name
                 data_dict[key]['params'] = best_params
 
-                best_pdf = best_distribution.pdf(x, *best_params)
-                plot_pdf(plt, key, x, volumes, best_pdf)
-                #best_fit_logn = stats.lognorm.pdf(bins, *stats.lognorm.fit(volumes))
-                #plot_pdf(plt,key, bins,volumes, best_fit_logn)
-                continue
             else:
                 # Otherwise, uniform distribution between min and max
-                data_dict[key]['distribution'] = stats.uniform
+                data_dict[key]['distribution'] = stats.uniform.name
                 data_dict[key]['params'] = [volumes.min(), volumes.max()]
         except TypeError:
             # blacklisted object with None value
@@ -148,13 +143,21 @@ def derive_distr(data_dict):
 
     return data_dict
 
-def plot_pdf(plt, obj_name, bins, data, pdf):
-
-    plt.plot(bins, pdf, label='log-normal')
+def plot_pdf(plt, obj_name, x,distribution,params):
+    pdf = distribution.pdf(x, *params)
+    plt.plot(x, pdf, label=distribution.name)
     plt.title(obj_name + " - Distribution of object sizes")
     plt.xlabel("Volume [m3]")
     plt.ylabel("Density [normalised bin counts]")
     plt.legend(loc='best')
+    plt.show()
+
+def plot_hist(data_list):
+    """Plots histogram of list of float values"""
+    n, bins, _ = plt.hist(data_list, bins='auto', density=True, label='histogram')
+    y = stats.norm.pdf(bins,*stats.norm.fit(data_list))
+    plt.plot(bins, y, label='fit')
+    plt.legend()
     plt.show()
 
 def load_obj_catalogue(path_to_json):
@@ -215,6 +218,7 @@ def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.10): #10% of obj dim
         obj_dict[obj_name]['volume_m3'] = [float(vol_min / 10 ** 6), float(vol_max / 10 ** 6)]
     return obj_dict
 
+
 def parse_anthro(csv_gen, unit ='mm'):
     """Expects csv generator and converts measures to cm
     Returns list of measures
@@ -244,7 +248,6 @@ def handle_clothing(obj_dict, path_to_anthropometrics):
             elif p[:-4] == 'sleevelengthspinewrists':
                 sleevelth = get_csv_data(os.path.join(path_to_anthropometrics, p),source='anthro')
                 sleevelths = parse_anthro(sleevelth)
-
     #Load anthropometric data
     d = 2 #indicative depth of sweater hanging [cm] #not using chest measures because not wore by person
     for obj_name in clothing:
