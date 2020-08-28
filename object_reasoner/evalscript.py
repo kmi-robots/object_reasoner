@@ -81,9 +81,6 @@ def eval_KMi(ReasonerObj, args, depth_aligned=False):
     """
     print("Class-wise test results \n")
     y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
-    with open(os.path.join(args.test_base, 'class_to_index.json')) as jf:
-        allclasses = json.load(jf)
-        backbook = dict((v, k) for k, v in allclasses.items())  # swap keys with indices
     if depth_aligned:
         #eval only on those with a depth img associated
         y_pred = [y for i,y in enumerate(y_pred) if ReasonerObj.dimglist[i] is not None]

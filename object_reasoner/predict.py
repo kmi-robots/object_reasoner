@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 import torch
+import scipy.stats as stats
 
 def pred_singlemodel(ReasonerObj, args):
     """A Python re-writing of part of the procedure followed in
@@ -108,6 +109,28 @@ def pred_by_vol(ReasonerObj,volume,current_index):
         ranking = all_dists[np.argsort(all_dists[:, 1])] # all classes valid across all test runs
 
     return ranking #[:5, :] # keep track of top 5
+
+
+def pred_vol_proba(ReasonerObj,estimated_volume, tol=0.05):
+
+    """Make predictions base on size distributions in KMi object catalogue
+    See object_sizes.py for more details on how these distributions are derived
+    # volume ranges are computed based on set tol (tolerance) as percentage of volume, e.g.. 5%
+    """
+    vol_min, vol_max = float(estimated_volume - tol*estimated_volume), float(estimated_volume + tol*estimated_volume)
+    probabilities = []
+    for k in ReasonerObj.KB.keys():
+        dist_name = ReasonerObj.KB[k]['distribution']
+        params = ReasonerObj.KB[k]['params']
+        if dist_name is not None:  # probability as area under the curve for given volume range
+            dist = getattr(stats, dist_name)
+            proba = dist.cdf(vol_max, *params) - \
+            dist.cdf(vol_min, *params)
+        else:
+            proba = 0. #originally blacklisted object
+        probabilities.append(proba)
+    all_scores = np.column_stack((list(ReasonerObj.KB.keys()), probabilities))
+    return [np.argsort(all_scores[:, 1])[::-1]] # rank by descending probability #[::-1] is used to reverse np.argsort
 
 
 def predict_classifier(test_data, model, device):

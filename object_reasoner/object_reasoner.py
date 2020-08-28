@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version
-from predict import pred_singlemodel, pred_twostage, pred_by_vol
+from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
@@ -29,23 +29,30 @@ class ObjectReasoner():
                 self.KB = init_obj_catalogue(args.test_base)
                 with open('./data/obj_catalogue.json', 'w') as fout:
                     json.dump(self.KB, fout)
+            # Filter only known/novel objects
+            self.known = dict((k, v) for k, v in self.KB.items() if v["known"] == True)
+            self.novel = dict((k, v) for k, v in self.KB.items() if v["known"] == False)
+
+            # KB sizes as 3D vectors
+            # self.sizes = dict((k,np.array(v['dimensions'])) for k, v in self.KB.items())
+            self.sizes = np.empty((len(self.KB.keys()), 3))
+            self.volumes = np.empty((len(self.KB.keys()), 1))
+            self.labelset = []
+            for i, (k, v) in enumerate(self.KB.items()):
+                self.sizes[i] = np.array(v['dimensions'])
+                self.volumes[i] = v['dimensions'][0] * v['dimensions'][1] * v['dimensions'][
+                    2]  # size catalogue in meters
+                self.labelset.append(v['label'])
         elif args.set == 'KMi':
-            pass
+            try:
+                with open('./data/KMi_obj_catalogue.json') as fin,\
+                    open('data/KMi-set-2020/class_to_index.json') as cin:
+                    self.KB = json.load(fin) #where the ground truth knowledge is
+                    self.remapper =dict((v, k) for k, v in json.load(cin).items())  # swap keys with indices
+            except FileNotFoundError:
+                print("No KMi catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
+                sys.exit(0)
         print("Background KB initialized. Took %f seconds." % float(time.time() - start))
-
-        # Filter only known/novel objects
-        self.known = dict((k, v) for k, v in self.KB.items() if v["known"] == True)
-        self.novel = dict((k, v) for k, v in self.KB.items() if v["known"] == False)
-
-        # KB sizes as 3D vectors
-        # self.sizes = dict((k,np.array(v['dimensions'])) for k, v in self.KB.items())
-        self.sizes = np.empty((len(self.KB.keys()),3))
-        self.volumes = np.empty((len(self.KB.keys()),1))
-        self.labelset = []
-        for i, (k, v) in enumerate(self.KB.items()):
-            self.sizes[i] = np.array(v['dimensions'])
-            self.volumes[i] = v['dimensions'][0]*v['dimensions'][1]*v['dimensions'][2] # size catalogue in meters
-            self.labelset.append(v['label'])
 
         # load metadata from txt files provided
         with open(os.path.join(args.test_base,'test-labels.txt')) as txtf, \
@@ -133,10 +140,8 @@ class ObjectReasoner():
         print("Double checking top-1 accuracies to reproduce baseline...")
         if args.set == 'KMi': #class-wise report
             eval_KMi(self, args, depth_aligned=True)
-
         else: #separate eval for known vs novel
             eval_singlemodel(self)
-
 
         """
         print("Results if matches are average by class / across views")
@@ -170,6 +175,10 @@ class ObjectReasoner():
         volOnly = True  # if True, dims based rankings are excluded
         combined = False  # if True, all types of ranking used
         novision = True  # if True, vision based ranking is excluded
+        if self.args.set == 'KMi':
+            # only based on volume
+            combined = False
+            volOnly = True
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             if dimage is None:
@@ -211,11 +220,16 @@ class ObjectReasoner():
                 current_min_ranking = self.min_predictions[i, :]
             else:
                 current_min_ranking=None
+
             current_prediction = int(self.predictions[i,0,0]) - 1   # class labels start at 1 but indexing starts at 0
-            current_label = list(self.KB.keys())[current_prediction]
-            gt_label = list(self.KB.keys())[int(self.labels[i])-1]
-            pr_volume = self.volumes[current_prediction]    # ground truth volume and dims for current prediction
-            # pr_dims = self.sizes[current_prediction]
+            if self.args.set =='KMi':
+                current_label = self.remapper[str(current_prediction)]
+                gt_label = self.remapper[str(int(self.labels[i])-1)]
+            else:
+                current_label = list(self.KB.keys())[current_prediction]
+                gt_label = list(self.KB.keys())[int(self.labels[i])-1]
+                pr_volume = self.volumes[current_prediction]    # ground truth volume and dims for current prediction
+                # pr_dims = self.sizes[current_prediction]
 
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                 no_corrected += 1
@@ -228,20 +242,18 @@ class ObjectReasoner():
                 # plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
                 # plt.show()
                 # o3d.visualization.draw_geometries([obj_pcl, orientedbox])
-                gt_dims = self.sizes[int(self.labels[i]) - 1]
-                from predict import pred_by_size
-                # compare estimated dims with ground truth dims
-                # first possible permutation
-                dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
-                #second possible permutation
-                p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
-                vol_ranking = pred_by_vol(self,volume, i)
-                # Set of classes from both rankings
-                """
-                union_list = list(current_ranking[:,0])+list(dims_ranking[:,0])+\
-                                    list(p2_rank[:,0]) + list(vol_ranking[:,0])
-                class_set= list(set(union_list))
-                """
+                if self.args.set =='KMi':
+                    vol_ranking = pred_vol_proba(self,volume,i)
+                else:
+                    gt_dims = self.sizes[int(self.labels[i]) - 1]
+                    #from predict import pred_by_size
+                    # compare estimated dims with ground truth dims
+                    # first possible permutation
+                    dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
+                    #second possible permutation
+                    p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
+                    vol_ranking = pred_by_vol(self,volume, i)
+
                 if self.set =='KMi': class_set = list(np.unique(current_ranking[:,0]))
                 else: class_set = list(np.unique(current_min_ranking[:,0]))
                 final_rank= Counter()
@@ -281,7 +293,6 @@ class ObjectReasoner():
                             dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
 
-
                 final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
                 delta = 5 - len(final_rank)
                 if delta> 0:
@@ -290,7 +301,10 @@ class ObjectReasoner():
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
-        eval_singlemodel(self)
+        if self.args.set == 'KMi':  # class-wise report
+            eval_KMi(self, self.args, depth_aligned=True)
+        else:  # separate eval for known vs novel
+            eval_singlemodel(self)
         print("%s image predictions were corrected " % str(no_corrected))
         print("%s images were skipped and kept the same " % str(non_processed_pcls))
         return

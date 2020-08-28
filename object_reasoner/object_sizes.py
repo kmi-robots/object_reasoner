@@ -127,10 +127,9 @@ def derive_distr(data_dict):
                 #plot best distribution found
                 print("Found best fitting distribution for %s" % key)
                 print("Took %f seconds" % float(time.time()-start))
-                plot_pdf(plt,key,x,best_distribution,best_params)
+                #plot_pdf(plt,key,x,best_distribution,best_params)
                 data_dict[key]['distribution'] = best_distribution.name
                 data_dict[key]['params'] = best_params
-
             else:
                 # Otherwise, uniform distribution between min and max
                 data_dict[key]['distribution'] = stats.uniform.name
