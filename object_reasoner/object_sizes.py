@@ -30,7 +30,7 @@ DISTRIBUTIONS = [
         stats.vonmises,stats.vonmises_line,stats.wald,stats.weibull_min,stats.weibull_max,stats.wrapcauchy
     ]
 
-blacklisted = ['power cable', 'person']
+blacklisted = ['power cord', 'person']
 clothing = ['shoes', 'hanged coat/sweater']
 
 def get_csv_data(filepath, source='DoQ'):
@@ -321,7 +321,7 @@ def main():
     parser.add_argument('classes', help="Path to txt file listing the target object classes")
     parser.add_argument('--customc', nargs='+',
                         default=['projector', 'electric heater', 'podium', 'welcome pod', 'printer',
-                                 'recording sign','power cable','robot', 'person', 'door'],
+                                 'recording sign','power cord','robot', 'person', 'door'],
                         help="List of classes with custom dimensions", required=False)
     args = parser.parse_args()
     #default DoQ data header

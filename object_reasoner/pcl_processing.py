@@ -66,7 +66,6 @@ def MatToPCL(imgMat, camera_intrinsics, scale=10000.0):
     # plt.show()
     pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
     # o3d.visualization.draw_geometries([pcd])
-
     return pcd
 
 def PathToPCL(imgpath, camera_intrinsics):
@@ -83,20 +82,32 @@ def PathToPCL(imgpath, camera_intrinsics):
     return pcd
 
 
-def estimate_dims(pcd,original_pcd):
+def estimate_dims(pcd,original_pcd, d=0.05):
     """
     Finds bounding solid and
     estimates obj dimensions from vertices
     """
     # threedbox = pcd.get_axis_aligned_bounding_box()
-    orthreedbox = pcd.get_oriented_bounding_box()
+    try:
+        orthreedbox = pcd.get_oriented_bounding_box()
+    except:
+        #print("Problem with current pcd") #planar surface, e.g., wall, window, door, where no volume could be found
+        print("Not enough points in 3D cluster, reduced to planar surface... reverting back to full pcd")
+        #print(str(e))
+        try:
+            orthreedbox = original_pcd.get_oriented_bounding_box()
+        except:
+            return
+        #contour_area = 0.
+        #volume = contour_area*d #multiply by fixed depth (in metres)
+
     # orthreedbox = pcd.get_axis_aligned_bounding_box()
     # print(orthreedbox.dimension())
     box_points = np.asarray(orthreedbox.get_box_points())
     box_center = np.asarray(orthreedbox.get_center())
     # box_axis = orthreedbox.R
-    #o3d.visualization.draw_geometries([original_pcd, orthreedbox])
 
+    # o3d.visualization.draw_geometries([original_pcd, orthreedbox])
     #cf = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01, origin= box_points[0])
     #cf2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=box_points[1])
     #cf3 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=box_points[2])

@@ -46,9 +46,10 @@ class ObjectReasoner():
         elif args.set == 'KMi':
             try:
                 with open('./data/KMi_obj_catalogue.json') as fin,\
-                    open('data/KMi-set-2020/class_to_index.json') as cin:
+                    open('./data/KMi-set-2020/class_to_index.json') as cin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
-                    self.remapper =dict((v, k) for k, v in json.load(cin).items())  # swap keys with indices
+                    self.mapper = json.load(cin)
+                    self.remapper =dict((v, k) for k, v in self.mapper.items())  # swap keys with indices
             except FileNotFoundError:
                 print("No KMi catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
                 sys.exit(0)
@@ -139,7 +140,7 @@ class ObjectReasoner():
         print("%s detection results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
         print("Double checking top-1 accuracies to reproduce baseline...")
         if args.set == 'KMi': #class-wise report
-            eval_KMi(self, args, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True)
         else: #separate eval for known vs novel
             eval_singlemodel(self)
 
@@ -175,17 +176,38 @@ class ObjectReasoner():
         volOnly = True  # if True, dims based rankings are excluded
         combined = False  # if True, all types of ranking used
         novision = True  # if True, vision based ranking is excluded
-        if self.args.set == 'KMi':
+        knowledge_only = False
+        if self.set == 'KMi':
             # only based on volume
             combined = False
             volOnly = True
+            novision = False
+            knowledge_only = True
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
+            current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
+            if self.min_predictions is not None:
+                # current_avg_ranking = self.avg_predictions[i,:]
+                current_min_ranking = self.min_predictions[i, :]
+            else:
+                current_min_ranking = None
+            current_prediction = self.predictions[i, 0, 0]
+            if self.set == 'KMi':
+                current_label = self.remapper[current_prediction]
+                gt_label = self.remapper[self.labels[i]]
+            else:
+                current_label = list(self.KB.keys())[current_prediction]
+                gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
+                pr_volume = self.volumes[current_prediction]  # ground truth volume and dims for current prediction
+                # pr_dims = self.sizes[current_prediction]
             if dimage is None:
                 # no synchronised depth data found
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 continue
+
             #plt.imshow(dimage, cmap='Greys_r')
+            #plt.show()
+            #plt.imshow(cv2.imread(self.imglist[i]))
             #plt.show()
             """
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
@@ -196,7 +218,7 @@ class ObjectReasoner():
             #plt.show()
             if cluster_bw is None: #problem with 2D clustering
                 non_processed_pcls += 1
-                print("There was a problem extracting a relevant cluster for img no %i, skipping correction" % i)
+                print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
                 gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
                 print(gt_label)
                 continue  # skip correction
@@ -204,32 +226,40 @@ class ObjectReasoner():
             #plt.imshow(masked_dmatrix, cmap='Greys_r')
             #plt.show()
             obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+            pcl_points = np.asarray(obj_pcl.points).shape[0]
+            if pcl_points <=1:
+                print("Empty pcl, skipping")
+                non_processed_pcls += 1
+                continue
             #o3d.visualization.draw_geometries([obj_pcl])
             cluster_pcl = cluster_3D(obj_pcl)
+            #o3d.visualization.draw_geometries([cluster_pcl])
+            thdclustered = True
             if cluster_pcl is None: #or with 3D clustering
-                non_processed_pcls+=1
-                print("There was a problem extracting a relevant cluster for img no %i, skipping correction" % i)
-                gt_label = list(self.KB.keys())[int(self.labels[i])-1]
-                print(gt_label)
-                continue #skip correction
-
-            d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
-            current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
-            if self.min_predictions is not None:
-                # current_avg_ranking = self.avg_predictions[i,:]
-                current_min_ranking = self.min_predictions[i, :]
-            else:
-                current_min_ranking=None
-
-            current_prediction = int(self.predictions[i,0,0]) - 1   # class labels start at 1 but indexing starts at 0
-            if self.args.set =='KMi':
-                current_label = self.remapper[str(current_prediction)]
-                gt_label = self.remapper[str(int(self.labels[i])-1)]
-            else:
-                current_label = list(self.KB.keys())[current_prediction]
-                gt_label = list(self.KB.keys())[int(self.labels[i])-1]
-                pr_volume = self.volumes[current_prediction]    # ground truth volume and dims for current prediction
-                # pr_dims = self.sizes[current_prediction]
+                #non_processed_pcls+=1
+                print("There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
+                cluster_pcl = obj_pcl
+                thdclustered=False
+                #gt_label = self.remapper[self.labels[i]]
+                #print(gt_label)
+                #continue #skip correction
+            try:
+                d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
+            except TypeError:
+                print("Still not enough points..skipping")
+                non_processed_pcls += 1
+                #plt.imshow(dimage, cmap='Greys_r')
+                #plt.show()
+                #plt.imshow(masked_dmatrix, cmap='Greys_r')
+                #plt.show()
+                #plt.imshow(cv2.imread(self.imglist[i]))
+                #plt.show()
+                #o3d.visualization.draw_geometries([obj_pcl])
+                continue
+            if not thdclustered:
+                o3d.visualization.draw_geometries([cluster_pcl])
+                print(volume)
+                print("Used original instead")
 
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                 no_corrected += 1
@@ -242,8 +272,8 @@ class ObjectReasoner():
                 # plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
                 # plt.show()
                 # o3d.visualization.draw_geometries([obj_pcl, orientedbox])
-                if self.args.set =='KMi':
-                    vol_ranking = pred_vol_proba(self,volume,i)
+                if self.set =='KMi':
+                    vol_ranking = pred_vol_proba(self,volume)
                 else:
                     gt_dims = self.sizes[int(self.labels[i]) - 1]
                     #from predict import pred_by_size
@@ -254,9 +284,18 @@ class ObjectReasoner():
                     p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
                     vol_ranking = pred_by_vol(self,volume, i)
 
-                if self.set =='KMi': class_set = list(np.unique(current_ranking[:,0]))
+                final_rank = Counter()
+                if self.set =='KMi' and not knowledge_only: class_set = list(np.unique(current_ranking[:,0]))
+                elif self.set =='KMi' and knowledge_only:
+                    for h,cat in enumerate(list(vol_ranking['class'])):
+                        clabel = self.mapper[cat]
+                        final_rank[clabel] = vol_ranking['proba'][h]
+                    #print(final_rank.most_common())
+                    final_rank = final_rank.most_common()[:5]
+                    self.predictions[i, :] = final_rank
+                    continue
                 else: class_set = list(np.unique(current_min_ranking[:,0]))
-                final_rank= Counter()
+
                 for cname in class_set:
                     try:
                         if self.set =='KMi':
@@ -266,7 +305,6 @@ class ObjectReasoner():
                     except:
                         #class is not in the base top-5
                         base_score = 0.
-
                     if combined:
                         if novision:
                             dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
@@ -280,10 +318,18 @@ class ObjectReasoner():
                             final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
                     else:
                         if volOnly and not novision:
-                            vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                            if self.set =='KMi':
+                                clabel = self.remapper[cname]
+                                vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
+                            else:
+                                vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, vol_score]) / 2
                         elif volOnly and novision:
-                            final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                            if self.set == 'KMi': #only based on size prediction
+                                clabel = self.remapper[cname]
+                                final_rank[cname] = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
+                            else:
+                                final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
                         elif not volOnly and novision:
                             dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
                             dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
@@ -292,8 +338,8 @@ class ObjectReasoner():
                             dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
                             dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
-
-                final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
+                if self.set =='KMi': final_rank = final_rank.most_common()[:5]
+                else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
                 delta = 5 - len(final_rank)
                 if delta> 0:
                      final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
@@ -301,8 +347,8 @@ class ObjectReasoner():
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
-        if self.args.set == 'KMi':  # class-wise report
-            eval_KMi(self, self.args, depth_aligned=True)
+        if self.set == 'KMi':  # class-wise report
+            eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
         print("%s image predictions were corrected " % str(no_corrected))

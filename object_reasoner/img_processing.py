@@ -53,7 +53,11 @@ def detect_contours(dmatrix, cbin):
 
     contours, hierarchy = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # select largest contour
-    c = max(contours, key=cv2.contourArea)
+    try:
+        c = max(contours, key=cv2.contourArea)
+    except ValueError: # skip morphological operation
+        contours, hierarchy = cv2.findContours(cbin, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        c = max(contours, key=cv2.contourArea)
     # Create binary mask from largest contour
     out_mask = np.zeros_like(dmatrix)
     cv2.drawContours(out_mask, [c], -1, (255), cv2.FILLED, 1)

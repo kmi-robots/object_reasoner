@@ -75,7 +75,7 @@ def eval_classifier(all_gt_labels, knownclasses, predicted):
     return
 
 
-def eval_KMi(ReasonerObj, args, depth_aligned=False):
+def eval_KMi(ReasonerObj, depth_aligned=False):
     """
     Used for KMi test set when all classes are known, based on scikit-learn
     """
