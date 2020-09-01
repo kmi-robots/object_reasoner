@@ -20,15 +20,17 @@ def extract_foreground_2D(dm):
         except Warning:
             return
     #Find cluster index for closest points to camera (foreground)
+    cbin = np.uint8(fmatrix.copy())  # binarized version
+
     #Second smallest to avoid zero value cluster
     tgt_idx = np.where(clt.cluster_centers_ == sorted(clt.cluster_centers_)[1][0])[0][0]
-    cbin = np.uint8(fmatrix.copy()) #binarized version
     for i in range(clt.labels_.shape[0]):
-        #color pixels based on cluster label
-        if clt.labels_[i]==tgt_idx:   #foreground
+        # color pixels based on cluster label
+        if clt.labels_[i] == tgt_idx:  # foreground
             cbin[i, :] = 255
-        else: #either background or no value, treated the same
+        else:  # either background or no value, treated the same
             cbin[i, :] = 0
+
     """
     plt.imshow(np.reshape(cbin, dm.shape), cmap='Greys_r')
     plt.show()
@@ -48,8 +50,8 @@ def detect_contours(dmatrix, cbin):
     kernel = np.ones((9, 9), np.uint8)
     opening = cv2.morphologyEx(cbin, cv2.MORPH_OPEN, kernel)
     closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-    # plt.imshow(opening, cmap='Greys_r')
-    # plt.show()
+    #plt.imshow(opening, cmap='Greys_r')
+    #plt.show()
 
     contours, hierarchy = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # select largest contour
@@ -66,12 +68,11 @@ def detect_contours(dmatrix, cbin):
     out[out_mask == 0] = 0.
     # print(out[out != 0])
 
-    """
-    plt.imshow(out_mask,cmap='Greys_r')
-    plt.show()
-    plt.imshow(out,cmap='Greys_r')
-    plt.show()
-    """
+    #plt.imshow(out_mask,cmap='Greys_r')
+    #plt.show()
+    #plt.imshow(out,cmap='Greys_r')
+    #plt.show()
+
     return out
 
 

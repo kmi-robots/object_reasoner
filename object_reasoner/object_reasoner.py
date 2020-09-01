@@ -177,12 +177,16 @@ class ObjectReasoner():
         combined = False  # if True, all types of ranking used
         novision = True  # if True, vision based ranking is excluded
         knowledge_only = False
+        foregroundextract = True
+        pclcluster = True
         if self.set == 'KMi':
             # only based on volume
             combined = False
             volOnly = True
-            novision = False
-            knowledge_only = True
+            novision = True
+            knowledge_only = False
+            foregroundextract = False
+            pclcluster = False
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
@@ -204,62 +208,50 @@ class ObjectReasoner():
                 # no synchronised depth data found
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 continue
-
-            #plt.imshow(dimage, cmap='Greys_r')
-            #plt.show()
-            #plt.imshow(cv2.imread(self.imglist[i]))
-            #plt.show()
             """
+            plt.imshow(dimage, cmap='Greys_r')
+            plt.show()
+            plt.imshow(cv2.imread(self.imglist[i]))
+            plt.show()
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
             o3d.visualization.draw_geometries([origpcl])
             """
-            cluster_bw = extract_foreground_2D(dimage)
-            #plt.imshow(cluster_bw, cmap='Greys_r')
-            #plt.show()
-            if cluster_bw is None: #problem with 2D clustering
-                non_processed_pcls += 1
-                print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
-                gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
-                print(gt_label)
-                continue  # skip correction
-            masked_dmatrix = detect_contours(dimage,cluster_bw) #masks depth img based on largest contour
-            #plt.imshow(masked_dmatrix, cmap='Greys_r')
-            #plt.show()
-            obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+            if foregroundextract:
+                cluster_bw = extract_foreground_2D(dimage)
+                #plt.imshow(cluster_bw, cmap='Greys_r')
+                #plt.show()
+                if cluster_bw is None: #problem with 2D clustering
+                    non_processed_pcls += 1
+                    print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
+                    gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
+                    print(gt_label)
+                    continue  # skip correction
+                masked_dmatrix = detect_contours(dimage,cluster_bw) #masks depth img based on largest contour
+                #plt.imshow(masked_dmatrix, cmap='Greys_r')
+                #plt.show()
+                obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+            else:
+                obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
             pcl_points = np.asarray(obj_pcl.points).shape[0]
             if pcl_points <=1:
                 print("Empty pcl, skipping")
                 non_processed_pcls += 1
                 continue
             #o3d.visualization.draw_geometries([obj_pcl])
-            cluster_pcl = cluster_3D(obj_pcl)
-            #o3d.visualization.draw_geometries([cluster_pcl])
-            thdclustered = True
-            if cluster_pcl is None: #or with 3D clustering
-                #non_processed_pcls+=1
-                print("There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
-                cluster_pcl = obj_pcl
-                thdclustered=False
-                #gt_label = self.remapper[self.labels[i]]
-                #print(gt_label)
-                #continue #skip correction
+            if pclcluster:
+                cluster_pcl = cluster_3D(obj_pcl)
+                #o3d.visualization.draw_geometries([cluster_pcl])
+                if cluster_pcl is None: #or with 3D clustering
+                    print("There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
+                    cluster_pcl = obj_pcl #original pcl used instead
+
+            else: cluster_pcl = obj_pcl
             try:
                 d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
             except TypeError:
                 print("Still not enough points..skipping")
                 non_processed_pcls += 1
-                #plt.imshow(dimage, cmap='Greys_r')
-                #plt.show()
-                #plt.imshow(masked_dmatrix, cmap='Greys_r')
-                #plt.show()
-                #plt.imshow(cv2.imread(self.imglist[i]))
-                #plt.show()
-                #o3d.visualization.draw_geometries([obj_pcl])
                 continue
-            if not thdclustered:
-                o3d.visualization.draw_geometries([cluster_pcl])
-                print(volume)
-                print("Used original instead")
 
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                 no_corrected += 1
