@@ -161,22 +161,21 @@ def log_normalise(obj_dict, x=20):
     Only find theoretical lognormal when more than x points available
     """
     for key in obj_dict.keys():
-
         try:
             volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
             dims = np.array(obj_dict[key]['dims_cm']).astype('float')
             mean_dims = np.mean(dims, axis=0)
-
-            try:
-                if len(volumes)>=x:
-                    obj_dict[key]['lognorm-params'] = stats.lognorm.fit(volumes)
+            if len(volumes)>=x:
+                obj_dict[key]['lognorm-params'] = stats.lognorm.fit(volumes)
+                if key=='wallpaper' or key in clothing: continue
+                else: #avoid memory leak for big lists
                     plot_hist(volumes, title=key, mean_cm=mean_dims)
-                else: # object with uniform distr between min and max
-                    obj_dict[key]['lognorm-params'] = None
-                    plot_hist(volumes, title=key, mean_cm=mean_dims, uniform=True)
-            except TypeError: # blacklisted object with None value
+            else: # object with uniform distr between min and max
                 obj_dict[key]['lognorm-params'] = None
-        except KeyError: #DoQ only object
+                if key=='wallpaper' or key in clothing: continue
+                else: #avoid memory leak for big lists
+                    plot_hist(volumes, title=key, mean_cm=mean_dims, uniform=True)
+        except: #DoQ only object or blacklisted
             obj_dict[key]['lognorm-params'] = None
     return obj_dict
 
@@ -222,7 +221,7 @@ def compute_size_proba(obj_name, obj_dict, estimated_size, tolerance = 0.000001)
         print("Please provide a valid object name / reference catalogue")
         sys.exit(0)
 
-def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.10): #10% of obj dim
+def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.05): #5% of obj dim
     # Add hardcoded entries
     # overwrites ShapeNet if class present in both (more accurate info)
     """
@@ -242,20 +241,22 @@ def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.10): #10% of obj dim
         elif obj_name == 'printer': dims = [96.5, 119.4, 65.4]
         elif obj_name == 'recording sign': dims = [19.5, 22., 135.]
         elif obj_name == 'robot': dims = [38., 35., 31.]
-        elif obj_name == 'door':
-            dims_min = [61.0,203.2,3.5]
-            dims_max = [121.9,300.,4.4]
-        elif obj_name == 'window':
-            dims_min = [50.8, 61.0, 3.5]
-            dims_max = [200., 200., 4.5]
         elif obj_name in blacklisted:
             obj_dict[obj_name]['dims_cm'] = None #size not relevant for wires
             obj_dict[obj_name]['volume_cm3'] = None
             obj_dict[obj_name]['volume_m3'] = None
             continue # skip remainder
-        if obj_name not in ['door', 'window', 'person']:
-            dims_min = [(d - tolerance*d) for d in dims] #min-max range of dims
-            dims_max = [(d + tolerance * d) for d in dims]
+        """
+        elif obj_name == 'door':
+            dims_min = [61.0, 203.2, 3.5]
+            dims_max = [121.9, 300., 4.4]
+        elif obj_name == 'window':
+            dims_min = [50.8, 61.0, 3.5]
+            dims_max = [200., 200., 4.5]
+        """
+        #if obj_name not in ['door', 'window', 'person']:
+        dims_min = [(d - tolerance*d) for d in dims] #min-max range of dims
+        dims_max = [(d + tolerance *d) for d in dims]
         obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
         vol_min, vol_max = reduce(operator.mul,dims_min, 1),reduce(operator.mul,dims_max, 1)
         obj_dict[obj_name]['volume_cm3'] = [vol_min, vol_max]
@@ -357,24 +358,52 @@ def integrate_scraped(obj_dict, path_to_csvs):
                 continue
     return obj_dict
 
+def remove_outliers(obj_dict):
+    for key in obj_dict.keys():
 
+        try:
+            volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
+            dims = np.array(obj_dict[key]['dims_cm']).astype('float')
+            #density set to false here to return bin count
+            n, bins = np.histogram(volumes, bins='auto') #, density=False)
+            nindices_out = np.where(n==1.)[0].tolist() #indices of outliers, i.e., bin frequency ==1
+            if len(nindices_out)>0:
+                print("removing outliers from class %s" % key)
+                edgesindices_out = [(bins[int(i)], bins[int(i+1)]) for i in nindices_out] #equivalent in bin edges
+                new_volumes = volumes.tolist()
+                new_dims = dims.tolist()
+                for vol in sorted(new_volumes, reverse=True): #iterate backwards to keep indices after del
+                    for vmin, vmax in edgesindices_out:
+                        if vol >= vmin and vol <= vmax:
+                            i = new_volumes.index(vol)
+                            del new_volumes[i]
+                            del new_dims[i]
+                            break
+                #update dict with new values
+                obj_dict[key]['volume_m3'] = new_volumes
+                obj_dict[key]['dims_cm'] = new_dims
+            # else no outliers found, do nothing
+        except: continue #blacklisted or DoQ only object
+    return obj_dict
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('doq', help="Path to DoQ csv file")
     parser.add_argument('shp', help="Path to ShapeNetSem csv file")
     parser.add_argument('scrap', help="Path to Web-scraped csv files")
     parser.add_argument('anthropo', help="Path to anthropometric data")
     parser.add_argument('classes', help="Path to txt file listing the target object classes")
+    parser.add_argument('--doq', help="Path to DoQ csv file", default=None, required=False)
     parser.add_argument('--customc', nargs='+',
                         default=['projector', 'electric heater', 'podium', 'welcome pod', 'printer',
-                                 'recording sign','power cord','robot', 'person', 'door'],
+                                 'recording sign','power cord','robot','person'],
                         help="List of classes with custom dimensions", required=False)
+    parser.add_argument('--fullfit', nargs='?', default=False,
+                        help="If True, finds best fitting distribution for each object with enough measurements", required=False)
+
     args = parser.parse_args()
     #default DoQ data header
     #HEADER = ['object', 'head', 'dim', 'mean', 'perc5', 'perc25', 'median', 'perc75', 'perc95', 'std']
     try:
-        doq_gen = get_csv_data(args.doq)
         shp_gen = get_csv_data(args.shp, source='ShapeNet')
         scrap_csvs = [os.path.join(args.scrap,fname) for fname in os.listdir(args.scrap)\
                       if fname[-3:]=='csv']
@@ -398,9 +427,20 @@ def main():
         matches = add_hardcoded(matches, args.customc)
         matches = handle_clothing(matches, args.anthropo)
         matches = integrate_scraped(matches, scrap_csvs)
-        print("Starting distribution fit from raw data...This may take a while to complete")
-        matches = derive_distr(matches)
-        matches = dict_from_csv(doq_gen, CLASSES, base=matches)
+        matches = remove_outliers(matches)
+        if args.fullfit:
+            print("Starting distribution fit from raw data...This may take a while to complete")
+            matches = derive_distr(matches)
+        else:
+            print("Starting lognormal fitting")
+            matches = log_normalise(matches)
+        if args.doq is not None: #add Google's DoQ set
+            try:
+                doq_gen = get_csv_data(args.doq)
+            except:
+                print("Please provide valid input paths as specified in the helper")
+                return 0
+            matches = dict_from_csv(doq_gen, CLASSES, base=matches)
     #In both cases, save result locally
     print("Saving object catalogue under ./data ...")
     with open('./data/KMi_obj_catalogue.json', 'w') as fout:
