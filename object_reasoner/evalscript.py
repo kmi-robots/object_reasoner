@@ -80,7 +80,7 @@ def eval_KMi(ReasonerObj, depth_aligned=False):
     Used for KMi test set when all classes are known, based on scikit-learn
     """
     print("Class-wise test results \n")
-    y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
+    y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist() #top-1 of each ranking
     if depth_aligned:
         #eval only on those with a depth img associated
         y_pred = [y for i,y in enumerate(y_pred) if ReasonerObj.dimglist[i] is not None]

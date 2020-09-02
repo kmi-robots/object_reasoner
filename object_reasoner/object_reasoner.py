@@ -185,10 +185,11 @@ class ObjectReasoner():
             combined = False
             volOnly = True
             novision = False
-            knowledge_only = False
+            knowledge_only = True
             foregroundextract = False
             pclcluster = False
 
+        pred_counts = Counter()
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
             if self.min_predictions is not None:
@@ -280,6 +281,7 @@ class ObjectReasoner():
                     vol_ranking = pred_by_vol(self,volume, i)
 
                 final_rank = Counter()
+
                 if self.set =='KMi' and not knowledge_only:
                     class_set = list(np.unique(current_ranking[:,0]))
                 elif self.set =='KMi' and knowledge_only:
@@ -287,7 +289,10 @@ class ObjectReasoner():
                         clabel = self.mapper[cat]
                         final_rank[clabel] = vol_ranking['proba'][h]
                     #print(final_rank.most_common())
-                    final_rank = final_rank.most_common()[:5]
+                    final_rank = final_rank.most_common(5)
+                    winclass = self.remapper[final_rank[0][0]]
+                    try: pred_counts[winclass] +=1
+                    except KeyError: pred_counts[winclass] =1
                     self.predictions[i, :] = final_rank
                     continue
                 else: class_set = list(np.unique(current_min_ranking[:,0]))
@@ -334,7 +339,7 @@ class ObjectReasoner():
                             dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
                             dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
-                if self.set =='KMi': final_rank = final_rank.most_common()[:5]
+                if self.set =='KMi': final_rank = final_rank.most_common(5)
                 else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
                 delta = 5 - len(final_rank)
                 if delta> 0:
@@ -344,6 +349,7 @@ class ObjectReasoner():
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         if self.set == 'KMi':  # class-wise report
+            pred_counts = list(pred_counts.most_common())
             eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)

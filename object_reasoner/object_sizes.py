@@ -54,20 +54,33 @@ def dict_from_csv(csv_gen, classes, base=None):
         for row in csv_gen:
             obj_name = row[3]
             super_class = row[1]
-            tgts = [cat for cat in classes if cat in obj_name or cat in super_class.lower() \
+            # find all class names matching row keywords
+            tgts = []
+            for cat in classes:
+                if (cat in obj_name or cat in super_class.lower()) \
                     and "piano" not in obj_name \
+                    and "lamppost" not in obj_name \
+                    or (cat == 'desk' and "table" in obj_name) \
                     or (cat == 'big screen' and "tv" in obj_name) \
                     or (cat == 'wallpaper' and "WallArt" in super_class)\
                     or (cat == 'plant vase' and "vase" in obj_name)\
                     or (cat == 'rubbish bin' and "can" in obj_name)\
-                    or ('food' in cat and "FoodItem" in super_class)]  #only keyboards, not piano keyboards
+                    or ('food' in cat and "FoodItem" in super_class):
+                    tgts.append(cat)
 
             if len(tgts)>0:
                 if len(tgts)==1: #row[3] in classes:
                     cat = tgts[0]
-                elif len(tgts)>1: # go for longest matching substring (e.g., bookcase instead of just book)
-                    tgts.sort(key=len,reverse=True) #sort by descending length
-                    cat = tgts[0]
+                elif len(tgts)>1: #it matches more than one class
+
+                    # if one of matches is already compound use that
+                    compounds = [t for t in tgts if ' ' in t]
+                    if len(compounds) > 0:
+                        cat = compounds[0]
+                    else:
+                        #treat tgts as compound word chunks and pick last one
+                        cat = tgts[-1]
+                    #tgts.sort(key=len,reverse=True) #sort by descending length go for longest matching substring (e.g., bookcase instead of just book)
                 try:
                     base[cat]['dims_cm'].append([float(dim) for dim in row[7].split('\,')])
                 except:
@@ -148,13 +161,19 @@ def log_normalise(obj_dict, x=20):
     Only find theoretical lognormal when more than x points available
     """
     for key in obj_dict.keys():
+
         try:
             volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
+            dims = np.array(obj_dict[key]['dims_cm']).astype('float')
+            mean_dims = np.mean(dims, axis=0)
+
             try:
                 if len(volumes)>=x:
                     obj_dict[key]['lognorm-params'] = stats.lognorm.fit(volumes)
+                    plot_hist(volumes, title=key, mean_cm=mean_dims)
                 else: # object with uniform distr between min and max
                     obj_dict[key]['lognorm-params'] = None
+                    plot_hist(volumes, title=key, mean_cm=mean_dims, uniform=True)
             except TypeError: # blacklisted object with None value
                 obj_dict[key]['lognorm-params'] = None
         except KeyError: #DoQ only object
@@ -170,11 +189,18 @@ def plot_pdf(plt, obj_name, x,distribution,params):
     plt.legend(loc='best')
     plt.show()
 
-def plot_hist(data_list):
+def plot_hist(data_list,title='', mean_cm=None,uniform=False):
     """Plots histogram of list of float values"""
     n, bins, _ = plt.hist(data_list, bins='auto', density=True, label='histogram')
-    y = stats.norm.pdf(bins,*stats.norm.fit(data_list))
+    if not uniform:
+        y = stats.lognorm.pdf(bins,*stats.lognorm.fit(data_list))
+    else:
+        y = stats.uniform.pdf(bins,*stats.uniform.fit(data_list))
     plt.plot(bins, y, label='fit')
+    if mean_cm is not None:
+        plt.title(title+" (mean: {:.1f} x {:.1f} x {:.1f} cm)".format(mean_cm[0],mean_cm[1],mean_cm[2]))
+    else:
+        plt.title(title)
     plt.legend()
     plt.show()
 
