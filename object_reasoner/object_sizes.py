@@ -95,12 +95,12 @@ def dict_from_csv(csv_gen, classes, base=None):
                     base[row[0]]["DoQ_" + row[2]].append(row[3:])
     return base
 
-def derive_distr(data_dict):
+def derive_distr(data_dict,x=20):
     for key in data_dict.keys():
         start = time.time()
         volumes = np.array(data_dict[key]['volume_m3']).astype('float')
         try:
-            if len(volumes)>=20:
+            if len(volumes)>=x:
                 _, bins, _ = plt.hist(volumes, bins='auto', density=True)
                 y, x = np.histogram(volumes, bins='auto', density=True)
                 x = (x + np.roll(x, -1))[:-1] / 2.0
@@ -141,6 +141,25 @@ def derive_distr(data_dict):
             continue
 
     return data_dict
+
+
+def log_normalise(obj_dict, x=20):
+    """
+    Only find theoretical lognormal when more than x points available
+    """
+    for key in obj_dict.keys():
+        try:
+            volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
+            try:
+                if len(volumes)>=x:
+                    obj_dict[key]['lognorm-params'] = stats.lognorm.fit(volumes)
+                else: # object with uniform distr between min and max
+                    obj_dict[key]['lognorm-params'] = None
+            except TypeError: # blacklisted object with None value
+                obj_dict[key]['lognorm-params'] = None
+        except KeyError: #DoQ only object
+            obj_dict[key]['lognorm-params'] = None
+    return obj_dict
 
 def plot_pdf(plt, obj_name, x,distribution,params):
     pdf = distribution.pdf(x, *params)
@@ -312,6 +331,8 @@ def integrate_scraped(obj_dict, path_to_csvs):
                 continue
     return obj_dict
 
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('doq', help="Path to DoQ csv file")
@@ -338,13 +359,23 @@ def main():
         print("Please provide valid input paths as specified in the helper")
         return 0
 
-    matches = dict_from_csv(shp_gen, CLASSES)
-    matches = add_hardcoded(matches, args.customc)
-    matches = handle_clothing(matches, args.anthropo)
-    matches = integrate_scraped(matches, scrap_csvs)
-    print("Starting distribution fit from raw data...This may take a while to complete")
-    matches = derive_distr(matches)
-    matches = dict_from_csv(doq_gen, CLASSES, base=matches)
+    if os.path.exists('./data/KMi_obj_catalogue.json'):
+        print("Retrieve existing catalogue for update...")
+        with open('./data/KMi_obj_catalogue.json', 'r') as fin:
+            matches = json.load(fin)
+        print("Starting lognormal fitting")
+        matches = log_normalise(matches)
+        print("Lognormal fitting complete")
+    else:
+        print("Creating catalogue from raw data")
+        matches = dict_from_csv(shp_gen, CLASSES)
+        matches = add_hardcoded(matches, args.customc)
+        matches = handle_clothing(matches, args.anthropo)
+        matches = integrate_scraped(matches, scrap_csvs)
+        print("Starting distribution fit from raw data...This may take a while to complete")
+        matches = derive_distr(matches)
+        matches = dict_from_csv(doq_gen, CLASSES, base=matches)
+    #In both cases, save result locally
     print("Saving object catalogue under ./data ...")
     with open('./data/KMi_obj_catalogue.json', 'w') as fout:
         json.dump(matches, fout)

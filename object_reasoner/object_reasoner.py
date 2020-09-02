@@ -179,11 +179,12 @@ class ObjectReasoner():
         knowledge_only = False
         foregroundextract = True
         pclcluster = True
+
         if self.set == 'KMi':
             # only based on volume
             combined = False
             volOnly = True
-            novision = True
+            novision = False
             knowledge_only = False
             foregroundextract = False
             pclcluster = False
@@ -261,11 +262,13 @@ class ObjectReasoner():
                 # TODO remove 1st check condition afterwards
                 # create ranking by nearest volume
                 # gt_volume = self.volumes[int(self.labels[i]) - 1]
-                # plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
-                # plt.show()
+                #plt.imshow(dimage, cmap='Greys_r')
+                #plt.show()
+                #plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
+                #plt.show()
                 # o3d.visualization.draw_geometries([obj_pcl, orientedbox])
                 if self.set =='KMi':
-                    vol_ranking = pred_vol_proba(self,volume)
+                    vol_ranking = pred_vol_proba(self,volume,dist='lognormal')
                 else:
                     gt_dims = self.sizes[int(self.labels[i]) - 1]
                     #from predict import pred_by_size
@@ -277,7 +280,8 @@ class ObjectReasoner():
                     vol_ranking = pred_by_vol(self,volume, i)
 
                 final_rank = Counter()
-                if self.set =='KMi' and not knowledge_only: class_set = list(np.unique(current_ranking[:,0]))
+                if self.set =='KMi' and not knowledge_only:
+                    class_set = list(np.unique(current_ranking[:,0]))
                 elif self.set =='KMi' and knowledge_only:
                     for h,cat in enumerate(list(vol_ranking['class'])):
                         clabel = self.mapper[cat]

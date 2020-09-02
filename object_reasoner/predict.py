@@ -111,33 +111,45 @@ def pred_by_vol(ReasonerObj,volume,current_index):
     return ranking #[:5, :] # keep track of top 5
 
 
-def pred_vol_proba(ReasonerObj,estimated_volume, tol=0.05):
+def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.05):
 
     """Make predictions base on size distributions in KMi object catalogue
     See object_sizes.py for more details on how these distributions are derived
     # volume ranges are computed based on set tol (tolerance) as percentage of volume, e.g.. 5%
     """
-    vol_min, vol_max = float(estimated_volume - tol*estimated_volume), float(estimated_volume + tol*estimated_volume)
-    cats,probabilities = [],[]
+    vol_min, vol_max = float(estimated_volume - tol * estimated_volume), float(
+        estimated_volume + tol * estimated_volume)
+    cats, probabilities = [], []
     for k in ReasonerObj.KB.keys():
-        cat=k #copy to adjust based labels in index
-        if k =='paper':cat='pile_of_papers'
-        elif k =='assembly sign': cat ='fire alarm assembly sign'
-        cat = cat.replace(' ','_').replace('/','_')
-        if cat not in ReasonerObj.remapper.values(): continue #only across training classes (e.g., 60 instead of 65)
+        cat = k  # copy to adjust based labels in index
+        if k == 'paper':
+            cat = 'pile_of_papers'
+        elif k == 'assembly sign':
+            cat = 'fire alarm assembly sign'
+        cat = cat.replace(' ', '_').replace('/', '_')
+        if cat not in ReasonerObj.remapper.values(): continue  # only across training classes (e.g., 60 instead of 65)
         try:
             dist_name = ReasonerObj.KB[k]['distribution']
-            params = ReasonerObj.KB[k]['params']
+            if dist=='lognormal' and dist_name !='uniform' and dist_name is not None: #use lognormal representation
+                dist_name = stats.lognorm.name
+                params = ReasonerObj.KB[k]['lognorm-params']
+            elif ReasonerObj.KB[k]['distribution']=='uniform': #not enough data points, it was marked as uniform
+                dist_name = ReasonerObj.KB[k]['distribution']
+                params = ReasonerObj.KB[k]['params']
+            else: #use representation computed as best fit in object_sizes.py
+                dist_name = ReasonerObj.KB[k]['distribution']
+                params = ReasonerObj.KB[k]['params']
             if dist_name is not None:  # probability as area under the curve for given volume range
-                dist = getattr(stats, dist_name)
-                proba = dist.cdf(vol_max, *params) - \
-                dist.cdf(vol_min, *params)
+                distmethod = getattr(stats, dist_name)
+                proba = distmethod.cdf(vol_max, *params) - \
+                        distmethod.cdf(vol_min, *params)
             else:
-                proba = 0. #originally blacklisted object
-        except KeyError: #DoQ only object
+                proba = 0.  # originally blacklisted object
+        except KeyError:  # DoQ only object
             proba = 0.
         cats.append(cat)
         probabilities.append(proba)
+
     #all_scores = np.column_stack((list(ReasonerObj.KB.keys()), probabilities)])
     dtype = [('class',object),('proba',float)]
     all_scores = np.empty((len(cats),), dtype=dtype)
