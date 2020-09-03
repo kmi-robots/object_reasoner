@@ -111,14 +111,17 @@ def pred_by_vol(ReasonerObj,volume,current_index):
     return ranking #[:5, :] # keep track of top 5
 
 
-def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.05):
+def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.0001):
 
     """Make predictions base on size distributions in KMi object catalogue
     See object_sizes.py for more details on how these distributions are derived
-    # volume ranges are computed based on set tol (tolerance) as percentage of volume, e.g.. 5%
+    # volume ranges are computed based on set (fixed) tolerance
     """
-    vol_min, vol_max = float(estimated_volume - tol * estimated_volume), float(
-        estimated_volume + tol * estimated_volume)
+    #vol_min, vol_max = float(estimated_volume - tol * estimated_volume), float(
+    #    estimated_volume + tol * estimated_volume)
+    #avoided percentage of volume for tolerance to not create too much bias
+    vol_min, vol_max = float(estimated_volume - tol), float(
+        estimated_volume + tol)
     cats, probabilities = [], []
     for k in ReasonerObj.KB.keys():
         cat = k  # copy to adjust based labels in index

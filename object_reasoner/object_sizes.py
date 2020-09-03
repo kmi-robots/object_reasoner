@@ -32,6 +32,7 @@ DISTRIBUTIONS = [
 
 blacklisted = ['power cord', 'person']
 clothing = ['shoes', 'hanged coat/sweater']
+N=40 #number of points to decide on uniform dist
 
 def get_csv_data(filepath, source='DoQ'):
     """
@@ -57,9 +58,13 @@ def dict_from_csv(csv_gen, classes, base=None):
             # find all class names matching row keywords
             tgts = []
             for cat in classes:
+
                 if (cat in obj_name or cat in super_class.lower()) \
-                    and "piano" not in obj_name \
-                    and "lamppost" not in obj_name \
+                    and (not "piano" in obj_name) \
+                    and (not "lamppost" in obj_name) \
+                    and (not (cat == 'chair' and "armchair" in obj_name)) \
+                    or (cat == 'sofa' and "armchair" in obj_name) \
+                    or (cat == 'sofa' and "couch" in super_class.lower()) \
                     or (cat == 'desk' and "table" in obj_name) \
                     or (cat == 'big screen' and "tv" in obj_name) \
                     or (cat == 'wallpaper' and "WallArt" in super_class)\
@@ -108,12 +113,12 @@ def dict_from_csv(csv_gen, classes, base=None):
                     base[row[0]]["DoQ_" + row[2]].append(row[3:])
     return base
 
-def derive_distr(data_dict,x=20):
+def derive_distr(data_dict):
     for key in data_dict.keys():
         start = time.time()
         volumes = np.array(data_dict[key]['volume_m3']).astype('float')
         try:
-            if len(volumes)>=x:
+            if len(volumes)>N:
                 _, bins, _ = plt.hist(volumes, bins='auto', density=True)
                 y, x = np.histogram(volumes, bins='auto', density=True)
                 x = (x + np.roll(x, -1))[:-1] / 2.0
@@ -156,27 +161,54 @@ def derive_distr(data_dict,x=20):
     return data_dict
 
 
-def log_normalise(obj_dict, x=20):
+def log_normalise(obj_dict,tolerance= 0.05):
     """
     Only find theoretical lognormal when more than x points available
     """
+    #probs=[]
     for key in obj_dict.keys():
         try:
             volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
             dims = np.array(obj_dict[key]['dims_cm']).astype('float')
-            mean_dims = np.mean(dims, axis=0)
-            if len(volumes)>=x:
+            mean_dims = np.mean(dims, axis=0).tolist()
+            #if key != 'wallpaper' and not key in clothing:  # avoid memory leak for big lists
+            #    plot_hist(volumes, title=key, mean_cm=mean_dims)
+
+            if len(volumes)>=N:
+                dist = stats.lognorm
+                p = dist.fit(volumes)
+                #if key != 'wallpaper' and not key in clothing:  # avoid memory leak for big lists
+                #    plot_hist(volumes, title=key, mean_cm=mean_dims)
                 obj_dict[key]['lognorm-params'] = stats.lognorm.fit(volumes)
-                if key=='wallpaper' or key in clothing: continue
-                else: #avoid memory leak for big lists
-                    plot_hist(volumes, title=key, mean_cm=mean_dims)
-            else: # object with uniform distr between min and max
+                obj_dict[key]['uniform-params'] = None
+            elif len(volumes)==2: #was already an hardcoded min max # object with uniform distr between min and max
+                dist = stats.uniform
+                p = dist.fit(volumes)
+                #if key!='wallpaper' and not key in clothing: #avoid memory leak for big lists
+                #    plot_hist(volumes, title=key, mean_cm=mean_dims, uniform=True)
                 obj_dict[key]['lognorm-params'] = None
-                if key=='wallpaper' or key in clothing: continue
-                else: #avoid memory leak for big lists
-                    plot_hist(volumes, title=key, mean_cm=mean_dims, uniform=True)
+                obj_dict[key]['uniform-params'] = p
+            else: #object with not enough data points retrieved, create uniform from average value
+                # to lower incidence of potential outliers
+                #fit uniform instead
+                meandims_min = [(d - tolerance * d) for d in mean_dims]  # min-max range of dims
+                meandims_max = [(d + tolerance * d) for d in mean_dims]
+                meanvol_min, meanvol_max = reduce(operator.mul, meandims_min, 1), reduce(operator.mul, meandims_max, 1)
+                vols_uni = [float(meanvol_min / 10 ** 6), float(meanvol_max / 10 ** 6)]
+                #if key!='wallpaper' and not key in clothing: #avoid memory leak for big lists
+                #    plot_hist(vols_uni, title=key, mean_cm=mean_dims, uniform=True)
+                dist = stats.uniform
+                p = dist.fit(vols_uni)
+                obj_dict[key]['lognorm-params'] = None
+                obj_dict[key]['uniform-params'] = p
+
+            #probs.append((key,(dist.cdf((0.05 + 0.0001), *p) - \
+            #       dist.cdf((0.05 - 0.0001), *p))))
+
         except: #DoQ only object or blacklisted
             obj_dict[key]['lognorm-params'] = None
+            obj_dict[key]['uniform-params'] = None
+    #print(sorted(probs, key=lambda x: x[1],reverse=True))
     return obj_dict
 
 def plot_pdf(plt, obj_name, x,distribution,params):
@@ -187,6 +219,7 @@ def plot_pdf(plt, obj_name, x,distribution,params):
     plt.ylabel("Density [normalised bin counts]")
     plt.legend(loc='best')
     plt.show()
+
 
 def plot_hist(data_list,title='', mean_cm=None,uniform=False):
     """Plots histogram of list of float values"""
@@ -203,10 +236,6 @@ def plot_hist(data_list,title='', mean_cm=None,uniform=False):
     plt.legend()
     plt.show()
 
-def load_obj_catalogue(path_to_json):
-    with open('./data/KMi_obj_catalogue.json', 'r') as fin:
-        matches = json.load(fin)
-    return matches
 
 def compute_size_proba(obj_name, obj_dict, estimated_size, tolerance = 0.000001): # 1 cm3 tolerance
     try:
@@ -239,24 +268,30 @@ def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.05): #5% of obj dim
         elif obj_name == 'podium': dims = [98.04, 46., 200.]
         elif obj_name == 'welcome pod': dims = [86.36, 48.26, 24.64]
         elif obj_name == 'printer': dims = [96.5, 119.4, 65.4]
-        elif obj_name == 'recording sign': dims = [19.5, 22., 135.]
+        elif obj_name == 'recording sign': dims = [19.5, 22., 13.5]
         elif obj_name == 'robot': dims = [38., 35., 31.]
-        elif obj_name in blacklisted:
-            obj_dict[obj_name]['dims_cm'] = None #size not relevant for wires
-            obj_dict[obj_name]['volume_cm3'] = None
-            obj_dict[obj_name]['volume_m3'] = None
-            continue # skip remainder
-        """
+        elif obj_name =='fire extinguisher':
+            dims_min = [29., 56.5, 16.]
+            dims_max = [30.,60.,18.9]
+
         elif obj_name == 'door':
             dims_min = [61.0, 203.2, 3.5]
             dims_max = [121.9, 300., 4.4]
         elif obj_name == 'window':
             dims_min = [50.8, 61.0, 3.5]
             dims_max = [200., 200., 4.5]
-        """
-        #if obj_name not in ['door', 'window', 'person']:
-        dims_min = [(d - tolerance*d) for d in dims] #min-max range of dims
-        dims_max = [(d + tolerance *d) for d in dims]
+
+        elif obj_name in blacklisted:
+            obj_dict[obj_name]['dims_cm'] = None #size not relevant for wires
+            obj_dict[obj_name]['volume_cm3'] = None
+            obj_dict[obj_name]['volume_m3'] = None
+            continue # skip remainder
+        if obj_name not in ['fire extinguisher','window','door']:
+            dims_min = [(d - tolerance*d) for d in dims] #min-max range of dims
+            dims_max = [(d + tolerance *d) for d in dims]
+        else:
+            dims_min = [(d - tolerance * d) for d in dims_min]  # min-max range of dims
+            dims_max = [(d + tolerance * d) for d in dims_max]
         obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
         vol_min, vol_max = reduce(operator.mul,dims_min, 1),reduce(operator.mul,dims_max, 1)
         obj_dict[obj_name]['volume_cm3'] = [vol_min, vol_max]
@@ -360,9 +395,14 @@ def integrate_scraped(obj_dict, path_to_csvs):
 
 def remove_outliers(obj_dict):
     for key in obj_dict.keys():
-
         try:
             volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
+            """
+            if key != 'wallpaper' and key !='toy' and key not in clothing:
+                if len(volumes) > N:
+                    plot_hist(volumes, title=key)
+                else: plot_hist(volumes, title=key, uniform=True)
+            """
             dims = np.array(obj_dict[key]['dims_cm']).astype('float')
             #density set to false here to return bin count
             n, bins = np.histogram(volumes, bins='auto') #, density=False)
@@ -379,11 +419,49 @@ def remove_outliers(obj_dict):
                             del new_volumes[i]
                             del new_dims[i]
                             break
+                """
+                if key != 'wallpaper' and key not in clothing:
+                    if len(new_volumes) > N:
+                        plot_hist(new_volumes, title=key)
+                    else:
+                        plot_hist(new_volumes, title=key, uniform=True)
+                """
                 #update dict with new values
                 obj_dict[key]['volume_m3'] = new_volumes
                 obj_dict[key]['dims_cm'] = new_dims
             # else no outliers found, do nothing
         except: continue #blacklisted or DoQ only object
+    return obj_dict
+
+def select_thresholded(obj_dict):
+    """
+    Subsample data known to be "bimodal" based on a given threshold
+    values were hardcoded here after visual inspection of original histograms
+    """
+    bis = [('rubbish bin',0.4,'min'), ('whiteboard',0.2,'min'), \
+           ('toy',0.3,'min'), ('lamp',0.9,'min'), ('foosball table',0.2,'maj')]
+
+    for name,th,flag in bis:
+        try:
+            volumes = np.array(obj_dict[name]['volume_m3']).astype('float')
+            dims = obj_dict[name]['dims_cm']
+        except:  # empty point or object not in catalogue, skip
+            continue
+        if flag =='min':
+            idxs = np.where(volumes >= th)[0].tolist() #indices to remove in dims
+            volumes = volumes[volumes < th]
+        elif flag=='maj':
+            idxs = np.where(volumes <= th)[0].tolist() #indices to remove in dims
+            volumes = volumes[volumes > th]
+        else:
+            print("invalid data flag")
+            sys.exit(0)
+        #remove equivalent indices from dims
+        for idx in sorted(idxs, reverse=True): del dims[idx]
+        # and update object dictionary
+        obj_dict[name]['volume_m3'] = volumes.tolist()
+        obj_dict[name]['dims_cm'] = dims
+
     return obj_dict
 
 def main():
@@ -395,7 +473,7 @@ def main():
     parser.add_argument('--doq', help="Path to DoQ csv file", default=None, required=False)
     parser.add_argument('--customc', nargs='+',
                         default=['projector', 'electric heater', 'podium', 'welcome pod', 'printer',
-                                 'recording sign','power cord','robot','person'],
+                                 'recording sign','power cord','robot','person', 'fire extinguisher', 'door', 'window'],
                         help="List of classes with custom dimensions", required=False)
     parser.add_argument('--fullfit', nargs='?', default=False,
                         help="If True, finds best fitting distribution for each object with enough measurements", required=False)
@@ -424,10 +502,13 @@ def main():
     else:
         print("Creating catalogue from raw data")
         matches = dict_from_csv(shp_gen, CLASSES)
-        matches = add_hardcoded(matches, args.customc)
-        matches = handle_clothing(matches, args.anthropo)
+        matches = remove_outliers(matches)
         matches = integrate_scraped(matches, scrap_csvs)
         matches = remove_outliers(matches)
+        matches = handle_clothing(matches, args.anthropo)
+        matches = add_hardcoded(matches, args.customc)
+        matches = select_thresholded(matches)
+
         if args.fullfit:
             print("Starting distribution fit from raw data...This may take a while to complete")
             matches = derive_distr(matches)
