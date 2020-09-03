@@ -185,7 +185,7 @@ class ObjectReasoner():
             combined = False
             volOnly = True
             novision = False
-            knowledge_only = True
+            knowledge_only = False
             foregroundextract = False
             pclcluster = False
 
@@ -320,8 +320,14 @@ class ObjectReasoner():
                     else:
                         if volOnly and not novision:
                             if self.set =='KMi':
-                                clabel = self.remapper[cname]
-                                vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
+                                try:
+                                    clabel = self.remapper[cname]
+                                    vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
+                                except IndexError:
+                                    #object is in Vision ranking but no size available
+                                    # fallback to vision score
+                                    final_rank[cname] = base_score
+                                    continue
                             else:
                                 vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, vol_score]) / 2

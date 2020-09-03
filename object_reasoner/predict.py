@@ -142,14 +142,23 @@ def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.0001):
             else: #use representation computed as best fit in object_sizes.py
                 dist_name = ReasonerObj.KB[k]['distribution']
                 params = ReasonerObj.KB[k]['params']
-            if dist_name is not None:  # probability as area under the curve for given volume range
-                distmethod = getattr(stats, dist_name)
-                proba = distmethod.cdf(vol_max, *params) - \
-                        distmethod.cdf(vol_min, *params)
-            else:
-                proba = 0.  # originally blacklisted object
-        except KeyError:  # DoQ only object
-            proba = 0.
+
+        except KeyError:  # object catalogue with limited fit (only log and uniform)
+            #proba = 0.
+            if ReasonerObj.KB[k]['lognorm-params'] is not None:
+                dist_name = 'lognorm'
+                params = ReasonerObj.KB[k]['lognorm-params']
+            elif ReasonerObj.KB[k]['uniform-params'] is not None:
+                dist_name = 'uniform'
+                params = ReasonerObj.KB[k]['uniform-params']
+            else: dist_name = None
+
+        if dist_name is not None:  # probability as area under the curve for given volume range
+            distmethod = getattr(stats, dist_name)
+            proba = distmethod.cdf(vol_max, *params) - \
+                    distmethod.cdf(vol_min, *params)
+        else:
+            proba = 0.  # originally blacklisted object
         cats.append(cat)
         probabilities.append(proba)
 
