@@ -171,7 +171,9 @@ class ObjectReasoner():
         print("Reasoning for correction ... ")
         start = time.time()
         non_processed_pcls = 0
+        non_depth_aval = 0
         no_corrected =0
+        nfallbacks = 0
         alpha = 4
         volOnly = True  # if True, dims based rankings are excluded
         combined = False  # if True, all types of ranking used
@@ -186,8 +188,9 @@ class ObjectReasoner():
             volOnly = True
             novision = False
             knowledge_only = False
-            foregroundextract = False
-            pclcluster = False
+            foregroundextract = True
+            pclcluster = True
+            epsilon = 0.0001 # conf threshold for size probas
 
         pred_counts = Counter()
         for i,dimage in enumerate(self.dimglist):  # for each depth image
@@ -206,9 +209,12 @@ class ObjectReasoner():
                 gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
                 pr_volume = self.volumes[current_prediction]  # ground truth volume and dims for current prediction
                 # pr_dims = self.sizes[current_prediction]
+            if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
+                no_corrected += 1
             if dimage is None:
                 # no synchronised depth data found
                 print("No depth data available for this RGB frame... Skipping size-based correction")
+                non_depth_aval += 1
                 continue
             """
             plt.imshow(dimage, cmap='Greys_r')
@@ -223,15 +229,15 @@ class ObjectReasoner():
                 #plt.imshow(cluster_bw, cmap='Greys_r')
                 #plt.show()
                 if cluster_bw is None: #problem with 2D clustering
-                    non_processed_pcls += 1
-                    print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
-                    gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
-                    print(gt_label)
-                    continue  # skip correction
-                masked_dmatrix = detect_contours(dimage,cluster_bw) #masks depth img based on largest contour
-                #plt.imshow(masked_dmatrix, cmap='Greys_r')
-                #plt.show()
-                obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+                    #non_processed_pcls += 1
+                    #print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
+                    #Revert to full image
+                    obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+                else: #mask depth img based on largest contour
+                    masked_dmatrix = detect_contours(dimage,cluster_bw)
+                    #plt.imshow(masked_dmatrix, cmap='Greys_r')
+                    #plt.show()
+                    obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
             else:
                 obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
             pcl_points = np.asarray(obj_pcl.points).shape[0]
@@ -256,7 +262,6 @@ class ObjectReasoner():
                 continue
 
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
-                no_corrected += 1
                 # If we detect a volume alpha times or more larger/smaller
                 # than object predicted by baseline, then hypothesise object needs correction
                 # actually need to correct, gives upper bound
@@ -281,7 +286,6 @@ class ObjectReasoner():
                     vol_ranking = pred_by_vol(self,volume, i)
 
                 final_rank = Counter()
-
                 if self.set =='KMi' and not knowledge_only:
                     class_set = list(np.unique(current_ranking[:,0]))
                 elif self.set =='KMi' and knowledge_only:
@@ -291,11 +295,24 @@ class ObjectReasoner():
                     #print(final_rank.most_common())
                     final_rank = final_rank.most_common(5)
                     winclass = self.remapper[final_rank[0][0]]
+                    winproba = final_rank[0][1]
+                    if winproba <= epsilon:
+                        #no matching measurement could be found
+                        # or not confident enough
+                        # skip and fallback to vision ranking
+                        #final_rank = current_ranking
+                        #winclass = current_label
+                        #print("Fallback mechanism")
+                        nfallbacks +=1
+                        continue
+
                     try: pred_counts[winclass] +=1
                     except KeyError: pred_counts[winclass] =1
                     self.predictions[i, :] = final_rank
                     continue
-                else: class_set = list(np.unique(current_min_ranking[:,0]))
+
+                else:
+                    class_set = list(np.unique(current_min_ranking[:,0]))
 
                 for cname in class_set:
                     try:
@@ -323,6 +340,10 @@ class ObjectReasoner():
                                 try:
                                     clabel = self.remapper[cname]
                                     vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
+                                    if vol_score <=epsilon:
+                                        #no size match or not confident enough for this class,fallback to Vision score
+                                        final_rank[cname] = base_score
+                                        continue
                                 except IndexError:
                                     #object is in Vision ranking but no size available
                                     # fallback to vision score
@@ -334,7 +355,12 @@ class ObjectReasoner():
                         elif volOnly and novision:
                             if self.set == 'KMi': #only based on size prediction
                                 clabel = self.remapper[cname]
-                                final_rank[cname] = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
+                                vol_score = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
+                                if vol_score <= epsilon:
+                                    # no size match or not confident enough, fallback to Vision score
+                                    final_rank[cname] = base_score
+                                else:
+                                    final_rank[cname] = vol_score
                             else:
                                 final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
                         elif not volOnly and novision:
@@ -345,6 +371,8 @@ class ObjectReasoner():
                             dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
                             dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
                             final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
+
+
                 if self.set =='KMi': final_rank = final_rank.most_common(5)
                 else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
                 delta = 5 - len(final_rank)
@@ -359,8 +387,10 @@ class ObjectReasoner():
             eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
-        print("%s image predictions were corrected " % str(no_corrected))
-        print("%s images were skipped and kept the same " % str(non_processed_pcls))
+        print("{} out of {} images need correction ".format(no_corrected,len(self.dimglist)))
+        print("{} out of {} images were not corrected, no depth data available ".format(non_depth_aval,len(self.dimglist)))
+        print("{} images {} not corrected due to processing issues".format(non_processed_pcls,len(self.dimglist)))
+        print("for {} out of {} images size predictor was not confident enough, fallback to ML score".format(nfallbacks,len(self.dimglist)))
         return
 
 

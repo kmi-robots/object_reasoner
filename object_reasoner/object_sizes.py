@@ -241,7 +241,7 @@ def compute_size_proba(obj_name, obj_dict, estimated_size, tolerance = 0.000001)
         print("Please provide a valid object name / reference catalogue")
         sys.exit(0)
 
-def add_hardcoded(obj_dict, bespoke_list, ref_csv, tolerance= 0.1): #10% of obj dim
+def add_hardcoded(obj_dict, bespoke_list, ref_csv, tolerance= 0.05): #10% of obj dim
     """
     # Add hardcoded entries
     # overwrites ShapeNet if class present in both (more accurate info)

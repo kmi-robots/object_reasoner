@@ -123,13 +123,9 @@ def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.0001):
     vol_min, vol_max = float(estimated_volume - tol), float(
         estimated_volume + tol)
     cats, probabilities = [], []
-    for k in ReasonerObj.KB.keys(): #TODO remove hardcoded label adjustments
-        cat = k  # copy to adjust based labels in index
-        if k == 'paper':
-            cat = 'pile_of_papers'
-        elif k == 'assembly sign':
-            cat = 'fire alarm assembly sign'
-        cat = cat.replace(' ', '_').replace('/', '_')
+    for k in ReasonerObj.KB.keys():
+
+        cat = k.replace(' ', '_').replace('/', '_')  # copy to adjust based labels in index
         if cat not in ReasonerObj.remapper.values(): continue  # only across training classes (e.g., 60 instead of 65)
         try:
             dist_name = ReasonerObj.KB[k]['distribution']
