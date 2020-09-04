@@ -123,7 +123,7 @@ def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.0001):
     vol_min, vol_max = float(estimated_volume - tol), float(
         estimated_volume + tol)
     cats, probabilities = [], []
-    for k in ReasonerObj.KB.keys():
+    for k in ReasonerObj.KB.keys(): #TODO remove hardcoded label adjustments
         cat = k  # copy to adjust based labels in index
         if k == 'paper':
             cat = 'pile_of_papers'

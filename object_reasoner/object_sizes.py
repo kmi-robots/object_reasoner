@@ -30,10 +30,6 @@ DISTRIBUTIONS = [
         stats.vonmises,stats.vonmises_line,stats.wald,stats.weibull_min,stats.weibull_max,stats.wrapcauchy
     ]
 
-blacklisted = ['power cord', 'person']
-clothing = ['shoes', 'hanged coat/sweater']
-N=40 #number of points to decide on uniform dist
-
 def get_csv_data(filepath, source='DoQ'):
     """
     Yield a large csv row by row to avoid memory overload
@@ -49,16 +45,14 @@ def get_csv_data(filepath, source='DoQ'):
             datareader = csv.reader(csvfile, delimiter=',')
             for row in datareader: yield row
 
-def dict_from_csv(csv_gen, classes, base=None):
-    if base is None: #ShapeNet
-        base = {}
+def dict_from_csv(csv_gen, classes, base, source='ShapeNet'):
+    if source =='ShapeNet':
         for row in csv_gen:
             obj_name = row[3]
             super_class = row[1]
             # find all class names matching row keywords
             tgts = []
             for cat in classes:
-
                 if (cat in obj_name or cat in super_class.lower()) \
                     and (not "piano" in obj_name) \
                     and (not "lamppost" in obj_name) \
@@ -72,7 +66,6 @@ def dict_from_csv(csv_gen, classes, base=None):
                     or (cat == 'rubbish bin' and "can" in obj_name)\
                     or ('food' in cat and "FoodItem" in super_class):
                     tgts.append(cat)
-
             if len(tgts)>0:
                 if len(tgts)==1: #row[3] in classes:
                     cat = tgts[0]
@@ -88,7 +81,7 @@ def dict_from_csv(csv_gen, classes, base=None):
                     #tgts.sort(key=len,reverse=True) #sort by descending length go for longest matching substring (e.g., bookcase instead of just book)
                 try:
                     base[cat]['dims_cm'].append([float(dim) for dim in row[7].split('\,')])
-                except:
+                except: #first time object is added to the dictionary
                     base[cat] = {}
                     base[cat]['dims_cm'] = []
                     base[cat]['volume_cm3'] = []
@@ -103,7 +96,6 @@ def dict_from_csv(csv_gen, classes, base=None):
             if row[0] in classes:
                 try:
                     base[row[0]]["DoQ_" + row[2]].append(row[3:])
-
                 except KeyError:
                     try:
                         base[row[0]]["DoQ_" + row[2]] = []
@@ -113,7 +105,7 @@ def dict_from_csv(csv_gen, classes, base=None):
                     base[row[0]]["DoQ_" + row[2]].append(row[3:])
     return base
 
-def derive_distr(data_dict):
+def derive_distr(data_dict,N):
     for key in data_dict.keys():
         start = time.time()
         volumes = np.array(data_dict[key]['volume_m3']).astype('float')
@@ -161,7 +153,7 @@ def derive_distr(data_dict):
     return data_dict
 
 
-def log_normalise(obj_dict,tolerance= 0.05):
+def log_normalise(obj_dict,N,clothing,tolerance= 0.05):
     """
     Only find theoretical lognormal when more than x points available
     """
@@ -173,7 +165,6 @@ def log_normalise(obj_dict,tolerance= 0.05):
             mean_dims = np.mean(dims, axis=0).tolist()
             #if key != 'wallpaper' and not key in clothing:  # avoid memory leak for big lists
             #    plot_hist(volumes, title=key, mean_cm=mean_dims)
-
             if len(volumes)>=N:
                 dist = stats.lognorm
                 p = dist.fit(volumes)
@@ -250,53 +241,39 @@ def compute_size_proba(obj_name, obj_dict, estimated_size, tolerance = 0.000001)
         print("Please provide a valid object name / reference catalogue")
         sys.exit(0)
 
-def add_hardcoded(obj_dict, bespoke_list, tolerance= 0.05): #5% of obj dim
+def add_hardcoded(obj_dict, bespoke_list, ref_csv, tolerance= 0.1): #10% of obj dim
+    """
     # Add hardcoded entries
     # overwrites ShapeNet if class present in both (more accurate info)
+    # if full==False hardcodes only objects in bespoke_list, otherwise hardcodes all entries found in ref_csv
+    returns: object dictionary with hardcoded values + list of objects for which no measures could be defined
     """
-    #wire standards
-    lengths_cm2 = np.expand_dims(np.arange(start=10., stop=200.),axis=1)
-    cross_sections_mm2 = [0.5, 0.75, 1, 1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95, 120, 150,
-                              185, 240, 300, 400, 500, 630, 800, 1000]
-    cross_sections_cm2 = np.expand_dims(np.array([float(cs / 100.) for cs in cross_sections_mm2]), axis=1)
-    vols_cm3 = np.dot(lengths_cm2,cross_sections_cm2.T)
-    """
-    for obj_name in bespoke_list:
+    blacklisted =[]
+    for i,row in enumerate(ref_csv):
+        if i ==0: continue
+        obj_name = row[0].replace("_", " ")
         obj_dict[obj_name] = {}
-        if obj_name == 'projector': dims = [11.8, 41.1, 26.8]
-        elif obj_name == 'electric heater': dims = [12.5, 24.5, 25.]
-        elif obj_name == 'podium': dims = [98.04, 46., 200.]
-        elif obj_name == 'welcome pod': dims = [86.36, 48.26, 24.64]
-        elif obj_name == 'printer': dims = [96.5, 119.4, 65.4]
-        elif obj_name == 'recording sign': dims = [19.5, 22., 13.5]
-        elif obj_name == 'robot': dims = [38., 35., 31.]
-        elif obj_name =='fire extinguisher':
-            dims_min = [29., 56.5, 16.]
-            dims_max = [30.,60.,18.9]
 
-        elif obj_name == 'door':
-            dims_min = [61.0, 203.2, 3.5]
-            dims_max = [121.9, 300., 4.4]
-        elif obj_name == 'window':
-            dims_min = [50.8, 61.0, 3.5]
-            dims_max = [200., 200., 4.5]
+        if row[1] != '':
+            dims_min = [float(v) for v in row[1:4]]
+            dims_max = [float(v) for v in row[4:]]
 
-        elif obj_name in blacklisted:
-            obj_dict[obj_name]['dims_cm'] = None #size not relevant for wires
+        elif row[1]=='' and row[4] !='':
+            dims = [float(v) for v in row[4:]]
+            dims_min = [(d - tolerance * d) for d in dims]  # min-max range of dims
+            dims_max = [(d + tolerance * d) for d in dims]
+        else:
+            blacklisted.append(obj_name) #blacklisted object
+            obj_dict[obj_name]['dims_cm'] = None
             obj_dict[obj_name]['volume_cm3'] = None
             obj_dict[obj_name]['volume_m3'] = None
-            continue # skip remainder
-        if obj_name not in ['fire extinguisher','window','door']:
-            dims_min = [(d - tolerance*d) for d in dims] #min-max range of dims
-            dims_max = [(d + tolerance *d) for d in dims]
-        else:
-            dims_min = [(d - tolerance * d) for d in dims_min]  # min-max range of dims
-            dims_max = [(d + tolerance * d) for d in dims_max]
-        obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
-        vol_min, vol_max = reduce(operator.mul,dims_min, 1),reduce(operator.mul,dims_max, 1)
-        obj_dict[obj_name]['volume_cm3'] = [vol_min, vol_max]
-        obj_dict[obj_name]['volume_m3'] = [float(vol_min / 10 ** 6), float(vol_max / 10 ** 6)]
-    return obj_dict
+            continue
+        if obj_name in bespoke_list: # update dictionary only for give set of objects
+            obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
+            vol_min, vol_max = reduce(operator.mul, dims_min, 1), reduce(operator.mul, dims_max, 1)
+            obj_dict[obj_name]['volume_cm3'] = [vol_min, vol_max]
+            obj_dict[obj_name]['volume_m3'] = [float(vol_min / 10 ** 6), float(vol_max / 10 ** 6)]
+    return obj_dict, blacklisted
 
 
 def parse_anthro(csv_gen, unit ='mm'):
@@ -305,7 +282,7 @@ def parse_anthro(csv_gen, unit ='mm'):
     """
     return [float(row[1])/10. for i,row in enumerate(csv_gen) if i>0]
 
-def handle_clothing(obj_dict, path_to_anthropometrics):
+def handle_clothing(obj_dict, path_to_anthropometrics, clothing):
     """
     Derive fitted clothes measurements from human anthropometrics
     Based on ANSUR II (2012) public data retrieved from openlab.psu.edu
@@ -341,11 +318,10 @@ def handle_clothing(obj_dict, path_to_anthropometrics):
         obj_dict[obj_name]['volume_m3'] = [float(vol / 10 ** 6) for vol in volumes]
     return obj_dict
 
-def integrate_scraped(obj_dict, path_to_csvs):
+def integrate_scraped(obj_dict, path_to_csvs,remainder_list):
     weirdos = []
     for csvp in path_to_csvs:
         scrap_gen = get_csv_data(csvp, source='scraper')
-
         for i,row in enumerate(scrap_gen):
             if i == 0: continue #skip header
             obj_name = row[0].replace('_', ' ')
@@ -370,18 +346,17 @@ def integrate_scraped(obj_dict, path_to_csvs):
                     dim_list.append(0.25)#add depth without compromising volume too much
                 if unit=='mm': #convert to cm first
                     dim_list= [float(d/ 10) for d in dim_list]
-                try:
-                    obj_dict[obj_name]['dims_cm'].append(dim_list)
-                    vol = reduce(operator.mul, dim_list, 1)
-                    obj_dict[obj_name]['volume_cm3'].append(vol)
-                    obj_dict[obj_name]['volume_m3'].append(float(vol / 10 ** 6))
-                except:
-                    obj_dict[obj_name] = {}
-                    obj_dict[obj_name]['dims_cm'] = []
-                    obj_dict[obj_name]['volume_cm3'] = []
-                    obj_dict[obj_name]['volume_m3'] = []
 
-                    obj_dict[obj_name]['dims_cm'].append(dim_list)
+                if obj_name in remainder_list:
+                    try:
+                        obj_dict[obj_name]['dims_cm'].append(dim_list)
+                    except:
+                        obj_dict[obj_name] = {}
+                        obj_dict[obj_name]['dims_cm'] = []
+                        obj_dict[obj_name]['volume_cm3'] = []
+                        obj_dict[obj_name]['volume_m3'] = []
+                        obj_dict[obj_name]['dims_cm'].append(dim_list)
+
                     vol = reduce(operator.mul, dim_list, 1)
                     obj_dict[obj_name]['volume_cm3'].append(vol)
                     obj_dict[obj_name]['volume_m3'].append(float(vol / 10 ** 6))
@@ -393,8 +368,8 @@ def integrate_scraped(obj_dict, path_to_csvs):
                 continue
     return obj_dict
 
-def remove_outliers(obj_dict):
-    for key in obj_dict.keys():
+def remove_outliers(obj_dict,remainder_list,clothing):
+    for key in remainder_list:
         try:
             volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
             """
@@ -469,24 +444,36 @@ def main():
     parser.add_argument('shp', help="Path to ShapeNetSem csv file")
     parser.add_argument('scrap', help="Path to Web-scraped csv files")
     parser.add_argument('anthropo', help="Path to anthropometric data")
-    parser.add_argument('classes', help="Path to txt file listing the target object classes")
+    parser.add_argument('--classes', help="Path to class index, json file",default='./data/KMi-set-2020/class_to_index.json',required=False)
     parser.add_argument('--doq', help="Path to DoQ csv file", default=None, required=False)
     parser.add_argument('--customc', nargs='+',
                         default=['projector', 'electric heater', 'podium', 'welcome pod', 'printer',
                                  'recording sign','power cord','robot','person', 'fire extinguisher', 'door', 'window'],
                         help="List of classes with custom dimensions", required=False)
-    parser.add_argument('--fullfit', nargs='?', default=False,
+    parser.add_argument('--cloth', nargs='+',
+                        default=['shoes', 'hanged coat/sweater'],
+                        help="List of clothing classes to be modelled with anthropometrics", required=False)
+    parser.add_argument('--fullfit', action = 'store_true',
                         help="If True, finds best fitting distribution for each object with enough measurements", required=False)
+    parser.add_argument('--fullmanual', action = 'store_true',
+                        help="If True, only hardcoded measurements are used, otherwise external sources are integrated for specific objects",
+                        required=False)
+    parser.add_argument('--pmanual', default='./data/KMi_obj_catalogue_manual.csv',
+                        help="Path to csv with manually-defined/hardcoded measurements",
+                        required=False)
+    parser.add_argument('--N', default=40,
+                        help="Num of data points below which uniform distribution is used.",
+                        required=False)
 
     args = parser.parse_args()
-    #default DoQ data header
-    #HEADER = ['object', 'head', 'dim', 'mean', 'perc5', 'perc25', 'median', 'perc75', 'perc95', 'std']
     try:
+        hcsv_gen = get_csv_data(args.pmanual, source='hardcoded')
         shp_gen = get_csv_data(args.shp, source='ShapeNet')
         scrap_csvs = [os.path.join(args.scrap,fname) for fname in os.listdir(args.scrap)\
                       if fname[-3:]=='csv']
         with open(args.classes) as clfile:
-            CLASSES = [cl.split("\n")[0].replace("_", " ") for cl in clfile.readlines()]
+            CLASSES = [cl.replace("_", " ") for cl in json.load(clfile).keys()]
+            #[cl.split("\n")[0].replace("_", " ") for cl in clfile.readlines()]
     except Exception as e:
         print(str(e))
         print("Please provide valid input paths as specified in the helper")
@@ -497,31 +484,42 @@ def main():
         with open('./data/KMi_obj_catalogue.json', 'r') as fin:
             matches = json.load(fin)
         print("Starting lognormal fitting")
-        matches = log_normalise(matches)
+        matches = log_normalise(matches,args.N,args.cloth)
         print("Lognormal fitting complete")
     else:
-        print("Creating catalogue from raw data")
-        matches = dict_from_csv(shp_gen, CLASSES)
-        matches = remove_outliers(matches)
-        matches = integrate_scraped(matches, scrap_csvs)
-        matches = remove_outliers(matches)
-        matches = handle_clothing(matches, args.anthropo)
-        matches = add_hardcoded(matches, args.customc)
-        matches = select_thresholded(matches)
 
+        # Init catalogue with hardcoded objects
+        matches = {}
+        if args.fullmanual:
+            args.customc = CLASSES
+            matches,blacklisted = add_hardcoded(matches,args.customc,hcsv_gen)
+        else:
+            matches, blacklisted = add_hardcoded(matches, args.customc,hcsv_gen)
+            print("Adding more data from external sources")
+            # integrating extra measures only for those classes which are nor hardcoded nor marked as blacklisted
+            remainder = list(set(CLASSES)-set(args.customc)-set(blacklisted))
+            matches = dict_from_csv(shp_gen,remainder,matches,source='ShapeNet')
+            matches = remove_outliers(matches,remainder,args.cloth)
+            matches = integrate_scraped(matches,scrap_csvs,remainder)
+            matches = remove_outliers(matches,remainder,args.cloth)
+            matches = handle_clothing(matches,args.anthropo,args.cloth)
+            matches = select_thresholded(matches)
+            if args.doq is not None:  # add Google's DoQ set
+                # default DoQ data header
+                # HEADER = ['object', 'head', 'dim', 'mean', 'perc5', 'perc25', 'median', 'perc75', 'perc95', 'std']
+                try:
+                    doq_gen = get_csv_data(args.doq)
+                except:
+                    print("Please provide valid input paths as specified in the helper")
+                    return 0
+                matches = dict_from_csv(doq_gen,remainder, matches, source='DoQ')
         if args.fullfit:
             print("Starting distribution fit from raw data...This may take a while to complete")
-            matches = derive_distr(matches)
+            matches = derive_distr(matches,args.N)
         else:
             print("Starting lognormal fitting")
-            matches = log_normalise(matches)
-        if args.doq is not None: #add Google's DoQ set
-            try:
-                doq_gen = get_csv_data(args.doq)
-            except:
-                print("Please provide valid input paths as specified in the helper")
-                return 0
-            matches = dict_from_csv(doq_gen, CLASSES, base=matches)
+            matches = log_normalise(matches,args.N,args.cloth)
+
     #In both cases, save result locally
     print("Saving object catalogue under ./data ...")
     with open('./data/KMi_obj_catalogue.json', 'w') as fout:

@@ -23,11 +23,11 @@ class ObjectReasoner():
         start = time.time()
         if args.set =='arc':
             try:
-                with open('./data/obj_catalogue.json') as fin:
+                with open('./data/arc_obj_catalogue.json') as fin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
             except FileNotFoundError:
                 self.KB = init_obj_catalogue(args.test_base)
-                with open('./data/obj_catalogue.json', 'w') as fout:
+                with open('./data/arc_obj_catalogue.json', 'w') as fout:
                     json.dump(self.KB, fout)
             # Filter only known/novel objects
             self.known = dict((k, v) for k, v in self.KB.items() if v["known"] == True)
