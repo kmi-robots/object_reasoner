@@ -47,38 +47,48 @@ def get_csv_data(filepath, source='DoQ'):
 
 def dict_from_csv(csv_gen, classes, base, source='ShapeNet'):
     if source =='ShapeNet':
-        for row in csv_gen:
+        for h,row in enumerate(csv_gen):
+            if h==0: continue #skip header
             obj_name = row[3]
             super_class = row[1]
             # find all class names matching row keywords
             tgts = []
             for cat in classes:
-                if (cat in obj_name or cat in super_class.lower()) \
-                    and (not "piano" in obj_name) \
-                    and (not "lamppost" in obj_name) \
-                    and (not (cat == 'chair' and "armchair" in obj_name)) \
-                    or (cat == 'sofa' and "armchair" in obj_name) \
-                    or (cat == 'sofa' and "couch" in super_class.lower()) \
-                    or (cat == 'desk' and "table" in obj_name) \
+                if cat == obj_name or cat in obj_name: #exact or partial match
+                    if (not "piano" in obj_name) \
+                        and (not "lamppost" in obj_name) \
+                        and (not (cat == 'chair' and "armchair" in obj_name)):
+                        tgts.append((cat,obj_name))
+                #elif cat in super_class.lower():
+                #    tgts.append((cat, super_class.lower()))
+                elif (cat == 'sofa' and "armchair" in obj_name) \
+                    or (cat == 'cupboard' and "cabinet" in obj_name) \
                     or (cat == 'big screen' and "tv" in obj_name) \
-                    or (cat == 'wallpaper' and "WallArt" in super_class)\
-                    or (cat == 'plant vase' and "vase" in obj_name)\
-                    or (cat == 'rubbish bin' and "can" in obj_name)\
-                    or ('food' in cat and "FoodItem" in super_class):
-                    tgts.append(cat)
-            if len(tgts)>0:
-                if len(tgts)==1: #row[3] in classes:
-                    cat = tgts[0]
-                elif len(tgts)>1: #it matches more than one class
+                    or (cat == 'plant vase' and "vase" in obj_name) \
+                    or (cat == 'rubbish bin' and ("trash" in obj_name or "waste" in obj_name) ) \
+                    or (cat == 'headphones' and "earphone" in obj_name) \
+                    or (cat == 'desk' and "table" in obj_name):
+                    tgts.append((cat, obj_name))
 
-                    # if one of matches is already compound use that
-                    compounds = [t for t in tgts if ' ' in t]
-                    if len(compounds) > 0:
-                        cat = compounds[0]
+                elif (cat == 'sofa' and "couch" in super_class.lower()) \
+                    or (cat =='whiteboard' and super_class=='Whiteboard')\
+                    or (cat == 'wallpaper' and "WallArt" in super_class) \
+                    or ('food' in cat and "FoodItem" in super_class):
+                    tgts.append((cat, super_class.lower()))
+
+            if len(tgts)>0:
+                if len(tgts)==1: #only one match available
+                    cat = tgts[0][0]
+                else: #more than one match available
+                    #prefer exact match first
+                    exacts = [match for cl,match in tgts if cl==match]
+                    if len(exacts)>0:
+                        cat = exacts[0]
                     else:
-                        #treat tgts as compound word chunks and pick last one
-                        cat = tgts[-1]
-                    #tgts.sort(key=len,reverse=True) #sort by descending length go for longest matching substring (e.g., bookcase instead of just book)
+                        # partial match
+                        # assume it is a compound word - pick last token
+                        #print("Compound word in %s" % str(tgts))
+                        cat = tgts[0][1].split(' ')[-1]
                 try:
                     base[cat]['dims_cm'].append([float(dim) for dim in row[7].split('\,')])
                 except: #first time object is added to the dictionary
@@ -103,6 +113,7 @@ def dict_from_csv(csv_gen, classes, base, source='ShapeNet'):
                         base[row[0]] = {}
                         base[row[0]]["DoQ_" + row[2]] = []
                     base[row[0]]["DoQ_" + row[2]].append(row[3:])
+
     return base
 
 def derive_distr(data_dict,N):
@@ -161,8 +172,11 @@ def log_normalise(obj_dict,N,clothing,tolerance= 0.05):
     for key in obj_dict.keys():
         try:
             volumes = np.array(obj_dict[key]['volume_m3']).astype('float')
-            dims = np.array(obj_dict[key]['dims_cm']).astype('float')
-            mean_dims = np.mean(dims, axis=0).tolist()
+            try:
+                dims = np.array(obj_dict[key]['dims_cm']).astype('float')
+                mean_dims = np.mean(dims, axis=0).tolist()
+            except KeyError: #anthropometric data, mean dims not needed anyways (enough data points)
+                mean_dims=[]
             #if key != 'wallpaper' and not key in clothing:  # avoid memory leak for big lists
             #    plot_hist(volumes, title=key, mean_cm=mean_dims)
             if len(volumes)>=N:
@@ -318,7 +332,7 @@ def handle_clothing(obj_dict, path_to_anthropometrics, clothing):
         obj_dict[obj_name]['volume_m3'] = [float(vol / 10 ** 6) for vol in volumes]
     return obj_dict
 
-def integrate_scraped(obj_dict, path_to_csvs,remainder_list):
+def integrate_scraped(obj_dict, path_to_csvs,remainder_list,blacklist):
     weirdos = []
     for csvp in path_to_csvs:
         scrap_gen = get_csv_data(csvp, source='scraper')
@@ -346,8 +360,7 @@ def integrate_scraped(obj_dict, path_to_csvs,remainder_list):
                     dim_list.append(0.25)#add depth without compromising volume too much
                 if unit=='mm': #convert to cm first
                     dim_list= [float(d/ 10) for d in dim_list]
-
-                if obj_name in remainder_list:
+                if obj_name in remainder_list and obj_name not in blacklist:
                     try:
                         obj_dict[obj_name]['dims_cm'].append(dim_list)
                     except:
@@ -451,7 +464,7 @@ def main():
                                  'recording sign','power cord','robot','person', 'fire extinguisher', 'door', 'window'],
                         help="List of classes with custom dimensions", required=False)
     parser.add_argument('--cloth', nargs='+',
-                        default=['shoes', 'hanged coat/sweater'],
+                        default=['shoes', 'hanged coat sweater'],
                         help="List of clothing classes to be modelled with anthropometrics", required=False)
     parser.add_argument('--fullfit', action = 'store_true',
                         help="If True, finds best fitting distribution for each object with enough measurements", required=False)
@@ -494,15 +507,21 @@ def main():
             args.customc = CLASSES
             matches,blacklisted = add_hardcoded(matches,args.customc,hcsv_gen)
         else:
-            matches, blacklisted = add_hardcoded(matches, args.customc,hcsv_gen)
+            customc = args.customc + ['shoes', 'fire extinguisher sign', 'hanged coat sweater', 'microphone'\
+                                     , 'foosball table', 'guitar', 'fire alarm assembly sign', 'coat stand', 'office signs'\
+                                     , 'toilet sign', 'radiator', 'mug', 'emergency exit sign', 'drink can',\
+                                     'pigeon holes', 'handbag', 'pile of paper', 'desk phone']
+            matches, blacklisted = add_hardcoded(matches,customc,hcsv_gen)
             print("Adding more data from external sources")
             # integrating extra measures only for those classes which are nor hardcoded nor marked as blacklisted
-            remainder = list(set(CLASSES)-set(args.customc)-set(blacklisted))
+            remainder = list(set(CLASSES)-set(customc)-set(blacklisted))
+
             matches = dict_from_csv(shp_gen,remainder,matches,source='ShapeNet')
             matches = remove_outliers(matches,remainder,args.cloth)
-            matches = integrate_scraped(matches,scrap_csvs,remainder)
+            #matches = handle_clothing(matches, args.anthropo, args.cloth)
+            matches = integrate_scraped(matches,scrap_csvs,CLASSES,blacklisted)
             matches = remove_outliers(matches,remainder,args.cloth)
-            matches = handle_clothing(matches,args.anthropo,args.cloth)
+
             matches = select_thresholded(matches)
             if args.doq is not None:  # add Google's DoQ set
                 # default DoQ data header

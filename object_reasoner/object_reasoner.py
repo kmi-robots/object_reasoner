@@ -297,13 +297,12 @@ class ObjectReasoner():
                     winclass = self.remapper[final_rank[0][0]]
                     winproba = final_rank[0][1]
                     if winproba <= epsilon:
-                        #no matching measurement could be found
+                        # no matching measurement could be found
                         # or not confident enough
                         # skip and fallback to vision ranking
-                        #final_rank = current_ranking
-                        #winclass = current_label
-                        #print("Fallback mechanism")
                         nfallbacks +=1
+                        #print("Fell back due to this result")
+                        #print((winclass, winproba))
                         continue
 
                     try: pred_counts[winclass] +=1
