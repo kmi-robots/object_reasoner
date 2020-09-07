@@ -27,7 +27,7 @@ def pred_singlemodel(ReasonerObj, args):
 
     # For each test embedding, find Nearest Neighbour in prod space
     # Filter out classes which are not in the current N=20 test sample
-    predictions = np.empty((tgt_space.shape[0],5,2),dtype="object")
+    predictions = np.empty((tgt_space.shape[0],prod_space.shape[0],2),dtype="object")
 
     if args.set=='arc': # ARC2017 (simplified case) - 20 valid classes per run
         avg_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
@@ -55,8 +55,8 @@ def pred_singlemodel(ReasonerObj, args):
             l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
             all_dists = np.column_stack((ReasonerObj.plabels, l2dist.astype(np.object)))    # keep 2nd column as numeric
             ranking = all_dists[np.argsort(all_dists[:, 1])]                            # sort by distance, ascending
-            predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
-
+            #predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
+            predictions[i, :] = ranking.astype(np.object)
     return predictions, avg_predictions, min_predictions
 
 def pred_twostage(ReasonerObj, args):

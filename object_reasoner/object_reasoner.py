@@ -191,15 +191,19 @@ class ObjectReasoner():
             foregroundextract = True
             pclcluster = True
             epsilon = 0.0001 # conf threshold for size probas
+            all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
+            self.predictions = self.predictions[:, :5, :]
 
         pred_counts = Counter()
         for i,dimage in enumerate(self.dimglist):  # for each depth image
-            current_ranking = self.predictions[i, :]  # baseline predictions as (label, distance)
+              # baseline predictions as (label, distance)
             if self.min_predictions is not None:
                 # current_avg_ranking = self.avg_predictions[i,:]
                 current_min_ranking = self.min_predictions[i, :]
             else:
                 current_min_ranking = None
+
+            current_ranking = self.predictions[i, :]
             current_prediction = self.predictions[i, 0, 0]
             if self.set == 'KMi':
                 current_label = self.remapper[current_prediction]
@@ -285,6 +289,9 @@ class ObjectReasoner():
                     p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
                     vol_ranking = pred_by_vol(self,volume, i)
 
+                clist = current_ranking.tolist()
+                vision_rank = Counter((self.remapper[k], score) for k, score in clist)
+
                 final_rank = Counter()
                 if self.set =='KMi' and not knowledge_only:
                     class_set = list(np.unique(current_ranking[:,0]))
@@ -350,7 +357,9 @@ class ObjectReasoner():
                                     continue
                             else:
                                 vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+
                             final_rank[cname] = sum([base_score, vol_score]) / 2
+
                         elif volOnly and novision:
                             if self.set == 'KMi': #only based on size prediction
                                 clabel = self.remapper[cname]
