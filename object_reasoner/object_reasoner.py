@@ -181,6 +181,7 @@ class ObjectReasoner():
         knowledge_only = False
         foregroundextract = True
         pclcluster = True
+        reranking = False
 
         if self.set == 'KMi':
             # only based on volume
@@ -190,6 +191,7 @@ class ObjectReasoner():
             knowledge_only = False
             foregroundextract = True
             pclcluster = True
+            reranking = True
             epsilon = 0.0001 # conf threshold for size probas
             all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
             self.predictions = self.predictions[:, :5, :]
@@ -292,7 +294,6 @@ class ObjectReasoner():
                 clist = current_ranking.tolist()
                 vision_rank = Counter((self.remapper[k], score) for k, score in clist)
 
-                final_rank = Counter()
                 if self.set =='KMi' and not knowledge_only:
                     class_set = list(np.unique(current_ranking[:,0]))
                 elif self.set =='KMi' and knowledge_only:
@@ -317,81 +318,91 @@ class ObjectReasoner():
                     self.predictions[i, :] = final_rank
                     continue
 
-                else:
-                    class_set = list(np.unique(current_min_ranking[:,0]))
+                else: class_set = list(np.unique(current_min_ranking[:,0]))
 
-                for cname in class_set:
-                    try:
-                        if self.set =='KMi':
-                            base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
-                        else:
-                            base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
-                    except:
-                        #class is not in the base top-5
-                        base_score = 0.
-                    if combined:
-                        if novision:
-                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                            vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                            final_rank[cname] = sum([dim_p1_score, dim_p2_score, vol_score]) / 3
-                        else:
-                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                            vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                            final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
-                    else:
-                        if volOnly and not novision:
+                final_rank = Counter()
+                if reranking:
+                    #TODO compare vision_rank with vol_ranking
+                    # if vision_rank includes class with near-zero prob in vol ranking remove them
+                    # for each removed one in descending score, replace with one class from vol_ranking (descending order)
+                    # finally, re-rank this new object list based on its original vision-based similarity score
+                    # init final_rank with this final re-ranked list
+                    continue
+                else:
+                    for cname in class_set:
+                        try:
                             if self.set =='KMi':
-                                try:
-                                    clabel = self.remapper[cname]
-                                    vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
-                                    if vol_score <=epsilon:
-                                        #no size match or not confident enough for this class,fallback to Vision score
+                                base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
+                            else:
+                                base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
+                        except:
+                            #class is not in the base top-5
+                            base_score = 0.
+                        if combined:
+                            if novision:
+                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                                final_rank[cname] = sum([dim_p1_score, dim_p2_score, vol_score]) / 3
+                            else:
+                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                                final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
+                        else:
+                            if volOnly and not novision:
+                                if self.set =='KMi':
+                                    try:
+                                        clabel = self.remapper[cname]
+                                        vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
+                                        if vol_score <=epsilon:
+                                            #no size match or not confident enough for this class,fallback to Vision score
+                                            final_rank[cname] = base_score
+                                            continue
+                                    except IndexError:
+                                        #object is in Vision ranking but no size available
+                                        # fallback to vision score
                                         final_rank[cname] = base_score
                                         continue
-                                except IndexError:
-                                    #object is in Vision ranking but no size available
-                                    # fallback to vision score
-                                    final_rank[cname] = base_score
-                                    continue
-                            else:
-                                vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-
-                            final_rank[cname] = sum([base_score, vol_score]) / 2
-
-                        elif volOnly and novision:
-                            if self.set == 'KMi': #only based on size prediction
-                                clabel = self.remapper[cname]
-                                vol_score = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
-                                if vol_score <= epsilon:
-                                    # no size match or not confident enough, fallback to Vision score
-                                    final_rank[cname] = base_score
                                 else:
-                                    final_rank[cname] = vol_score
-                            else:
-                                final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                        elif not volOnly and novision:
-                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                            final_rank[cname] = sum([dim_p1_score, dim_p2_score]) / 2
-                        else:
-                            dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                            dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                            final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
+                                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
 
+                                final_rank[cname] = sum([base_score, vol_score]) / 2
+
+                            elif volOnly and novision:
+                                if self.set == 'KMi': #only based on size prediction
+                                    clabel = self.remapper[cname]
+                                    vol_score = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
+                                    if vol_score <= epsilon:
+                                        # no size match or not confident enough, fallback to Vision score
+                                        final_rank[cname] = base_score
+                                    else:
+                                        final_rank[cname] = vol_score
+                                else:
+                                    final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                            elif not volOnly and novision:
+                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                final_rank[cname] = sum([dim_p1_score, dim_p2_score]) / 2
+                            else:
+                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
 
                 if self.set =='KMi': final_rank = final_rank.most_common(5)
                 else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
                 delta = 5 - len(final_rank)
                 if delta> 0:
                      final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
+                winclass = self.remapper[final_rank[0][0]]
+                try: pred_counts[winclass] +=1
+                except KeyError: pred_counts[winclass] =1
                 self.predictions[i, :] = final_rank
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         if self.set == 'KMi':  # class-wise report
-            pred_counts = list(pred_counts.most_common())
+            pred_counts = list(pred_counts.most_common()) # used to check class imbalances in number of predictions
             eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
