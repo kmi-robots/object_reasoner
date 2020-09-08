@@ -192,6 +192,8 @@ class ObjectReasoner():
             foregroundextract = True
             pclcluster = True
             reranking = True
+            mean = False
+            sizevisionmean = True
             epsilon = 0.0001 # conf threshold for size probas
             all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
             self.predictions = self.predictions[:, :5, :]
@@ -328,12 +330,17 @@ class ObjectReasoner():
                         size_idx = np.argwhere(vol_ranking['class'] == label)[0][0]
                         size_proba = vol_ranking['proba'][size_idx]
                         if size_proba > epsilon:
+                            # init with zero score
+                            size_plausible_rank[self.mapper[label]] = 0.
+                            readable_rank[label] = 0.
+                            """
                             try:
                                 size_plausible_rank[self.mapper[label]] += vision_score
                                 readable_rank[label] += vision_score
                             except KeyError:
                                 size_plausible_rank[self.mapper[label]] = vision_score
                                 readable_rank[label] = vision_score
+                            """
                     # for each removed one in descending score, replace with one class from vol_ranking (descending order)
                     delta = len(vision_rank) - len(size_plausible_rank.keys())
                     if delta >0:
@@ -341,12 +348,37 @@ class ObjectReasoner():
                             # add class name based on size ranking
                             o,prob = vol_ranking[d]
                             if prob > epsilon:
-                                # but add score based on vision similarity score
                                 numeric_label = self.mapper[o]
-                                #find first occurrence of that label in Vision predictions
-                                tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
-                                size_plausible_rank[numeric_label] = all_predictions[i,tgti,1]
-                                readable_rank[o] = all_predictions[i,tgti,1]
+                                #init with zero score
+                                size_plausible_rank[numeric_label] = 0.
+                                readable_rank[o] = 0.
+
+                    # now add scores to size-plausible ranking
+                    for l in readable_rank.keys():
+                        if not sizevisionmean:
+                            # only based on visual similarity
+                            numeric_label = self.mapper[l]
+                            sub_pred = all_predictions[i, :, :].copy()
+                            sub_pred = sub_pred[sub_pred[:, 0] == numeric_label]
+                            if mean:
+                                # (arithmetic) mean of vision similarity score for that class
+                                # find all occurrences of that label in Vision predictions
+                                mean_score = np.mean(sub_pred[:, 1])
+                                size_plausible_rank[numeric_label] = mean_score
+                                readable_rank[l] = mean_score
+                            else:
+                                # max similarity score is taken
+                                max_score = np.max(sub_pred[:, 1])
+                                size_plausible_rank[numeric_label] = max_score
+                                readable_rank[l] = max_score
+                                # find first occurrence of that label in Vision predictions
+                                # tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
+                                # size_plausible_rank[numeric_label] = all_predictions[i,tgti,1]
+                                # readable_rank[o] = all_predictions[i,tgti,1]
+                        else:
+                            #TODO or also based on size proba
+
+                            continue
                     # init final_rank with this modified ranking
                     # in the end, results will be re-sorted again, based on vision similarity score
                     final_rank = size_plausible_rank
