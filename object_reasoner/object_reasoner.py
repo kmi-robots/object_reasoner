@@ -291,9 +291,6 @@ class ObjectReasoner():
                     p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
                     vol_ranking = pred_by_vol(self,volume, i)
 
-                clist = current_ranking.tolist()
-                vision_rank = Counter((self.remapper[k], score) for k, score in clist)
-
                 if self.set =='KMi' and not knowledge_only:
                     class_set = list(np.unique(current_ranking[:,0]))
                 elif self.set =='KMi' and knowledge_only:
@@ -322,12 +319,37 @@ class ObjectReasoner():
 
                 final_rank = Counter()
                 if reranking:
-                    #TODO compare vision_rank with vol_ranking
-                    # if vision_rank includes class with near-zero prob in vol ranking remove them
+                    clist = current_ranking.tolist()
+                    vision_rank = Counter((self.remapper[k], score) for k, score in clist)
+                    size_plausible_rank = Counter()
+                    readable_rank = Counter() #same as above, but with readable labels
+                    # if vision_rank includes class with near-zero prob do not include as plausible
+                    for label,vision_score in vision_rank:
+                        size_idx = np.argwhere(vol_ranking['class'] == label)[0][0]
+                        size_proba = vol_ranking['proba'][size_idx]
+                        if size_proba > epsilon:
+                            try:
+                                size_plausible_rank[self.mapper[label]] += vision_score
+                                readable_rank[label] += vision_score
+                            except KeyError:
+                                size_plausible_rank[self.mapper[label]] = vision_score
+                                readable_rank[label] = vision_score
                     # for each removed one in descending score, replace with one class from vol_ranking (descending order)
-                    # finally, re-rank this new object list based on its original vision-based similarity score
-                    # init final_rank with this final re-ranked list
-                    continue
+                    delta = len(vision_rank) - len(size_plausible_rank.keys())
+                    if delta >0:
+                        for d in range(delta):
+                            # add class name based on size ranking
+                            o,prob = vol_ranking[d]
+                            if prob > epsilon:
+                                # but add score based on vision similarity score
+                                numeric_label = self.mapper[o]
+                                #find first occurrence of that label in Vision predictions
+                                tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
+                                size_plausible_rank[numeric_label] = all_predictions[i,tgti,1]
+                                readable_rank[o] = all_predictions[i,tgti,1]
+                    # init final_rank with this modified ranking
+                    # in the end, results will be re-sorted again, based on vision similarity score
+                    final_rank = size_plausible_rank
                 else:
                     for cname in class_set:
                         try:
@@ -394,10 +416,17 @@ class ObjectReasoner():
                 delta = 5 - len(final_rank)
                 if delta> 0:
                      final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
-                winclass = self.remapper[final_rank[0][0]]
+                try:
+                    winclass = self.remapper[final_rank[0][0]]
+                except KeyError:
+                    #no plausible re-ranking was found, fall back to original vision ranking/prediction
+                    # skip correction
+                    nfallbacks+=1
+                    continue
                 try: pred_counts[winclass] +=1
                 except KeyError: pred_counts[winclass] =1
                 self.predictions[i, :] = final_rank
+
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
