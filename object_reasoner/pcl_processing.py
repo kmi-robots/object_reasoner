@@ -12,10 +12,6 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     """
     downpcl= pcl.voxel_down_sample(voxel_size=vsize)
     # o3d.visualization.draw_geometries([downpcl])
-    # numpoints = np.asarray(downpcl.points).shape[0]
-    # minpoints = int(round(numpoints / ratio))
-    # print("Clustering point cloud")
-    # start = time.time()
     labels = np.array(downpcl.cluster_dbscan(eps=eps, min_points=minpoints)) #, print_progress=True))
     # print("Took % fseconds." % float(time.time() - start))
     max_label = labels.max()
@@ -39,12 +35,6 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     indices = [i for i, x in enumerate(labels) if x == win_label]
 
     new_pcl=downpcl.select_down_sample(indices)
-    """
-    print("Subsampling point cloud")
-    start = time.time()
-    new_pcl, intlist = pcl.remove_radius_outlier(nb_points=minpoints, radius=eps)
-    print("Took % fseconds." % float(time.time() - start))
-    """
     # o3d.visualization.draw_geometries([new_pcl])
     return new_pcl
 

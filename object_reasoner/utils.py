@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 import xml.etree.ElementTree as ET
 import execnet
 import png
+import collections
 import matplotlib.pyplot as plt
 
 def init_obj_catalogue(path_to_data):
@@ -210,6 +211,8 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                     except KeyError:
                         if label == "fire_alarm_call_assembly_point_sign":
                             test_labels.append(cmap["fire_alarm_assembly_sign"])
+                        elif label == "pile_of_papers":
+                            test_labels.append(cmap["pile_of_paper"])
                         else:
                             sys.exit(0)
                     # plt.imshow(roi)
@@ -241,6 +244,7 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
         """Handling polygonal regions, if any"""
         if polyf is not None:
             rois = polyf["regions"]
+            rois = collections.OrderedDict(sorted(rois.items()))
             if depth_img is None:
                 for i, (k, v) in enumerate(rois.items()):
                     label = v["region_attributes"]["label"].replace('/', '_').replace(' ', '')
@@ -288,8 +292,8 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
             outf.write('\n'.join(test_imgs))
             outl.write('\n'.join(test_labels))
         print("Test set ground truth annotations parsed and saved locally")
-    else:
-        return dimg_list
+    #else:
+    #    return dimg_list
 
 def crop_polygonal(path_image, polygon, rgb=True):
     """

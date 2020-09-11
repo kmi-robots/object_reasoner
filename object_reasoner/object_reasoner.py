@@ -70,22 +70,27 @@ class ObjectReasoner():
                 sys.exit(0)
             self.tsamples = None
             #if no depth imgs stored locally, generate from bag
+
             if not os.path.exists(self.imglist[0][:-4]+'depth.png'): # checking on 1st img of list for instance
                 if args.regions is None or not os.path.isdir(args.bags):
                     print("Print provide a valid path to the region annotation files")
                     sys.exit(0)
                 # call python2 method from python3 script
                 print("Starting depth image extraction from bag files... It may take long to complete")
-                self.dimglist = call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
+                try:
+                    call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
+                except Exception as e:
+                    print(str(e))
+                    sys.exit(0)
                 print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
                 print("Empty files:")
                 print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
 
-            else:
-                self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
+
+            self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
                                  self.imglist]
-                print("Empty depth files:")
-                print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
+            print("Empty depth files:")
+            print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
             self.scale = 1000.0 #depth values in mm
 
         else: #supports ARC set
@@ -194,6 +199,7 @@ class ObjectReasoner():
             reranking = True
             mean = False
             sizevisionmean = True
+            intersect = True
             epsilon = 0.0001 # conf threshold for size probas
             all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
             self.predictions = self.predictions[:, :5, :]
@@ -224,11 +230,14 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
                 continue
-            """
+
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()
             plt.imshow(cv2.imread(self.imglist[i]))
+            plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
             plt.show()
+            #continue
+            """
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
             o3d.visualization.draw_geometries([origpcl])
             """
@@ -269,6 +278,7 @@ class ObjectReasoner():
                 non_processed_pcls += 1
                 continue
 
+
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                 # If we detect a volume alpha times or more larger/smaller
                 # than object predicted by baseline, then hypothesise object needs correction
@@ -293,6 +303,7 @@ class ObjectReasoner():
                     p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
                     vol_ranking = pred_by_vol(self,volume, i)
 
+                final_rank = Counter()
                 if self.set =='KMi' and not knowledge_only:
                     class_set = list(np.unique(current_ranking[:,0]))
                 elif self.set =='KMi' and knowledge_only:
@@ -319,10 +330,22 @@ class ObjectReasoner():
 
                 else: class_set = list(np.unique(current_min_ranking[:,0]))
 
-                final_rank = Counter()
                 if reranking:
-                    clist = current_ranking.tolist()
-                    vision_rank = Counter((self.remapper[k], score) for k, score in clist)
+                    if not intersect:
+                        clist = current_ranking.tolist()
+                        vision_rank = Counter((self.remapper[k], score) for k, score in clist)
+                    else:
+                        # search top-25 in each ranking, retain only objects that appear in both
+                        K = 25
+                        toppreds = all_predictions[i, :K, :]
+                        vision_rank = Counter((self.remapper[toppreds[n, 0]], toppreds[n, 1]) for n in range(K))
+                        topsize = vol_ranking[:25]
+                        topsizeclasses = topsize['class'].tolist()
+
+                        for label, vision_score in list(vision_rank.keys()):
+                            if label not in topsizeclasses:
+                                del vision_rank[(label,vision_score)]
+
                     size_plausible_rank = Counter()
                     readable_rank = Counter() #same as above, but with readable labels
                     # if vision_rank includes class with near-zero prob do not include as plausible
@@ -333,14 +356,8 @@ class ObjectReasoner():
                             # init with zero score
                             size_plausible_rank[self.mapper[label]] = 0.
                             readable_rank[label] = 0.
-                            """
-                            try:
-                                size_plausible_rank[self.mapper[label]] += vision_score
-                                readable_rank[label] += vision_score
-                            except KeyError:
-                                size_plausible_rank[self.mapper[label]] = vision_score
-                                readable_rank[label] = vision_score
-                            """
+
+                    """ Uncomment for rank refill
                     # for each removed one in descending score, replace with one class from vol_ranking (descending order)
                     delta = len(vision_rank) - len(size_plausible_rank.keys())
                     if delta >0:
@@ -352,33 +369,32 @@ class ObjectReasoner():
                                 #init with zero score
                                 size_plausible_rank[numeric_label] = 0.
                                 readable_rank[o] = 0.
+                    """
 
                     # now add scores to size-plausible ranking
                     for l in readable_rank.keys():
-                        if not sizevisionmean:
-                            # only based on visual similarity
-                            numeric_label = self.mapper[l]
-                            sub_pred = all_predictions[i, :, :].copy()
-                            sub_pred = sub_pred[sub_pred[:, 0] == numeric_label]
-                            if mean:
-                                # (arithmetic) mean of vision similarity score for that class
-                                # find all occurrences of that label in Vision predictions
-                                mean_score = np.mean(sub_pred[:, 1])
-                                size_plausible_rank[numeric_label] = mean_score
-                                readable_rank[l] = mean_score
-                            else:
-                                # max similarity score is taken
-                                max_score = np.max(sub_pred[:, 1])
-                                size_plausible_rank[numeric_label] = max_score
-                                readable_rank[l] = max_score
-                                # find first occurrence of that label in Vision predictions
-                                # tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
-                                # size_plausible_rank[numeric_label] = all_predictions[i,tgti,1]
-                                # readable_rank[o] = all_predictions[i,tgti,1]
+                        numeric_label = self.mapper[l]
+                        # find first occurrence of that label in Vision predictions
+                        # tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
+                        sub_pred = all_predictions[i, :, :].copy()
+                        # find all occurrences of that label in Vision predictions
+                        sub_pred = sub_pred[sub_pred[:, 0] == numeric_label]
+                        if mean:
+                            # (arithmetic) mean of vision similarity score for that class
+                            # find all occurrences of that label in Vision predictions
+                            mean_score = np.mean(sub_pred[:, 1])
+                            score = mean_score
                         else:
-                            #TODO or also based on size proba
+                            # max similarity score is taken
+                            max_score = np.max(sub_pred[:, 1])
+                            score = max_score
+                        if sizevisionmean: #further averaged with size probabilities
+                            size_idx = np.argwhere(vol_ranking['class'] == l)[0][0]
+                            size_proba = vol_ranking['proba'][size_idx]
+                            score = sum([score, size_proba]) / 2
 
-                            continue
+                        size_plausible_rank[numeric_label] = score
+                        readable_rank[l] = score
                     # init final_rank with this modified ranking
                     # in the end, results will be re-sorted again, based on vision similarity score
                     final_rank = size_plausible_rank

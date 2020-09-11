@@ -39,7 +39,6 @@ def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06
             img_index[rgb_time]["urls"]= []
             img_index[rgb_time]["urls"].append(imgp)
 
-
     for timekey, path_dict in img_index.items():
         # array of images for that timekey
         imgps = path_dict["urls"]
@@ -73,7 +72,7 @@ def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06
         # Crop to 2D bbox or polygon
         dimg_list = crop_test(imgps, path_to_annotations, None, d_img, dimg_list)
         # pcls.append(pcloud)
-    return dimg_list
+    #return dimg_list
 
 def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=[]):
     min_delta = float("inf")
@@ -113,5 +112,4 @@ def load_intrinsics(path_to_bag, path_to_out):
                 outf.write(str(cellv)+"\n")
             else:
                 outf.write(str(cellv)+"\t")
-
     return K_matrix
