@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version
-from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size
+from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
@@ -208,8 +208,6 @@ class ObjectReasoner():
         all_gt_labels = [self.remapper[l] for i,l in enumerate(self.labels) if self.dimglist[i] is not None]
         supports = Counter(all_gt_labels)
         estimated_vols = {}
-        filtered_labels = self.labels.copy()
-        filtered_preds = self.predictions.copy()
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
               # baseline predictions as (label, distance)
@@ -269,10 +267,8 @@ class ObjectReasoner():
             if pcl_points <= 1:
                 print("Empty pcl, skipping")
                 non_processed_pcls += 1
-
-                # do not consider in eval
-                filtered_preds = np.delete(filtered_preds,i,0)
-                del filtered_labels[i]
+                # do not consider that obj region in eval
+                self.dimglist[i] = None
                 continue
             # o3d.visualization.draw_geometries([obj_pcl])
 
@@ -280,37 +276,45 @@ class ObjectReasoner():
               cluster_pcl = cluster_3D(obj_pcl, downsample=False)
               # o3d.visualization.draw_geometries([cluster_pcl])
               if cluster_pcl is None:  # or with 3D clustering
-                  print(
-                      "There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
+                  print("There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
                   cluster_pcl = obj_pcl  # original pcl used instead
 
             else:
               cluster_pcl = obj_pcl
 
+            try:
+                d1, d2, depth, volume, orientedbox = estimate_dims(cluster_pcl, obj_pcl)
+            except TypeError:
+                print("Still not enough points..skipping")
+                non_processed_pcls += 1
+                # do not consider that obj region in eval
+                self.dimglist[i] = None
+                continue
+
+            #qual = pred_size_qual(volume)
+            #select all objects beloging to the same qual bin, based on KB
+            #candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
+
+            #skip remainder
+            """
             if current_label != gt_label and gt_label=='desk': # and abs(volume - pr_volume) > alpha*pr_volume :
                     # If we detect a volume alpha times or more larger/smaller
                     # than object predicted by baseline, then hypothesise object needs correction
                     # actually need to correct, gives upper bound
                     # TODO remove 1st check condition afterwards
-                    """
+                    \"""
                     plt.imshow(dimage, cmap='Greys_r')
                     plt.show()
                     plt.imshow(cv2.imread(self.imglist[i]))
                     plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
                     plt.show()
-                    """
+                    \"""
                     try:
                         need_corr_by_class[gt_label] +=1
                     except KeyError:
                         need_corr_by_class[gt_label] = 1
 
                     #o3d.visualization.draw_geometries([cluster_pcl])
-                    try:
-                        d1, d2, depth, volume, orientedbox = estimate_dims(cluster_pcl, obj_pcl)
-                    except TypeError:
-                        print("Still not enough points..skipping")
-                        non_processed_pcls += 1
-                        continue
 
                     if self.set =='KMi':
                         try:
@@ -384,7 +388,7 @@ class ObjectReasoner():
                                 size_plausible_rank[self.mapper[label]] = 0.
                                 readable_rank[label] = 0.
 
-                        """ Uncomment for rank refill
+                        \""" Uncomment for rank refill
                         # for each removed one in descending score, replace with one class from vol_ranking (descending order)
                         delta = len(vision_rank) - len(size_plausible_rank.keys())
                         if delta >0:
@@ -396,7 +400,7 @@ class ObjectReasoner():
                                     #init with zero score
                                     size_plausible_rank[numeric_label] = 0.
                                     readable_rank[o] = 0.
-                        """
+                        \"""
 
                         # now add scores to size-plausible ranking
                         for l in readable_rank.keys():
@@ -502,11 +506,11 @@ class ObjectReasoner():
                     except KeyError: pred_counts[winclass] =1
                     self.predictions[i, :] = final_rank
 
-
+            """
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         if self.set == 'KMi':  # class-wise report
-
+            """
             pred_counts = list(pred_counts.most_common()) # used to check class imbalances in number of predictions
             need_corr_by_class =[(k,float(v/supports[k])) for k,v in need_corr_by_class.items()]
             need_corr_by_class = sorted(need_corr_by_class, key=lambda x: x[1], reverse=True)
@@ -519,9 +523,8 @@ class ObjectReasoner():
                     print(str(e))
                     KBvol = None
                 mean_est_vols.append((k, statistics.mean(v), KBvol))
+            """
 
-            self.labels = filtered_labels
-            self.predictions = filtered_preds
             eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)

@@ -174,3 +174,8 @@ def predict_classifier(test_data, model, device):
             out_logits = model.forward(data_point, trainmode=False)
             predictions.append(int(np.argmax(out_logits.cpu().numpy()))) #torch.argmax(class_prob, dim=1).tolist())
     return predictions
+
+def pred_size_qual(estimated_volume,t1=0.0217 , t2=0.11016):
+    if estimated_volume < t1: return 'small'
+    elif estimated_volume>= t1 and estimated_volume <= t2: return 'medium'
+    else: return 'large'
