@@ -208,6 +208,8 @@ class ObjectReasoner():
         all_gt_labels = [self.remapper[l] for i,l in enumerate(self.labels) if self.dimglist[i] is not None]
         supports = Counter(all_gt_labels)
         estimated_vols = {}
+        filtered_labels = self.labels.copy()
+        filtered_preds = self.predictions.copy()
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
               # baseline predictions as (label, distance)
@@ -267,6 +269,10 @@ class ObjectReasoner():
             if pcl_points <= 1:
                 print("Empty pcl, skipping")
                 non_processed_pcls += 1
+
+                # do not consider in eval
+                filtered_preds = np.delete(filtered_preds,i,0)
+                del filtered_labels[i]
                 continue
             # o3d.visualization.draw_geometries([obj_pcl])
 
@@ -496,9 +502,11 @@ class ObjectReasoner():
                     except KeyError: pred_counts[winclass] =1
                     self.predictions[i, :] = final_rank
 
+
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         if self.set == 'KMi':  # class-wise report
+
             pred_counts = list(pred_counts.most_common()) # used to check class imbalances in number of predictions
             need_corr_by_class =[(k,float(v/supports[k])) for k,v in need_corr_by_class.items()]
             need_corr_by_class = sorted(need_corr_by_class, key=lambda x: x[1], reverse=True)
@@ -512,6 +520,8 @@ class ObjectReasoner():
                     KBvol = None
                 mean_est_vols.append((k, statistics.mean(v), KBvol))
 
+            self.labels = filtered_labels
+            self.predictions = filtered_preds
             eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
