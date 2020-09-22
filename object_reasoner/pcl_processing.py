@@ -5,12 +5,14 @@ import numpy as np
 import time
 from collections import Counter
 
-def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
+def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05, downsample=False):
     """
     DBSCAN clustering for pointclouds
     vsize: voxel size for downsampling
     """
-    downpcl= pcl.voxel_down_sample(voxel_size=vsize)
+    if downsample:
+        downpcl= pcl.voxel_down_sample(voxel_size=vsize)
+    else: downpcl = pcl
     # o3d.visualization.draw_geometries([downpcl])
     labels = np.array(downpcl.cluster_dbscan(eps=eps, min_points=minpoints)) #, print_progress=True))
     # print("Took % fseconds." % float(time.time() - start))
@@ -35,7 +37,7 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05):
     indices = [i for i, x in enumerate(labels) if x == win_label]
 
     new_pcl=downpcl.select_down_sample(indices)
-    # o3d.visualization.draw_geometries([new_pcl])
+    #o3d.visualization.draw_geometries([new_pcl])
     return new_pcl
 
 def MatToPCL(imgMat, camera_intrinsics, scale=10000.0):

@@ -83,8 +83,13 @@ def eval_KMi(ReasonerObj, depth_aligned=False):
     y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist() #top-1 of each ranking
     if depth_aligned:
         #eval only on those with a depth img associated
-        y_pred = [y for i,y in enumerate(y_pred) if ReasonerObj.dimglist[i] is not None]
-        y_true = [l for i,l in enumerate(ReasonerObj.labels) if ReasonerObj.dimglist[i] is not None]
+        blacklist = ['524132','409022','240924','741394','109086','041796','036939']
+        y_pred = [y for i,y in enumerate(y_pred)
+                  if ReasonerObj.dimglist[i] is not None
+                  and ReasonerObj.imglist[i].split('/')[-1].split('_')[-2] not in blacklist]
+        y_true = [l for i,l in enumerate(ReasonerObj.labels)
+                  if ReasonerObj.dimglist[i] is not None
+                  and ReasonerObj.imglist[i].split('/')[-1].split('_')[-2] not in blacklist]
     else: #eval on full RGB test set
         y_true = ReasonerObj.labels
     print(classification_report(y_true, y_pred))

@@ -12,6 +12,7 @@ from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
+import statistics
 
 import matplotlib.pyplot as plt
 
@@ -40,8 +41,7 @@ class ObjectReasoner():
             self.labelset = []
             for i, (k, v) in enumerate(self.KB.items()):
                 self.sizes[i] = np.array(v['dimensions'])
-                self.volumes[i] = v['dimensions'][0] * v['dimensions'][1] * v['dimensions'][
-                    2]  # size catalogue in meters
+                self.volumes[i] = v['dimensions'][0] * v['dimensions'][1] * v['dimensions'][2]  # size catalogue in meters
                 self.labelset.append(v['label'])
         elif args.set == 'KMi':
             try:
@@ -85,7 +85,6 @@ class ObjectReasoner():
                 print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
                 print("Empty files:")
                 print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
-
 
             self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
                                  self.imglist]
@@ -194,9 +193,9 @@ class ObjectReasoner():
             volOnly = True
             novision = False
             knowledge_only = False
-            foregroundextract = True
+            foregroundextract = False
             pclcluster = True
-            reranking = True
+            reranking = False
             mean = False
             sizevisionmean = True
             intersect = True
@@ -205,13 +204,17 @@ class ObjectReasoner():
             self.predictions = self.predictions[:, :5, :]
 
         pred_counts = Counter()
+        need_corr_by_class = Counter()
+        all_gt_labels = [self.remapper[l] for i,l in enumerate(self.labels) if self.dimglist[i] is not None]
+        supports = Counter(all_gt_labels)
+        estimated_vols = {}
+
         for i,dimage in enumerate(self.dimglist):  # for each depth image
               # baseline predictions as (label, distance)
             if self.min_predictions is not None:
                 # current_avg_ranking = self.avg_predictions[i,:]
                 current_min_ranking = self.min_predictions[i, :]
-            else:
-                current_min_ranking = None
+            else: current_min_ranking = None
 
             current_ranking = self.predictions[i, :]
             current_prediction = self.predictions[i, 0, 0]
@@ -231,255 +234,284 @@ class ObjectReasoner():
                 non_depth_aval += 1
                 continue
 
+            """
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()
             plt.imshow(cv2.imread(self.imglist[i]))
             plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
             plt.show()
-            #continue
-            """
+
             # origpcl = PathToPCL(self.dimglist[i], self.camera)
             o3d.visualization.draw_geometries([origpcl])
             """
             if foregroundextract:
                 cluster_bw = extract_foreground_2D(dimage)
-                #plt.imshow(cluster_bw, cmap='Greys_r')
-                #plt.show()
-                if cluster_bw is None: #problem with 2D clustering
-                    #non_processed_pcls += 1
-                    #print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
-                    #Revert to full image
+                # plt.imshow(cluster_bw, cmap='Greys_r')
+                # plt.show()
+
+                if cluster_bw is None:  # problem with 2D clustering
+                    # non_processed_pcls += 1
+                    # print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
+                    # Revert to full image
                     obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
-                else: #mask depth img based on largest contour
-                    masked_dmatrix = detect_contours(dimage,cluster_bw)
-                    #plt.imshow(masked_dmatrix, cmap='Greys_r')
-                    #plt.show()
+                else:  # mask depth img based on largest contour
+                    masked_dmatrix = detect_contours(dimage, cluster_bw)
+                    # plt.imshow(masked_dmatrix, cmap='Greys_r')
+                    # plt.show()
                     obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
             else:
+                # just filter out zero values
                 obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+
             pcl_points = np.asarray(obj_pcl.points).shape[0]
-            if pcl_points <=1:
+            if pcl_points <= 1:
                 print("Empty pcl, skipping")
                 non_processed_pcls += 1
                 continue
-            #o3d.visualization.draw_geometries([obj_pcl])
+            # o3d.visualization.draw_geometries([obj_pcl])
+
             if pclcluster:
-                cluster_pcl = cluster_3D(obj_pcl)
-                #o3d.visualization.draw_geometries([cluster_pcl])
-                if cluster_pcl is None: #or with 3D clustering
-                    print("There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
-                    cluster_pcl = obj_pcl #original pcl used instead
+              cluster_pcl = cluster_3D(obj_pcl, downsample=False)
+              # o3d.visualization.draw_geometries([cluster_pcl])
+              if cluster_pcl is None:  # or with 3D clustering
+                  print(
+                      "There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
+                  cluster_pcl = obj_pcl  # original pcl used instead
 
-            else: cluster_pcl = obj_pcl
-            try:
-                d1,d2,depth,volume, orientedbox = estimate_dims(cluster_pcl,obj_pcl)
-            except TypeError:
-                print("Still not enough points..skipping")
-                non_processed_pcls += 1
-                continue
+            else:
+              cluster_pcl = obj_pcl
 
+            if current_label != gt_label and gt_label=='desk': # and abs(volume - pr_volume) > alpha*pr_volume :
+                    # If we detect a volume alpha times or more larger/smaller
+                    # than object predicted by baseline, then hypothesise object needs correction
+                    # actually need to correct, gives upper bound
+                    # TODO remove 1st check condition afterwards
+                    """
+                    plt.imshow(dimage, cmap='Greys_r')
+                    plt.show()
+                    plt.imshow(cv2.imread(self.imglist[i]))
+                    plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                    plt.show()
+                    """
+                    try:
+                        need_corr_by_class[gt_label] +=1
+                    except KeyError:
+                        need_corr_by_class[gt_label] = 1
 
-            if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
-                # If we detect a volume alpha times or more larger/smaller
-                # than object predicted by baseline, then hypothesise object needs correction
-                # actually need to correct, gives upper bound
-                # TODO remove 1st check condition afterwards
-                # create ranking by nearest volume
-                # gt_volume = self.volumes[int(self.labels[i]) - 1]
-                #plt.imshow(dimage, cmap='Greys_r')
-                #plt.show()
-                #plt.imshow(cv2.imread(self.imglist[i], cv2.IMREAD_UNCHANGED))  # , cmap='Greys_r')
-                #plt.show()
-                # o3d.visualization.draw_geometries([obj_pcl, orientedbox])
-                if self.set =='KMi':
-                    vol_ranking = pred_vol_proba(self,volume,dist='lognormal')
-                else:
-                    gt_dims = self.sizes[int(self.labels[i]) - 1]
-                    #from predict import pred_by_size
-                    # compare estimated dims with ground truth dims
-                    # first possible permutation
-                    dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
-                    #second possible permutation
-                    p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
-                    vol_ranking = pred_by_vol(self,volume, i)
-
-                final_rank = Counter()
-                if self.set =='KMi' and not knowledge_only:
-                    class_set = list(np.unique(current_ranking[:,0]))
-                elif self.set =='KMi' and knowledge_only:
-                    for h,cat in enumerate(list(vol_ranking['class'])):
-                        clabel = self.mapper[cat]
-                        final_rank[clabel] = vol_ranking['proba'][h]
-                    #print(final_rank.most_common())
-                    final_rank = final_rank.most_common(5)
-                    winclass = self.remapper[final_rank[0][0]]
-                    winproba = final_rank[0][1]
-                    if winproba <= epsilon:
-                        # no matching measurement could be found
-                        # or not confident enough
-                        # skip and fallback to vision ranking
-                        nfallbacks +=1
-                        #print("Fell back due to this result")
-                        #print((winclass, winproba))
+                    #o3d.visualization.draw_geometries([cluster_pcl])
+                    try:
+                        d1, d2, depth, volume, orientedbox = estimate_dims(cluster_pcl, obj_pcl)
+                    except TypeError:
+                        print("Still not enough points..skipping")
+                        non_processed_pcls += 1
                         continue
 
+                    if self.set =='KMi':
+                        try:
+                            estimated_vols[gt_label].append(volume)
+                        except KeyError:
+                            estimated_vols[gt_label] = []
+                            estimated_vols[gt_label].append(volume)
+
+                        vol_ranking = pred_vol_proba(self,volume,dist='lognormal')
+                    else:
+                        gt_dims = self.sizes[int(self.labels[i]) - 1]
+                        #from predict import pred_by_size
+                        # compare estimated dims with ground truth dims
+                        # first possible permutation
+                        dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
+                        #second possible permutation
+                        p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
+                        vol_ranking = pred_by_vol(self,volume, i)
+
+                    final_rank = Counter()
+                    if self.set =='KMi' and not knowledge_only:
+                        class_set = list(np.unique(current_ranking[:,0]))
+                    elif self.set =='KMi' and knowledge_only:
+                        for h,cat in enumerate(list(vol_ranking['class'])):
+                            clabel = self.mapper[cat]
+                            final_rank[clabel] = vol_ranking['proba'][h]
+                        #print(final_rank.most_common())
+                        final_rank = final_rank.most_common(5)
+                        winclass = self.remapper[final_rank[0][0]]
+                        winproba = final_rank[0][1]
+                        if winproba <= epsilon:
+                            # no matching measurement could be found
+                            # or not confident enough
+                            # skip and fallback to vision ranking
+                            nfallbacks +=1
+                            #print("Fell back due to this result")
+                            #print((winclass, winproba))
+                            continue
+
+                        try: pred_counts[winclass] +=1
+                        except KeyError: pred_counts[winclass] =1
+                        self.predictions[i, :] = final_rank
+                        continue
+
+                    else: class_set = list(np.unique(current_min_ranking[:,0]))
+
+                    if reranking:
+                        if not intersect:
+                            clist = current_ranking.tolist()
+                            vision_rank = Counter((self.remapper[k], score) for k, score in clist)
+                        else:
+                            # search top-25 in each ranking, retain only objects that appear in both
+                            K = 25
+                            toppreds = all_predictions[i, :K, :]
+                            vision_rank = Counter((self.remapper[toppreds[n, 0]], toppreds[n, 1]) for n in range(K))
+                            topsize = vol_ranking[:25]
+                            topsizeclasses = topsize['class'].tolist()
+
+                            for label, vision_score in list(vision_rank.keys()):
+                                if label not in topsizeclasses:
+                                    del vision_rank[(label,vision_score)]
+
+                        size_plausible_rank = Counter()
+                        readable_rank = Counter() #same as above, but with readable labels
+                        # if vision_rank includes class with near-zero prob do not include as plausible
+                        for label,vision_score in vision_rank:
+                            size_idx = np.argwhere(vol_ranking['class'] == label)[0][0]
+                            size_proba = vol_ranking['proba'][size_idx]
+                            if size_proba > epsilon:
+                                # init with zero score
+                                size_plausible_rank[self.mapper[label]] = 0.
+                                readable_rank[label] = 0.
+
+                        """ Uncomment for rank refill
+                        # for each removed one in descending score, replace with one class from vol_ranking (descending order)
+                        delta = len(vision_rank) - len(size_plausible_rank.keys())
+                        if delta >0:
+                            for d in range(delta):
+                                # add class name based on size ranking
+                                o,prob = vol_ranking[d]
+                                if prob > epsilon:
+                                    numeric_label = self.mapper[o]
+                                    #init with zero score
+                                    size_plausible_rank[numeric_label] = 0.
+                                    readable_rank[o] = 0.
+                        """
+
+                        # now add scores to size-plausible ranking
+                        for l in readable_rank.keys():
+                            numeric_label = self.mapper[l]
+                            # find first occurrence of that label in Vision predictions
+                            # tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
+                            sub_pred = all_predictions[i, :, :].copy()
+                            # find all occurrences of that label in Vision predictions
+                            sub_pred = sub_pred[sub_pred[:, 0] == numeric_label]
+                            if mean:
+                                # (arithmetic) mean of vision similarity score for that class
+                                # find all occurrences of that label in Vision predictions
+                                mean_score = np.mean(sub_pred[:, 1])
+                                score = mean_score
+                            else:
+                                # max similarity score is taken
+                                max_score = np.max(sub_pred[:, 1])
+                                score = max_score
+                            if sizevisionmean: #further averaged with size probabilities
+                                size_idx = np.argwhere(vol_ranking['class'] == l)[0][0]
+                                size_proba = vol_ranking['proba'][size_idx]
+                                score = sum([score, size_proba]) / 2
+
+                            size_plausible_rank[numeric_label] = score
+                            readable_rank[l] = score
+                        # init final_rank with this modified ranking
+                        # in the end, results will be re-sorted again, based on vision similarity score
+                        final_rank = size_plausible_rank
+                    else:
+                        for cname in class_set:
+                            try:
+                                if self.set =='KMi':
+                                    base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
+                                else:
+                                    base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
+                            except:
+                                #class is not in the base top-5
+                                base_score = 0.
+                            if combined:
+                                if novision:
+                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                                    final_rank[cname] = sum([dim_p1_score, dim_p2_score, vol_score]) / 3
+                                else:
+                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                                    final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
+                            else:
+                                if volOnly and not novision:
+                                    if self.set =='KMi':
+                                        try:
+                                            clabel = self.remapper[cname]
+                                            vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
+                                            if vol_score <=epsilon:
+                                                #no size match or not confident enough for this class,fallback to Vision score
+                                                final_rank[cname] = base_score
+                                                continue
+                                        except IndexError:
+                                            #object is in Vision ranking but no size available
+                                            # fallback to vision score
+                                            final_rank[cname] = base_score
+                                            continue
+                                    else:
+                                        vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+
+                                    final_rank[cname] = sum([base_score, vol_score]) / 2
+
+                                elif volOnly and novision:
+                                    if self.set == 'KMi': #only based on size prediction
+                                        clabel = self.remapper[cname]
+                                        vol_score = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
+                                        if vol_score <= epsilon:
+                                            # no size match or not confident enough, fallback to Vision score
+                                            final_rank[cname] = base_score
+                                        else:
+                                            final_rank[cname] = vol_score
+                                    else:
+                                        final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
+                                elif not volOnly and novision:
+                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                    final_rank[cname] = sum([dim_p1_score, dim_p2_score]) / 2
+                                else:
+                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
+                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
+                                    final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
+
+                    if self.set =='KMi': final_rank = final_rank.most_common(5)
+                    else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
+                    delta = 5 - len(final_rank)
+                    if delta> 0:
+                         final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
+                    try:
+                        winclass = self.remapper[final_rank[0][0]]
+                    except KeyError:
+                        #no plausible re-ranking was found, fall back to original vision ranking/prediction
+                        # skip correction
+                        nfallbacks+=1
+                        continue
                     try: pred_counts[winclass] +=1
                     except KeyError: pred_counts[winclass] =1
                     self.predictions[i, :] = final_rank
-                    continue
-
-                else: class_set = list(np.unique(current_min_ranking[:,0]))
-
-                if reranking:
-                    if not intersect:
-                        clist = current_ranking.tolist()
-                        vision_rank = Counter((self.remapper[k], score) for k, score in clist)
-                    else:
-                        # search top-25 in each ranking, retain only objects that appear in both
-                        K = 25
-                        toppreds = all_predictions[i, :K, :]
-                        vision_rank = Counter((self.remapper[toppreds[n, 0]], toppreds[n, 1]) for n in range(K))
-                        topsize = vol_ranking[:25]
-                        topsizeclasses = topsize['class'].tolist()
-
-                        for label, vision_score in list(vision_rank.keys()):
-                            if label not in topsizeclasses:
-                                del vision_rank[(label,vision_score)]
-
-                    size_plausible_rank = Counter()
-                    readable_rank = Counter() #same as above, but with readable labels
-                    # if vision_rank includes class with near-zero prob do not include as plausible
-                    for label,vision_score in vision_rank:
-                        size_idx = np.argwhere(vol_ranking['class'] == label)[0][0]
-                        size_proba = vol_ranking['proba'][size_idx]
-                        if size_proba > epsilon:
-                            # init with zero score
-                            size_plausible_rank[self.mapper[label]] = 0.
-                            readable_rank[label] = 0.
-
-                    """ Uncomment for rank refill
-                    # for each removed one in descending score, replace with one class from vol_ranking (descending order)
-                    delta = len(vision_rank) - len(size_plausible_rank.keys())
-                    if delta >0:
-                        for d in range(delta):
-                            # add class name based on size ranking
-                            o,prob = vol_ranking[d]
-                            if prob > epsilon:
-                                numeric_label = self.mapper[o]
-                                #init with zero score
-                                size_plausible_rank[numeric_label] = 0.
-                                readable_rank[o] = 0.
-                    """
-
-                    # now add scores to size-plausible ranking
-                    for l in readable_rank.keys():
-                        numeric_label = self.mapper[l]
-                        # find first occurrence of that label in Vision predictions
-                        # tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
-                        sub_pred = all_predictions[i, :, :].copy()
-                        # find all occurrences of that label in Vision predictions
-                        sub_pred = sub_pred[sub_pred[:, 0] == numeric_label]
-                        if mean:
-                            # (arithmetic) mean of vision similarity score for that class
-                            # find all occurrences of that label in Vision predictions
-                            mean_score = np.mean(sub_pred[:, 1])
-                            score = mean_score
-                        else:
-                            # max similarity score is taken
-                            max_score = np.max(sub_pred[:, 1])
-                            score = max_score
-                        if sizevisionmean: #further averaged with size probabilities
-                            size_idx = np.argwhere(vol_ranking['class'] == l)[0][0]
-                            size_proba = vol_ranking['proba'][size_idx]
-                            score = sum([score, size_proba]) / 2
-
-                        size_plausible_rank[numeric_label] = score
-                        readable_rank[l] = score
-                    # init final_rank with this modified ranking
-                    # in the end, results will be re-sorted again, based on vision similarity score
-                    final_rank = size_plausible_rank
-                else:
-                    for cname in class_set:
-                        try:
-                            if self.set =='KMi':
-                                base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
-                            else:
-                                base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
-                        except:
-                            #class is not in the base top-5
-                            base_score = 0.
-                        if combined:
-                            if novision:
-                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                                final_rank[cname] = sum([dim_p1_score, dim_p2_score, vol_score]) / 3
-                            else:
-                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                                final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
-                        else:
-                            if volOnly and not novision:
-                                if self.set =='KMi':
-                                    try:
-                                        clabel = self.remapper[cname]
-                                        vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
-                                        if vol_score <=epsilon:
-                                            #no size match or not confident enough for this class,fallback to Vision score
-                                            final_rank[cname] = base_score
-                                            continue
-                                    except IndexError:
-                                        #object is in Vision ranking but no size available
-                                        # fallback to vision score
-                                        final_rank[cname] = base_score
-                                        continue
-                                else:
-                                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-
-                                final_rank[cname] = sum([base_score, vol_score]) / 2
-
-                            elif volOnly and novision:
-                                if self.set == 'KMi': #only based on size prediction
-                                    clabel = self.remapper[cname]
-                                    vol_score = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
-                                    if vol_score <= epsilon:
-                                        # no size match or not confident enough, fallback to Vision score
-                                        final_rank[cname] = base_score
-                                    else:
-                                        final_rank[cname] = vol_score
-                                else:
-                                    final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                            elif not volOnly and novision:
-                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                final_rank[cname] = sum([dim_p1_score, dim_p2_score]) / 2
-                            else:
-                                dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
-
-                if self.set =='KMi': final_rank = final_rank.most_common(5)
-                else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
-                delta = 5 - len(final_rank)
-                if delta> 0:
-                     final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
-                try:
-                    winclass = self.remapper[final_rank[0][0]]
-                except KeyError:
-                    #no plausible re-ranking was found, fall back to original vision ranking/prediction
-                    # skip correction
-                    nfallbacks+=1
-                    continue
-                try: pred_counts[winclass] +=1
-                except KeyError: pred_counts[winclass] =1
-                self.predictions[i, :] = final_rank
-
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         if self.set == 'KMi':  # class-wise report
             pred_counts = list(pred_counts.most_common()) # used to check class imbalances in number of predictions
+            need_corr_by_class =[(k,float(v/supports[k])) for k,v in need_corr_by_class.items()]
+            need_corr_by_class = sorted(need_corr_by_class, key=lambda x: x[1], reverse=True)
+            mean_est_vols = []
+            for n, (k, v) in enumerate(estimated_vols.items()):
+                try:
+                    KBvol = self.KB[k.replace('_',' ')]['volume_m3']
+                    KBvol = statistics.mean(KBvol)
+                except Exception as e:
+                    print(str(e))
+                    KBvol = None
+                mean_est_vols.append((k, statistics.mean(v), KBvol))
+
             eval_KMi(self, depth_aligned=True)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
