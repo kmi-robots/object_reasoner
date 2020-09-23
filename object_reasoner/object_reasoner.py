@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version
-from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual
+from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
@@ -145,6 +145,7 @@ class ObjectReasoner():
         print("Double checking top-1 accuracies to reproduce baseline...")
         if args.set == 'KMi': #class-wise report
             eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True, K=5)
         else: #separate eval for known vs novel
             eval_singlemodel(self)
 
@@ -210,7 +211,8 @@ class ObjectReasoner():
         estimated_vols = {}
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
-              # baseline predictions as (label, distance)
+            # baseline predictions as (label, distance)
+
             if self.min_predictions is not None:
                 # current_avg_ranking = self.avg_predictions[i,:]
                 current_min_ranking = self.min_predictions[i, :]
@@ -233,7 +235,6 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
                 continue
-
             """
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()
@@ -271,16 +272,15 @@ class ObjectReasoner():
                 self.dimglist[i] = None
                 continue
             # o3d.visualization.draw_geometries([obj_pcl])
-
             if pclcluster:
-              cluster_pcl = cluster_3D(obj_pcl, downsample=False)
-              # o3d.visualization.draw_geometries([cluster_pcl])
-              if cluster_pcl is None:  # or with 3D clustering
-                  print("There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
-                  cluster_pcl = obj_pcl  # original pcl used instead
-
+                cluster_pcl = cluster_3D(obj_pcl, downsample=False)
+                # o3d.visualization.draw_geometries([cluster_pcl])
+                if cluster_pcl is None:  # or with 3D clustering
+                    print(
+                        "There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
+                    cluster_pcl = obj_pcl  # original pcl used instead
             else:
-              cluster_pcl = obj_pcl
+                cluster_pcl = obj_pcl
 
             try:
                 d1, d2, depth, volume, orientedbox = estimate_dims(cluster_pcl, obj_pcl)
@@ -291,13 +291,42 @@ class ObjectReasoner():
                 self.dimglist[i] = None
                 continue
 
-            #qual = pred_size_qual(volume)
-            #select all objects beloging to the same qual bin, based on KB
-            #candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
+            if current_label != gt_label:
 
+                #pclpts=np.asarray(obj_pcl.points)
+
+                #invalidpts = pclpts[[pclpts[z,:]==np.array([0.,0.,0.])
+                #              for z in range(pclpts.shape[0])]]
+                #plt.imshow(cv2.imread(self.imglist[i]))
+                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                #plt.show()
+
+                qual = pred_size_qual(d1,d2)
+                flat = pred_flat(depth)
+                #select all objects beloging to the same qual bin, based on KB
+                candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
+
+                candidates = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
+
+                candidates_num = [self.mapper[oname.replace(' ','_')] for oname in candidates]
+                full_vision_rank = all_predictions[i,:]
+
+                valid_rank = full_vision_rank[[full_vision_rank[z,0] in candidates_num for z in range(full_vision_rank.shape[0])]]
+                read_rank = [(self.remapper[valid_rank[z,0]],valid_rank[z,1]) for z in range(valid_rank.shape[0])]
+                read_current_rank = [(self.remapper[current_ranking[z,0]],current_ranking[z,1]) for z in range(current_ranking.shape[0])]
+                print("%s predicted as %s" % (gt_label,current_label))
+                print("Detected size is %s" % qual)
+                print("Estimated dims %f x %f x %f m" % (d1,d2,depth))
+                print("ML based ranking")
+                print(read_current_rank[:5])
+                print("Knowledge validated ranking")
+                print(read_rank[:5])
+                print("================================")
+                #o3d.visualization.draw_geometries([cluster_pcl,orientedbox])
+                self.predictions[i, :] = valid_rank[:5,:]
             #skip remainder
             """
-            if current_label != gt_label and gt_label=='desk': # and abs(volume - pr_volume) > alpha*pr_volume :
+            if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                     # If we detect a volume alpha times or more larger/smaller
                     # than object predicted by baseline, then hypothesise object needs correction
                     # actually need to correct, gives upper bound
@@ -524,8 +553,8 @@ class ObjectReasoner():
                     KBvol = None
                 mean_est_vols.append((k, statistics.mean(v), KBvol))
             """
-
             eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True,K=5)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
         print("{} out of {} images need correction ".format(no_corrected,len(self.dimglist)))

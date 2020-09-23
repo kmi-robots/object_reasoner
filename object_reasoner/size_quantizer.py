@@ -5,7 +5,7 @@ from object_sizes import dict_from_csv
 import json
 
 
-def add_qual_hardcoded(obj_dict, bespoke_list, ref_csv): #10% of obj dim
+def add_qual_hardcoded(obj_dict, ref_csv): #10% of obj dim
     """
     # Add hardcoded qualitative sizes as small, medium, etc
     returns: object dictionary with hardcoded values
@@ -15,10 +15,14 @@ def add_qual_hardcoded(obj_dict, bespoke_list, ref_csv): #10% of obj dim
         obj_name = row[0].replace("_", " ")
         obj_dict[obj_name] = {}
         quals = row[7]
+        flat = row[8]
         if "-" in quals:
             #object belongs to more than one bin
             quals = quals.split("-")
         obj_dict[obj_name]['has_size'] = quals
+        if "-" in flat: obj_dict[obj_name]['is_flat'] =[True,False]
+        elif '0' in flat: obj_dict[obj_name]['is_flat'] = False
+        elif '1' in flat:obj_dict[obj_name]['is_flat'] = True
     return obj_dict
 
 
@@ -43,7 +47,7 @@ def main():
         return 0
 
     KB = {} #init empty catalogue
-    KB = add_qual_hardcoded(KB, CLASSES, hcsv_gen)
+    KB = add_qual_hardcoded(KB, hcsv_gen)
     #KB = dict_from_csv(shp_gen,CLASSES,KB,source='ShapeNet') #populate with ShapeNet data
 
     #Save KB locally as JSON file

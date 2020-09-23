@@ -5,7 +5,7 @@ import numpy as np
 import time
 from collections import Counter
 
-def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05, downsample=False):
+def cluster_3D(pcl, eps=0.1, minpoints=150, vsize=0.05, downsample=False):
     """
     DBSCAN clustering for pointclouds
     vsize: voxel size for downsampling
@@ -17,7 +17,7 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05, downsample=False):
     labels = np.array(downpcl.cluster_dbscan(eps=eps, min_points=minpoints)) #, print_progress=True))
     # print("Took % fseconds." % float(time.time() - start))
     max_label = labels.max()
-    # print("Pcl has %d clusters" % (max_label + 1))
+    #print("Pcl has %d clusters" % (max_label + 1))
 
     cmap = plt.get_cmap("tab20")
     colors = cmap(labels / (max_label if max_label > 0 else 1))
@@ -28,6 +28,7 @@ def cluster_3D(pcl, eps=0.1, minpoints=10, vsize=0.05, downsample=False):
     # Skipping -1, where -1 indicates noise as in open3d docs
     try:
         win_label = [key for key, val in Counter(labels).most_common() if key != -1][0]
+
     except IndexError:
         # maybe only one object is there, skip downsampling
         # remove outliers and return as_is
