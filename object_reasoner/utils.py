@@ -265,14 +265,20 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                         os.mkdir(os.path.join(path_to_out, label))
                     pout = os.path.join(path_to_out, label, fname[:-4] + '_poly' + str(i) + '.png')
                     if depth_img is None:
-                        cropped_img = crop_polygonal(pimg, list(zip(all_x, all_y)))
+                        polygon_coords = list(zip(all_x, all_y))
+                        cropped_img, bounding_rect = crop_polygonal(pimg, polygon_coords)
                         # Save, but 3-channeled
                         cropped_img = Image.fromarray(cropped_img, "RGBA")
-                        pil_roi = Image.new("RGB", cropped_img.size, (0, 0, 0))  # create black background
+                        # create white background region
+                        pil_roi = Image.new("RGB", cropped_img.size, (255, 255, 255))
                         pil_roi.paste(cropped_img, mask=cropped_img.split()[3])  # paste content of alpha channel in it
-                        pil_roi.save(pout)
-                        # pil_roi.show()
+                        # crop to rectangle bounding the polygonal mask
+                        #pil_roi.show()
+                        region =pil_roi.crop(bounding_rect)
+                        #region.show()
+                        region.save(pout)
                         test_imgs.append(pout)
+
                         try:
                             test_labels.append(cmap[label])
                         except KeyError:
@@ -285,7 +291,8 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                                 sys.exit(0)
                     else: #save depth img
                         img = cv2.imread(pimg, cv2.IMREAD_UNCHANGED)
-                        cropped_img = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                        cropped_img, bounding_rect = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                        # depth img, no need to crop to rectangle bounding the polygonal mask
                         po = os.path.join(path_to_out,label, cropname)
                         with open(po[:-4] + '_poly'+str(i)+'.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
                             writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
@@ -301,7 +308,8 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                 _,v = rois.items()[i]
                 all_x = v["shape_attributes"]["all_points_x"]
                 all_y = v["shape_attributes"]["all_points_y"]
-                cropped_img = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                cropped_img, _ = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                # depth img, no need to crop to rectangle bounding the polygonal mask
                 with open(pimg[:-4] + 'depth.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
                     writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
                     # Convert array to the Python list of lists expected by the png writer.
@@ -346,14 +354,16 @@ def crop_polygonal(path_image, polygon, rgb=True):
         newImArray[:, :, :3] = imArray[:, :, :3]
         # transparency (4th column)
         newImArray[:, :, 3] = mask * 255
+        bin_mask = newImArray.copy()[:, :, 3]
     else: #from depth, one-channeled
         #mask binary image
         newImArray = imArray.copy()
         newImArray[mask!=1]=0.
+        bin_mask = newImArray
 
-    return newImArray
-
-
+    cropped_img_bin = Image.fromarray(bin_mask)
+    #cropped_img_bin.show()
+    return newImArray, cropped_img_bin.getbbox()
 
 def create_class_map(path_to_json):
     """

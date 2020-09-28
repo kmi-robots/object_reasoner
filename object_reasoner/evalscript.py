@@ -84,7 +84,7 @@ def eval_KMi(ReasonerObj, depth_aligned=False, K=None):
     if depth-aligned is True, evals only on those images which have an accurate (and non null) match for depth
     """
     # eval only on those with a depth img associated
-    blacklist = ['524132', '409022', '240924', '741394', '109086', '041796', '036939']
+    blacklist = [] #['524132', '409022', '240924', '741394', '109086', '041796', '036939']
     print("Class-wise test results \n")
     if K is None:
         # eval top-1 of each ranking
