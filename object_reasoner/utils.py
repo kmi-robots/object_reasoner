@@ -183,13 +183,13 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
             try:
                 polyf = jtree[fname]
             except KeyError:
-                print("No annotated polygons either..Skipping...")
+                print("No annotated polygons either..Skipping img %s..." % fname)
                 continue
 
         if tree is not None:
             """Handling rectangular bbox first"""
             root = tree.getroot()
-            if depth_img is None:
+            if depth_img is None or (depth_img is not None and 'depth' in pimg):
                 for n, object in enumerate(root.findall('object')):
                     bbox = object.find('bndbox')
                     label = object.find('name').text.replace('/', '_').replace(' ', '')
@@ -197,31 +197,44 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                     ymin = int(bbox.find('ymin').text)
                     xmax = int(bbox.find('xmax').text)
                     ymax = int(bbox.find('ymax').text)
-                    roi = img[ymin:ymax, xmin:xmax]
 
                     if not os.path.isdir(os.path.join(path_to_out, label)):
                         os.mkdir(os.path.join(path_to_out, label))  # create class/category folder
                     # save roi as separate img file
-                    pout = os.path.join(path_to_out, label, fname[:-4] + '_' + str(n) + '.png')
-                    pil_roi = Image.fromarray(roi)
-                    pil_roi.save(pout)  # cv2.imwrite(pout, roi) #cv2 gives BGR issues
-                    test_imgs.append(pout)
-                    try:
-                        test_labels.append(cmap[label])
-                    except KeyError:
-                        if label == "fire_alarm_call_assembly_point_sign":
-                            test_labels.append(cmap["fire_alarm_assembly_sign"])
-                        elif label == "pile_of_papers":
-                            test_labels.append(cmap["pile_of_paper"])
-                        else:
-                            sys.exit(0)
+                    if depth_img is None: #rgb case
+                        pout = os.path.join(path_to_out, label, fname[:-4] + '_' + str(n) + '.png')
+                        roi = img[ymin:ymax, xmin:xmax]
+                        pil_roi = Image.fromarray(roi)
+                        pil_roi.save(pout)  # cv2.imwrite(pout, roi) #cv2 gives BGR issues
+                        test_imgs.append(pout)
+                        try:
+                            test_labels.append(cmap[label])
+                        except KeyError:
+                            if label == "fire_alarm_call_assembly_point_sign":
+                                test_labels.append(cmap["fire_alarm_assembly_sign"])
+                            elif label == "pile_of_papers":
+                                test_labels.append(cmap["pile_of_paper"])
+                            else:
+                                print("----Problem with object label formatting....exiting----")
+                                sys.exit(0)
+                    else: #depth case #depth img passed as list
+                        # passed depth images as list
+                        pout = os.path.join(path_to_out, label, fname[:-4] + 'depth_' + str(n) + '.png')
+                        img = cv2.imread(pimg, cv2.IMREAD_UNCHANGED)
+                        roi = img[ymin:ymax, xmin:xmax]
+                        with open(pout, 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                            writer = png.Writer(width=roi.shape[1], height=roi.shape[0], bitdepth=16)
+                            # Convert array to the Python list of lists expected by the png writer.
+                            gray2list = roi.tolist()
+                            writer.write(f, gray2list)
                     # plt.imshow(roi)
                     # plt.title(label=label)
                     # plt.show()
-            elif depth_img is not None and 'poly' not in cropname.split('_')[-1]:
+            elif depth_img is not None and 'poly' not in cropname.split('_')[-1]: #depth case #one crop by one instead of full list
                 #select just specific roi of that crop
                 img = depth_img.copy()  # copy for cropping
                 n = int(cropname.split('_')[-1][:-4])
+                label = object.find('name').text.replace('/', '_').replace(' ', '')
                 object = root.findall('object')[n]
                 bbox = object.find('bndbox')
                 xmin = int(bbox.find('xmin').text)
@@ -232,7 +245,8 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                 #dimg = Image.fromarray(roi)
                 #dimg.show()
                 # save as 16-bit one-channeled PNG
-                with open(pimg[:-4] +'depth.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                po = os.path.join(path_to_out,label,cropname)
+                with open(po[:-4] +'_'+str(n)+'.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
                     writer = png.Writer(width=roi.shape[1], height=roi.shape[0], bitdepth=16)
                     # Convert array to the Python list of lists expected by the png writer.
                     gray2list = roi.tolist()
@@ -245,31 +259,45 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
         if polyf is not None:
             rois = polyf["regions"]
             rois = collections.OrderedDict(sorted(rois.items()))
-            if depth_img is None:
+            if depth_img is None or (depth_img is not None and 'depth' in pimg):
                 for i, (k, v) in enumerate(rois.items()):
                     label = v["region_attributes"]["label"].replace('/', '_').replace(' ', '')
                     all_x = v["shape_attributes"]["all_points_x"]
                     all_y = v["shape_attributes"]["all_points_y"]
-                    cropped_img = crop_polygonal(pimg, list(zip(all_x, all_y)))
                     if not os.path.isdir(os.path.join(path_to_out, label)):
                         os.mkdir(os.path.join(path_to_out, label))
                     pout = os.path.join(path_to_out, label, fname[:-4] + '_poly' + str(i) + '.png')
-                    # Save, but 3-channeled
-                    cropped_img = Image.fromarray(cropped_img, "RGBA")
-                    pil_roi = Image.new("RGB", cropped_img.size, (0, 0, 0))  # create black background
-                    pil_roi.paste(cropped_img, mask=cropped_img.split()[3])  # paste content of alpha channel in it
-                    pil_roi.save(pout)
-                    # pil_roi.show()
-                    test_imgs.append(pout)
-                    try:
-                        test_labels.append(cmap[label])
-                    except KeyError:
-                        if label == "fire_alarm_call_assembly_point_sign":
-                            test_labels.append(cmap["fire_alarm_assembly_sign"])
-                        else:
-                            sys.exit(0)
+                    if depth_img is None:
+                        cropped_img = crop_polygonal(pimg, list(zip(all_x, all_y)))
+                        # Save, but 3-channeled
+                        cropped_img = Image.fromarray(cropped_img, "RGBA")
+                        pil_roi = Image.new("RGB", cropped_img.size, (0, 0, 0))  # create black background
+                        pil_roi.paste(cropped_img, mask=cropped_img.split()[3])  # paste content of alpha channel in it
+                        pil_roi.save(pout)
+                        # pil_roi.show()
+                        test_imgs.append(pout)
+                        try:
+                            test_labels.append(cmap[label])
+                        except KeyError:
+                            if label == "fire_alarm_call_assembly_point_sign":
+                                test_labels.append(cmap["fire_alarm_assembly_sign"])
+                            elif label == "pile_of_papers":
+                                test_labels.append(cmap["pile_of_paper"])
+                            else:
+                                print("----Problem with object label formatting....exiting----")
+                                sys.exit(0)
+                    else: #save depth img
+                        img = cv2.imread(pimg, cv2.IMREAD_UNCHANGED)
+                        cropped_img = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                        po = os.path.join(path_to_out,label, cropname)
+                        with open(po[:-4] + '_poly_'+str(i)+'.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                            writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
+                            # Convert array to the Python list of lists expected by the png writer.
+                            gray2list = cropped_img.tolist()
+                            writer.write(f, gray2list)
+
             elif depth_img is not None and 'poly' in cropname.split('_')[-1]:
-                # select just specific roi of that crop
+                # Imgs cropped individually, select just specific roi of that crop
                 img = depth_img.copy()  # copy for cropping
                 t = cropname.split('_')[-1][:-4]
                 i = int(t.split('poly')[1])
@@ -367,3 +395,19 @@ def call_python_version(Version, Module, Function, ArgumentList):
     """ % (Module, Function))
     channel.send(ArgumentList)
     return channel.receive()
+
+
+def list_depth_filenames(input_path):
+    """
+    Returns path to files containing "depth" ih their name
+    Expects a macro folder with sub-folder structure divided class by class
+    e.g., passing ./data will search over ./data/class1, ./data/class2 ... etc.
+    """
+    fnamelist = []
+    for root, dirs, files in os.walk(input_path):
+        for name in dirs:
+            base = os.path.join(root, name)
+            fnamelist.extend([os.path.join(base,f) for f in os.listdir(base) if 'depth' in f])
+
+    if len(fnamelist)> 0 : return fnamelist
+    else: return None

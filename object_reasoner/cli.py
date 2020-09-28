@@ -21,6 +21,8 @@ def main():
                         help='path to bag/bags where depth data are logged')
     parser.add_argument('--regions', default=None,
                         help='path to region annotations')
+    parser.add_argument('--origin', default=None,
+                        help='path to full size images pre-cropping')
 
     args = parser.parse_args()
     reasoner = ObjectReasoner(args)

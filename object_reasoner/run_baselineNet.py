@@ -45,6 +45,8 @@ def main():
                         help='Dataset to run on')
     parser.add_argument('--chkp', default=None,
                         help='path to model checkpoint. Required when running in predict mode')
+    parser.add_argument('--anns', default=None,
+                        help='path to image annotations')
 
     args = parser.parse_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -129,8 +131,9 @@ def main():
             if not os.path.exists(os.path.join(args.out, '../test-imgs.txt')):
                 # crop test images to annotate bbox/polygon
                 print("Preparing ground truth annotations...")
-                ilist = [os.path.join(args.path_to_arc, fname) for fname in os.listdir(args.path_to_arc)]
-                crop_test(ilist, os.path.join(args.path_to_arc, '../../exported'), args.out)
+                ilist = [os.path.join(args.path_to_arc, fname) for fname in os.listdir(args.path_to_arc) if 'depth' not in fname]
+                #crop_test(ilist, os.path.join(args.path_to_arc, '../../exported'), args.out)
+                crop_test(ilist, args.anns, args.out)
 
         #All classes at test time: known + novel
         if args.model == 'imprk-net':
@@ -192,10 +195,10 @@ def main():
             test_results['prodFeat'] = test_set.prod_emb
             if args.mode != 'predict_baseline':
                 print("saving resulting embeddings under %s" % '/'.join(args.chkp.split('/')[:-1]))
-                hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test-results.h5'),'w')
+                hfile = h5py.File(os.path.join('/'.join(args.chkp.split('/')[:-1]), 'snapshot-test2-results.h5'),'w')
             else:
                 print("saving resulting embeddings under %s" % args.chkp)
-                hfile = h5py.File(os.path.join(args.chkp, 'snapshot-test-results.h5'), 'w')
+                hfile = h5py.File(os.path.join(args.chkp, 'snapshot-test2-results.h5'), 'w')
             for k, v in test_results.items():
                 hfile.create_dataset(k, data=np.array(v, dtype='<f4'))
             print("Test embeddings saved")

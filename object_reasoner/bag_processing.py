@@ -9,6 +9,8 @@ from cv_bridge import CvBridge
 import numpy as np
 from utils import crop_test
 import png
+import shutil
+
 # from PIL import Image
 
 def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06,tol_max=0.2):
@@ -27,8 +29,13 @@ def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06
     img_index = {}
     for imgp in rgb_img_list:
         filename = str(imgp.split("/")[-1])
+        out_path_rgb = imgp.split("TBA")[0] + "validated/" + filename
+        if os.path.exists(out_path_rgb):
+            continue  # skip
         basestamp = filename.split('_')[0]
         stampsecs = filename.split('_')[1]
+        if 'jpg' or 'png' in stampsecs:
+            stampsecs = stampsecs[:-4]
         basestamp = basestamp[:10]+' '+basestamp[11:13]+ ':' + basestamp[14:16]+':'+ basestamp[17:]
         timestring = basestamp+'.'+stampsecs
         rgb_time = datetime.datetime.strptime(timestring, "%Y-%m-%d %H:%M:%S.%f")
@@ -42,6 +49,12 @@ def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06
     for timekey, path_dict in img_index.items():
         # array of images for that timekey
         imgps = path_dict["urls"]
+        origin_path = imgps[0]
+        filenam = origin_path.split("TBA")[1]
+        out_path_rgb = origin_path.split("TBA")[0] + "validated/" + filenam
+        out_path_depth = origin_path.split("TBA")[0] + "validated/" + filenam[:-4] + 'depth.png'
+        # copy RGB file to validated files folder
+
         for n, (bdate, bname, ext) in enumerate(available_bags): # find bag file the img belongs to (time-wise)
             try:
                 if timekey >= bdate and timekey < available_bags[n+1][0]:
@@ -68,10 +81,21 @@ def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06
 
         #Save copy of depth image locally, one copy for each crop at that timestamp
         d_img.astype(np.uint16)
-        # dimg = Image.fromarray(d_img)
-        # Crop to 2D bbox or polygon
-        dimg_list = crop_test(imgps, path_to_annotations, None, d_img, dimg_list)
-        # pcls.append(pcloud)
+        if path_to_annotations is None:
+            # Just return/save full depth image
+            dimg_list.append(d_img)
+            # save as 16-bit one-channeled PNG
+
+            shutil.copyfile(origin_path,out_path_rgb)
+            with open(out_path_depth, 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                writer = png.Writer(width=d_img.shape[1], height=d_img.shape[0], bitdepth=16)
+                # Convert array to the Python list of lists expected by the png writer.
+                gray2list = d_img.tolist()
+                writer.write(f, gray2list)
+
+        else: #crop depth image before adding to list
+            # Crop to 2D bbox or polygon
+            dimg_list = crop_test(imgps, path_to_annotations, None, d_img, dimg_list)
     #return dimg_list
 
 def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=[]):

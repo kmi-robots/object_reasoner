@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import cv2
 from collections import Counter
-from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version
+from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version, crop_test, list_depth_filenames
 from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours
@@ -70,24 +70,32 @@ class ObjectReasoner():
                 sys.exit(0)
             self.tsamples = None
             #if no depth imgs stored locally, generate from bag
-
-            if not os.path.exists(self.imglist[0][:-4]+'depth.png'): # checking on 1st img of list for instance
+            self.dimglist = list_depth_filenames(os.path.join(args.test_base, 'test-imgs'))
+            if self.dimglist is None: # create depth crops first
                 if args.regions is None or not os.path.isdir(args.bags):
                     print("Print provide a valid path to the region annotation files")
                     sys.exit(0)
-                # call python2 method from python3 script
-                print("Starting depth image extraction from bag files... It may take long to complete")
-                try:
-                    call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
-                except Exception as e:
-                    print(str(e))
-                    sys.exit(0)
-                print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
-                print("Empty files:")
-                print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
+                if os.path.isdir(args.origin):
+                    #Are there any full size depth images already matched to rgb?
+                    original_full_depth = [os.path.join(args.origin, fname) for fname in os.listdir(args.origin) if 'depth' in fname]
+                if len(original_full_depth)>0:
+                    #if yes, proceed with cropping directly
+                    crop_test(original_full_depth, args.regions, os.path.join(args.test_base,'test-imgs'),'depth')
+                    self.dimglist = list_depth_filenames(os.path.join(args.test_base,'test-imgs'))
 
-            self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in
-                                 self.imglist]
+                else:
+                    #otherwise, start from temporal img matching too
+                    # call python2 method from python3 script
+                    print("Starting depth image extraction from bag files... It may take long to complete")
+                    try:
+                        call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
+                    except Exception as e:
+                        print(str(e))
+                        sys.exit(0)
+                print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
+                self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in self.imglist]
+
+            else: self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in self.dimglist]
             print("Empty depth files:")
             print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
             self.scale = 1000.0 #depth values in mm
@@ -291,40 +299,41 @@ class ObjectReasoner():
                 self.dimglist[i] = None
                 continue
 
-            if current_label != gt_label:
+            #if current_label != gt_label:
 
-                #pclpts=np.asarray(obj_pcl.points)
+            #pclpts=np.asarray(obj_pcl.points)
 
-                #invalidpts = pclpts[[pclpts[z,:]==np.array([0.,0.,0.])
-                #              for z in range(pclpts.shape[0])]]
-                #plt.imshow(cv2.imread(self.imglist[i]))
-                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                #plt.show()
+            #invalidpts = pclpts[[pclpts[z,:]==np.array([0.,0.,0.])
+            #              for z in range(pclpts.shape[0])]]
+            #plt.imshow(cv2.imread(self.imglist[i]))
+            #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+            #plt.show()
 
-                qual = pred_size_qual(d1,d2)
-                flat = pred_flat(depth)
-                #select all objects beloging to the same qual bin, based on KB
-                candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
+            qual = pred_size_qual(d1,d2)
+            flat = pred_flat(depth)
+            #select all objects beloging to the same qual bin, based on KB
+            candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
 
-                candidates = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
+            candidates = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
 
-                candidates_num = [self.mapper[oname.replace(' ','_')] for oname in candidates]
-                full_vision_rank = all_predictions[i,:]
+            candidates_num = [self.mapper[oname.replace(' ','_')] for oname in candidates]
+            full_vision_rank = all_predictions[i,:]
 
-                valid_rank = full_vision_rank[[full_vision_rank[z,0] in candidates_num for z in range(full_vision_rank.shape[0])]]
-                read_rank = [(self.remapper[valid_rank[z,0]],valid_rank[z,1]) for z in range(valid_rank.shape[0])]
-                read_current_rank = [(self.remapper[current_ranking[z,0]],current_ranking[z,1]) for z in range(current_ranking.shape[0])]
-                print("%s predicted as %s" % (gt_label,current_label))
-                print("Detected size is %s" % qual)
-                print("Estimated dims %f x %f x %f m" % (d1,d2,depth))
-                print("ML based ranking")
-                print(read_current_rank[:5])
-                print("Knowledge validated ranking")
-                print(read_rank[:5])
-                print("================================")
-                #o3d.visualization.draw_geometries([cluster_pcl,orientedbox])
-                self.predictions[i, :] = valid_rank[:5,:]
+            valid_rank = full_vision_rank[[full_vision_rank[z,0] in candidates_num for z in range(full_vision_rank.shape[0])]]
+            read_rank = [(self.remapper[valid_rank[z,0]],valid_rank[z,1]) for z in range(valid_rank.shape[0])]
+            read_current_rank = [(self.remapper[current_ranking[z,0]],current_ranking[z,1]) for z in range(current_ranking.shape[0])]
+            print("%s predicted as %s" % (gt_label,current_label))
+            print("Detected size is %s" % qual)
+            print("Estimated dims %f x %f x %f m" % (d1,d2,depth))
+            print("ML based ranking")
+            print(read_current_rank[:5])
+            print("Knowledge validated ranking")
+            print(read_rank[:5])
+            print("================================")
+            #o3d.visualization.draw_geometries([cluster_pcl,orientedbox])
+            self.predictions[i, :] = valid_rank[:5,:]
             #skip remainder
+
             """
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                     # If we detect a volume alpha times or more larger/smaller
