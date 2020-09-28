@@ -23,6 +23,8 @@ def main():
                         help='path to region annotations')
     parser.add_argument('--origin', default=None,
                         help='path to full size images pre-cropping')
+    parser.add_argument('--preds', default='./data/logged-predictions',
+                        help='path to logged ML-based predictions as output by run_baselineNet.py')
 
     args = parser.parse_args()
     reasoner = ObjectReasoner(args)

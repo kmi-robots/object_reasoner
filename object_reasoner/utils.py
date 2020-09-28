@@ -38,16 +38,15 @@ def init_obj_catalogue(path_to_data):
 
     return obj_dict
 
-def load_emb_space(args):
+def load_emb_space(args,fname='snapshot-test-results.h5'):
     """
     Assumes the input are the HDF5 files
     as produced by the baselines provided at
     https://github.com/andyzeng/arc-robot-vision/image-matching
     """
-
     if args.baseline =="imprk-net" or args.set=='KMi':
 
-        path_to_hdf5 = os.path.join(args.test_res, args.baseline, 'snapshots-with-class','snapshot-test-results.h5')
+        path_to_hdf5 = os.path.join(args.test_res, args.baseline, 'snapshots-with-class',fname)
         tgt_impr = h5py.File(path_to_hdf5, 'r')
         return np.array(tgt_impr['prodFeat'], dtype='<f4'), np.array(tgt_impr['testFeat'], dtype='<f4'),\
                None, None
@@ -82,8 +81,6 @@ def load_camera_intrinsics_txt(path_to_intr):
                     except IndexError:
                         intrinsics.append(float(cell))
     return intrinsics
-
-
 
 def BGRtoRGB(img_array):
     img = img_array.copy()
@@ -290,7 +287,7 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                         img = cv2.imread(pimg, cv2.IMREAD_UNCHANGED)
                         cropped_img = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
                         po = os.path.join(path_to_out,label, cropname)
-                        with open(po[:-4] + '_poly_'+str(i)+'.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
+                        with open(po[:-4] + '_poly'+str(i)+'.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
                             writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
                             # Convert array to the Python list of lists expected by the png writer.
                             gray2list = cropped_img.tolist()

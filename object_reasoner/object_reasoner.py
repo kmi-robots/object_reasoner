@@ -62,7 +62,7 @@ class ObjectReasoner():
             self.labels = txtf.read().splitlines()       #gt labels for each test img
               # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
-            self.imglist = [os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
+            self.imglist = imgf.read().splitlines()#[os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
 
         if args.set =='KMi':
             if args.bags is None or not os.path.isdir(args.bags):
@@ -80,8 +80,9 @@ class ObjectReasoner():
                     original_full_depth = [os.path.join(args.origin, fname) for fname in os.listdir(args.origin) if 'depth' in fname]
                 if len(original_full_depth)>0:
                     #if yes, proceed with cropping directly
+                    tempdimglist = ['_'.join(p.split('_')[:-1]) + 'depth_' + p.split('_')[-1] for p in self.imglist]
                     crop_test(original_full_depth, args.regions, os.path.join(args.test_base,'test-imgs'),'depth')
-                    self.dimglist = list_depth_filenames(os.path.join(args.test_base,'test-imgs'))
+                    self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in tempdimglist]
 
                 else:
                     #otherwise, start from temporal img matching too
@@ -92,10 +93,12 @@ class ObjectReasoner():
                     except Exception as e:
                         print(str(e))
                         sys.exit(0)
-                print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
-                self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in self.imglist]
+                    print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
+                    self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in self.imglist]
 
-            else: self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in self.dimglist]
+            else:
+                tempdimglist = ['_'.join(p.split('_')[:-1]) + 'depth_' + p.split('_')[-1] for p in self.imglist]
+                self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in tempdimglist]
             print("Empty depth files:")
             print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
             self.scale = 1000.0 #depth values in mm
@@ -123,28 +126,28 @@ class ObjectReasoner():
 
         # Load predictions from baseline algo
         start = time.time()
-        if not os.path.isfile(('./data/test_predictions_%s.npy' % args.baseline)):
+        if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds,args.baseline))):
             # then retrieve from raw embeddings
-            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = load_emb_space(args)
+            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = load_emb_space(args,fname='snapshot-test2-results.h5')
             if args.baseline == 'two-stage':
                 self.predictions = pred_twostage(self, args)
             else:
                 self.predictions,self.avg_predictions, self.min_predictions = pred_singlemodel(self, args)
             if self.predictions is not None:
-                np.save(('./data/test_predictions_%s.npy' % args.baseline), self.predictions)
+                np.save(('%s/test_predictions_%s.npy' % (args.preds,args.baseline)), self.predictions)
             else:
                 print("Prediction mode not supported yet. Please choose a different one.")
                 sys.exit(0)
             if self.avg_predictions is not None:
-                np.save(('./data/test_avg_predictions_%s.npy' % args.baseline), self.avg_predictions)
+                np.save(('%s/test_avg_predictions_%s.npy' % (args.preds,args.baseline)), self.avg_predictions)
             if self.min_predictions is not None:
-                np.save(('./data/test_min_predictions_%s.npy' % args.baseline), self.min_predictions)
+                np.save(('%s/test_min_predictions_%s.npy' % (args.preds,args.baseline)), self.min_predictions)
 
         else:
-            self.predictions = np.load(('./data/test_predictions_%s.npy' % args.baseline),allow_pickle=True)
+            self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds,args.baseline)),allow_pickle=True)
             try:
-                self.avg_predictions = np.load(('./data/test_avg_predictions_%s.npy' % args.baseline), allow_pickle=True)
-                self.min_predictions = np.load(('./data/test_min_predictions_%s.npy' % args.baseline), allow_pickle=True)
+                self.avg_predictions = np.load(('%s/test_avg_predictions_%s.npy' % (args.preds,args.baseline)), allow_pickle=True)
+                self.min_predictions = np.load(('%s/test_min_predictions_%s.npy' % (args.preds,args.baseline)), allow_pickle=True)
             except FileNotFoundError:
                 self.avg_predictions = None
                 self.min_predictions = None
@@ -243,16 +246,16 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
                 continue
-            """
+
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()
             plt.imshow(cv2.imread(self.imglist[i]))
             plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
             plt.show()
 
-            # origpcl = PathToPCL(self.dimglist[i], self.camera)
-            o3d.visualization.draw_geometries([origpcl])
-            """
+            obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+            o3d.visualization.draw_geometries([obj_pcl])
+
             if foregroundextract:
                 cluster_bw = extract_foreground_2D(dimage)
                 # plt.imshow(cluster_bw, cmap='Greys_r')
