@@ -5,7 +5,28 @@ import numpy as np
 import time
 from collections import Counter
 
-def cluster_3D(pcl, eps=0.1, minpoints=150, vsize=0.05, downsample=False):
+
+def pcl_remove_outliers(pcl, vx=5, std_r=2.):
+    uni_down_pcd = pcl.uniform_down_sample(every_k_points=vx)
+    neighbours = int(len(np.asarray(uni_down_pcd.points)))
+    #print(neighbours)
+    fpcl,_ = pcl.remove_statistical_outlier(nb_neighbors=neighbours, std_ratio=std_r)
+    #print(len(np.asarray(fpcl.points)))
+    return fpcl
+
+def pcl_remove_outliers_bydistance(pcl, vx=5, r = 0.2):
+
+    uni_down_pcd = pcl.uniform_down_sample(every_k_points=vx)
+    pts = np.asarray(uni_down_pcd.points)
+    neighbours = int(len(pts)/2)
+    print(neighbours)
+    fpcl,_ = pcl.remove_radius_outlier(nb_points=neighbours, radius=r)
+    print(len(np.asarray(fpcl.points)))
+    return fpcl
+
+
+
+def cluster_3D(pcl, eps=0.1, minpoints=15, vsize=0.05, downsample=False):
     """
     DBSCAN clustering for pointclouds
     vsize: voxel size for downsampling
@@ -13,12 +34,13 @@ def cluster_3D(pcl, eps=0.1, minpoints=150, vsize=0.05, downsample=False):
     if downsample:
         downpcl= pcl.voxel_down_sample(voxel_size=vsize)
     else: downpcl = pcl
+
     # o3d.visualization.draw_geometries([downpcl])
     labels = np.array(downpcl.cluster_dbscan(eps=eps, min_points=minpoints)) #, print_progress=True))
     # print("Took % fseconds." % float(time.time() - start))
     max_label = labels.max()
-    #print("Pcl has %d clusters" % (max_label + 1))
 
+    print("Pcl has %d clusters" % (max_label + 1))
     cmap = plt.get_cmap("tab20")
     colors = cmap(labels / (max_label if max_label > 0 else 1))
     colors[labels < 0] = 0
@@ -80,45 +102,39 @@ def estimate_dims(pcd,original_pcd, d=0.05):
     Finds bounding solid and
     estimates obj dimensions from vertices
     """
-    # threedbox = pcd.get_axis_aligned_bounding_box()
+
     try:
         orthreedbox = pcd.get_oriented_bounding_box()
+        # threedbox = pcd.get_axis_aligned_bounding_box()
     except:
-        #print("Problem with current pcd") #planar surface, e.g., wall, window, door, where no volume could be found
         print("Not enough points in 3D cluster, reduced to planar surface... reverting back to full pcd")
         #print(str(e))
         try:
             orthreedbox = original_pcd.get_oriented_bounding_box()
         except:
             return
-        #contour_area = 0.
-        #volume = contour_area*d #multiply by fixed depth (in metres)
 
-    # orthreedbox = pcd.get_axis_aligned_bounding_box()
-    # print(orthreedbox.dimension())
     box_points = np.asarray(orthreedbox.get_box_points())
     box_center = np.asarray(orthreedbox.get_center())
-    # box_axis = orthreedbox.R
 
     #o3d.visualization.draw_geometries([original_pcd, orthreedbox])
-    #cf = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.01, origin= box_points[0])
-    #cf2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05, origin=box_points[1])
-    #cf3 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=box_points[2])
-    #cf4 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.15, origin=box_points[3])
-    # o3d.visualization.draw_geometries([cf, cf2, cf3, cf4, orthreedbox, pcd])
-
     #Compute width, height and depth from bbox points
     #Point order not documented. But First 3 vertices look like they lie always on same surface
     # and the 4th one perpendicular to the first one
     # Confirmed by double checking open3D source code
+    """
     d1 = np.linalg.norm(box_points[0] - box_points[1])
     d2 = np.linalg.norm(box_points[0] - box_points[2])
     d3 = np.linalg.norm(box_points[0] - box_points[3])
-    dims = [d1,d2,d3]
-    dims.remove(min(dims))
+    dims = [d1, d2, d3]
+    """
+    v = orthreedbox.volume()
+    dims = orthreedbox.extent.tolist()
+    nomin = dims.copy()
+    nomin.remove(min(dims))
 
     """
     Hard to know a priori what is the w and what is the h
     But we can assume the depth will be always the min due to how data are captured
     """
-    return (*dims,min(d1,d2,d3), orthreedbox.volume(), orthreedbox)
+    return (*nomin,min(dims), v, orthreedbox)

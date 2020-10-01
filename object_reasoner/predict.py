@@ -181,6 +181,16 @@ def pred_size_qual(dim1, dim2,t1=0.0868 , t2=0.2448):
     elif estimated_area>= t1 and estimated_area <= t2: return 'medium'
     else: return 'large'
 
-def pred_flat(depth, cut=0.15):
-    if depth <= cut: return True
+def pred_flat(d1,d2,depth, cut=0.70): #if depth greater than x% of its min dim then non flat
+    len_thresh = 0.10 #min(d1,d2) * cut
+    if depth <= len_thresh: return True
     else: return False
+
+def pred_thinness(depth, cuts=[0.1,0.15]):
+    """
+    Rates object thinness/thickness based on measured depth
+    """
+    if depth <= cuts[0]: return 'flat'
+    if depth > cuts[0] and depth <= cuts[1]: return 'thin'
+    #if depth > cuts[1] and depth <= cuts[2]: return 'thick'
+    else: return 'thick'

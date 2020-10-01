@@ -1,0 +1,357 @@
+{
+	"shoes": {
+		"has_size": "small",
+		"thinness": "thick"
+	},
+	"big screen": {
+		"has_size": "large",
+		"thinness": "flat"
+	},
+	"fire extinguisher": {
+		"has_size": "medium",
+		"thinness": "thick"
+	},
+	"fire extinguisher sign": {
+		"has_size": "small",
+		"thinness": "flat"
+	},
+	"hanged coat sweater": {
+		"has_size": "medium",
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"glass": {
+		"has_size": "small",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"microphone": {
+		"has_size": "small",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"lamp": {
+		"has_size": "medium",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"power socket": {
+		"has_size": "small",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"guitar": {
+		"has_size": "medium",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"bookcase": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"laptop": {
+		"has_size": "medium",
+		"thinness": [
+			"flat",
+			"thin"
+		]
+	},
+	"recording sign": {
+		"has_size": "small",
+		"thinness": "thin"
+	},
+	"foosball table": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"cupboard": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"mobile phone": {
+		"has_size": "small",
+		"thinness": "flat"
+	},
+	"printer": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"hat": {
+		"has_size": "small",
+		"thinness": "thick"
+	},
+	"monitor": {
+		"has_size": "medium",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"box": {
+		"has_size": [
+			"small",
+			"medium",
+			"large"
+		],
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"desk": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"fire alarm assembly sign": {
+		"has_size": "small",
+		"thinness": "flat"
+	},
+	"chest of drawers": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"wallpaper": {
+		"has_size": "large",
+		"thinness": [
+			"flat",
+			"thin"
+		]
+	},
+	"welcome pod": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"coat stand": {
+		"has_size": "large",
+		"thinness": [
+			"flat",
+			"thin"
+		]
+	},
+	"door": {
+		"has_size": "large",
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"office signs": {
+		"has_size": "small",
+		"thinness": "flat"
+	},
+	"chair": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"plant": {
+		"has_size": [
+			"small",
+			"medium",
+			"large"
+		],
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"toilet sign": {
+		"has_size": "small",
+		"thinness": "flat"
+	},
+	"food snack": {
+		"has_size": "small",
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"book": {
+		"has_size": [
+			"small",
+			"medium"
+		],
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"rubbish bin": {
+		"has_size": [
+			"medium",
+			"large"
+		],
+		"thinness": "thick"
+	},
+	"bicycle": {
+		"has_size": "large",
+		"thinness": "thin"
+	},
+	"headphones": {
+		"has_size": "small",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"radiator": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"person": {
+		"has_size": "large",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"mug": {
+		"has_size": "small",
+		"thinness": "thick"
+	},
+	"podium": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"emergency exit sign": {
+		"has_size": "small",
+		"thinness": "flat"
+	},
+	"whiteboard": {
+		"has_size": "large",
+		"thinness": [
+			"flat",
+			"thin"
+		]
+	},
+	"keyboard": {
+		"has_size": "small",
+		"thinness": [
+			"flat",
+			"thin"
+		]
+	},
+	"fan": {
+		"has_size": "medium",
+		"thinness": "thick"
+	},
+	"drink can": {
+		"has_size": "small",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"pigeon holes": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"desktop computer": {
+		"has_size": "medium",
+		"thinness": "thick"
+	},
+	"mouse": {
+		"has_size": "small",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"handbag": {
+		"has_size": "medium",
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"bottle": {
+		"has_size": "small",
+		"thinness": "thick"
+	},
+	"sofa": {
+		"has_size": "large",
+		"thinness": "thick"
+	},
+	"window": {
+		"has_size": "large",
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"electric heater": {
+		"has_size": "medium",
+		"thinness": [
+			"thin",
+			"thick"
+		]
+	},
+	"pile of paper": {
+		"has_size": [
+			"small",
+			"medium"
+		],
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"projector": {
+		"has_size": "medium",
+		"thinness": "thick"
+	},
+	"desk phone": {
+		"has_size": "small",
+		"thinness": "thick"
+	},
+	"power cord": {
+		"has_size": [
+			"small",
+			"medium",
+			"large"
+		],
+		"thinness": [
+			"flat",
+			"thin"
+		]
+	},
+	"robot": {
+		"has_size": "medium",
+		"thinness": "thick"
+	},
+	"backpack": {
+		"has_size": "medium",
+		"thinness": [
+			"flat",
+			"thin",
+			"thick"
+		]
+	},
+	"plant vase": {
+		"has_size": [
+			"small",
+			"medium"
+		],
+		"thinness": "thick"
+	}
+}

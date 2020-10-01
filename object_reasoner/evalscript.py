@@ -83,8 +83,10 @@ def eval_KMi(ReasonerObj, depth_aligned=False, K=None):
     If K is set, it looks at whether the correct answer appears in the top-K ranking
     if depth-aligned is True, evals only on those images which have an accurate (and non null) match for depth
     """
-    # eval only on those with a depth img associated
-    blacklist = [] #['524132', '409022', '240924', '741394', '109086', '041796', '036939']
+    # eval only on those with a depth region associated
+    blacklist = ['387317_6', '559158_0', '559158_3', '559158_poly3', '437317_poly10', '809309_poly2', '809309_poly4', '859055_1',
+                 '859055_2', '859055_3', '859055_poly0', '246928_6', '655068_2', '655068_5', '655068_6', '477148_poly7',
+                 '258729_2', '258729_3', '258729_poly4']     #old set #['524132', '409022', '240924', '741394', '109086', '041796', '036939']
     print("Class-wise test results \n")
     if K is None:
         # eval top-1 of each ranking
@@ -92,10 +94,11 @@ def eval_KMi(ReasonerObj, depth_aligned=False, K=None):
         if depth_aligned:
             y_pred = [y for i,y in enumerate(y_pred)
                       if ReasonerObj.dimglist[i] is not None
-                      and ReasonerObj.imglist[i].split('/')[-1].split('_')[-2] not in blacklist]
+                and '_'.join(ReasonerObj.imglist[i].split('/')[-1].split('.')[0].split('_')[-2:]) not in blacklist]
+
             y_true = [l for i,l in enumerate(ReasonerObj.labels)
                       if ReasonerObj.dimglist[i] is not None
-                      and ReasonerObj.imglist[i].split('/')[-1].split('_')[-2] not in blacklist]
+                      and '_'.join(ReasonerObj.imglist[i].split('/')[-1].split('.')[0].split('_')[-2:]) not in blacklist]
         else: #eval on full RGB test set
             y_true = ReasonerObj.labels
         print(classification_report(y_true, y_pred))

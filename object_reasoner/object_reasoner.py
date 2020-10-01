@@ -8,10 +8,11 @@ import numpy as np
 import cv2
 from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version, crop_test, list_depth_filenames
-from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat
+from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat, pred_thinness
 from evalscript import eval_singlemodel, eval_KMi
-from img_processing import extract_foreground_2D, detect_contours
-from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims
+from img_processing import extract_foreground_2D, detect_contours, remove_outliers_custom
+from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims, pcl_remove_outliers, pcl_remove_outliers_bydistance
+
 import statistics
 
 import matplotlib.pyplot as plt
@@ -187,6 +188,7 @@ class ObjectReasoner():
         print("Reasoning for correction ... ")
         start = time.time()
         non_processed_pcls = 0
+        non_processed_fnames = []
         non_depth_aval = 0
         no_corrected =0
         nfallbacks = 0
@@ -206,7 +208,7 @@ class ObjectReasoner():
             novision = False
             knowledge_only = False
             foregroundextract = False
-            pclcluster = True
+            pclcluster = False
             reranking = False
             mean = False
             sizevisionmean = True
@@ -220,6 +222,7 @@ class ObjectReasoner():
         all_gt_labels = [self.remapper[l] for i,l in enumerate(self.labels) if self.dimglist[i] is not None]
         supports = Counter(all_gt_labels)
         estimated_vols = {}
+        estimated_sizes = {}
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             # baseline predictions as (label, distance)
@@ -246,15 +249,14 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
                 continue
-
+            """
             plt.imshow(dimage, cmap='Greys_r')
             plt.show()
             plt.imshow(cv2.imread(self.imglist[i]))
             plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
             plt.show()
-
-            obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
-            o3d.visualization.draw_geometries([obj_pcl])
+            """
+            #orig_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
 
             if foregroundextract:
                 cluster_bw = extract_foreground_2D(dimage)
@@ -272,7 +274,8 @@ class ObjectReasoner():
                     # plt.show()
                     obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
             else:
-                # just filter out zero values
+                # just filter out outliers
+                #fdimage = remove_outliers_custom(dimage)
                 obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
 
             pcl_points = np.asarray(obj_pcl.points).shape[0]
@@ -280,10 +283,17 @@ class ObjectReasoner():
                 print("Empty pcl, skipping")
                 non_processed_pcls += 1
                 # do not consider that obj region in eval
+                non_processed_fnames.append(self.imglist[i].split('/')[-1])
                 self.dimglist[i] = None
+                plt.imshow(dimage, cmap='Greys_r')
+                plt.show()
+                plt.imshow(cv2.imread(self.imglist[i]))
+                plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                plt.show()
                 continue
             # o3d.visualization.draw_geometries([obj_pcl])
             if pclcluster:
+                obj_pcl = pcl_remove_outliers(obj_pcl)
                 cluster_pcl = cluster_3D(obj_pcl, downsample=False)
                 # o3d.visualization.draw_geometries([cluster_pcl])
                 if cluster_pcl is None:  # or with 3D clustering
@@ -293,17 +303,49 @@ class ObjectReasoner():
             else:
                 cluster_pcl = obj_pcl
 
+            #remove statistical outliers from pcl
+            #cluster_pcl = pcl_remove_outliers_bydistance(cluster_pcl)
+            cluster_pcl = pcl_remove_outliers(cluster_pcl)
+            #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+            #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl])
+
             try:
                 d1, d2, depth, volume, orientedbox = estimate_dims(cluster_pcl, obj_pcl)
+                #cd1, cd2, cdepth, cvolume, chullbox = estimate_dims(chull, cluster_pcl)
             except TypeError:
                 print("Still not enough points..skipping")
                 non_processed_pcls += 1
                 # do not consider that obj region in eval
+                non_processed_fnames.append(self.imglist[i].split('/')[-1])
                 self.dimglist[i] = None
+                plt.imshow(dimage, cmap='Greys_r')
+                plt.show()
+                plt.imshow(cv2.imread(self.imglist[i]))
+                plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                plt.show()
                 continue
+            #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
+            try:
+                estimated_sizes[gt_label]['d1'].append(d1)
+                estimated_sizes[gt_label]['d2'].append(d2)
+                estimated_sizes[gt_label]['depth'].append(depth)
+            except KeyError:
+                estimated_sizes[gt_label] = {}
+                estimated_sizes[gt_label]['d1'] = []
+                estimated_sizes[gt_label]['d2'] = []
+                estimated_sizes[gt_label]['depth'] = []
 
-            #if current_label != gt_label:
+                estimated_sizes[gt_label]['d1'].append(d1)
+                estimated_sizes[gt_label]['d2'].append(d2)
+                estimated_sizes[gt_label]['depth'].append(depth)
 
+            """
+            try:
+                o3d.visualization.draw_geometries([cluster_pcl])
+            except RuntimeError as e:
+                print(str(e))
+                pass
+            """
             #pclpts=np.asarray(obj_pcl.points)
 
             #invalidpts = pclpts[[pclpts[z,:]==np.array([0.,0.,0.])
@@ -311,30 +353,59 @@ class ObjectReasoner():
             #plt.imshow(cv2.imread(self.imglist[i]))
             #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
             #plt.show()
+            #if current_label != gt_label:
 
+            #.imshow(dimage, cmap='Greys_r')
+            #plt.show()
+            #plt.imshow(cv2.imread(self.imglist[i]))
+            #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+            #plt.show()
+            #cluster_pcl.paint_uniform_color(np.array([0.,0.,0.]))
+            #o3d.visualization.draw_geometries([obj_pcl,cluster_pcl,orientedbox])
             qual = pred_size_qual(d1,d2)
-            flat = pred_flat(depth)
+            #flat = pred_flat(d1,d2,depth)
+            thinness = pred_thinness(depth)
+            #if flat:
+            #    print("really flat object found")
+
+            #flat_flag = 'flat' if flat else 'non flat'
             #select all objects beloging to the same qual bin, based on KB
             candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
 
-            candidates = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
+            #candidates_flat = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
+            candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and thinness in str(self.KB[oname]["thinness"]))]
 
             candidates_num = [self.mapper[oname.replace(' ','_')] for oname in candidates]
+            #candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
+            candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
+
             full_vision_rank = all_predictions[i,:]
 
             valid_rank = full_vision_rank[[full_vision_rank[z,0] in candidates_num for z in range(full_vision_rank.shape[0])]]
             read_rank = [(self.remapper[valid_rank[z,0]],valid_rank[z,1]) for z in range(valid_rank.shape[0])]
+
+            #valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
+            #read_rank_flat = [(self.remapper[valid_rank_flat[z,0]],valid_rank_flat[z,1]) for z in range(valid_rank_flat.shape[0])]
+            valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
+            read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
+
             read_current_rank = [(self.remapper[current_ranking[z,0]],current_ranking[z,1]) for z in range(current_ranking.shape[0])]
             print("%s predicted as %s" % (gt_label,current_label))
             print("Detected size is %s" % qual)
+            print("Object is %s" % thinness)
+            #print("Object is %s" % flat_flag)
             print("Estimated dims %f x %f x %f m" % (d1,d2,depth))
             print("ML based ranking")
-            print(read_current_rank[:5])
-            print("Knowledge validated ranking")
+            print(read_current_rank)
+            print("Knowledge validated ranking (dim only)")
             print(read_rank[:5])
+            print("Knowledge validated ranking (dim + flat/noflat)")
+            #print(read_rank_flat[:5])
+            print(read_rank_thin[:5])
             print("================================")
             #o3d.visualization.draw_geometries([cluster_pcl,orientedbox])
-            self.predictions[i, :] = valid_rank[:5,:]
+            #self.predictions[i, :] = valid_rank_flat[:5,:]
+            self.predictions[i, :] = valid_rank_thin[:5,:]#_thin[:5,:]
             #skip remainder
 
             """
@@ -550,7 +621,8 @@ class ObjectReasoner():
             """
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
-        if self.set == 'KMi':  # class-wise report
+        if self.set == 'KMi':
+            # Summary stats about predicted values
             """
             pred_counts = list(pred_counts.most_common()) # used to check class imbalances in number of predictions
             need_corr_by_class =[(k,float(v/supports[k])) for k,v in need_corr_by_class.items()]
@@ -565,6 +637,24 @@ class ObjectReasoner():
                     KBvol = None
                 mean_est_vols.append((k, statistics.mean(v), KBvol))
             """
+            size_summary = estimated_sizes.copy()
+            for k in list(estimated_sizes.keys()):
+                sub_dict = estimated_sizes[k]
+                for subk,v in list(sub_dict.items()):
+                    try:
+                        size_summary[k]['mean-%s' %subk] = statistics.mean(v)
+                    except: #not enough data points
+                        size_summary[k]['mean-%s' % subk] = None
+                    try:
+                        size_summary[k]['std-%s' %subk] = statistics.stdev(v)
+                    except: #not enough data points
+                        size_summary[k]['std-%s' % subk] = None
+                    size_summary[k]['min-%s' %subk] = min(v)
+                    size_summary[k]['max-%s' %subk] = max(v)
+
+            with open("./data/logged_stats.json", 'wb') as fout:
+                json.dump(size_summary, fout)
+
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True,K=5)
         else:  # separate eval for known vs novel
@@ -572,7 +662,9 @@ class ObjectReasoner():
         print("{} out of {} images need correction ".format(no_corrected,len(self.dimglist)))
         print("{} out of {} images were not corrected, no depth data available ".format(non_depth_aval,len(self.dimglist)))
         print("{} images {} not corrected due to processing issues".format(non_processed_pcls,len(self.dimglist)))
+        print("Names of discarded img files: %s" % str(non_processed_fnames))
         print("for {} out of {} images size predictor was not confident enough, fallback to ML score".format(nfallbacks,len(self.dimglist)))
+
         return
 
 

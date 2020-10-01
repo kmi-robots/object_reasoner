@@ -22,7 +22,7 @@ def extract_foreground_2D(dm):
     #Find cluster index for closest points to camera (foreground)
     cbin = np.uint8(fmatrix.copy())  # binarized version
 
-    #Second smallest to avoid zero value cluster
+    #Second closest to avoid zero value cluster
     tgt_idx = np.where(clt.cluster_centers_ == sorted(clt.cluster_centers_)[1][0])[0][0]
     for i in range(clt.labels_.shape[0]):
         # color pixels based on cluster label
@@ -30,7 +30,6 @@ def extract_foreground_2D(dm):
             cbin[i, :] = 255
         else:  # either background or no value, treated the same
             cbin[i, :] = 0
-
 
     plt.imshow(np.reshape(cbin, dm.shape), cmap='Greys_r')
     plt.show()
@@ -76,4 +75,13 @@ def detect_contours(dmatrix, cbin):
     return out
 
 
-
+def remove_outliers_custom(dimg, min_thresh=0, max_thresh=600):
+    """
+    remove values too distant from avg from 2D image, replaced with zeros
+    """
+    nonzero_dimg = dimg[dimg != min_thresh]
+    mean_d = int(np.mean(nonzero_dimg))
+    #std_d = int(np.std(nonzero_dimg))
+    #recompute without potentially distant ones
+    dimg[dimg>=mean_d + max_thresh] = 0.
+    return dimg
