@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from collections import Counter
 from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version, crop_test, list_depth_filenames
-from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat, pred_thinness
+from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat, pred_thinness, pred_proportion, pred_AR
 from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours, remove_outliers_custom
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims, pcl_remove_outliers, pcl_remove_outliers_bydistance
@@ -98,8 +98,10 @@ class ObjectReasoner():
                     self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in self.imglist]
 
             else:
+                import png
                 tempdimglist = ['_'.join(p.split('_')[:-1]) + 'depth_' + p.split('_')[-1] for p in self.imglist]
                 self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in tempdimglist]
+
             print("Empty depth files:")
             print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
             self.scale = 1000.0 #depth values in mm
@@ -224,6 +226,9 @@ class ObjectReasoner():
         estimated_vols = {}
         estimated_sizes = {}
 
+        sizequal_copy = self.predictions.copy()
+        prop_copy = self.predictions.copy()
+
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             # baseline predictions as (label, distance)
 
@@ -249,14 +254,14 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
                 continue
-            """
-            plt.imshow(dimage, cmap='Greys_r')
-            plt.show()
-            plt.imshow(cv2.imread(self.imglist[i]))
-            plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
-            plt.show()
-            """
-            #orig_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+
+            #plt.imshow(dimage, cmap='Greys_r')
+            #plt.show()
+            #plt.imshow(cv2.imread(self.imglist[i]))
+            #plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
+            #plt.show()
+
+            orig_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
 
             if foregroundextract:
                 cluster_bw = extract_foreground_2D(dimage)
@@ -285,11 +290,11 @@ class ObjectReasoner():
                 # do not consider that obj region in eval
                 non_processed_fnames.append(self.imglist[i].split('/')[-1])
                 self.dimglist[i] = None
-                plt.imshow(dimage, cmap='Greys_r')
-                plt.show()
-                plt.imshow(cv2.imread(self.imglist[i]))
-                plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                plt.show()
+                #plt.imshow(dimage, cmap='Greys_r')
+                #plt.show()
+                #plt.imshow(cv2.imread(self.imglist[i]))
+                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                #plt.show()
                 continue
             # o3d.visualization.draw_geometries([obj_pcl])
             if pclcluster:
@@ -310,7 +315,7 @@ class ObjectReasoner():
             #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl])
 
             try:
-                d1, d2, depth, volume, orientedbox = estimate_dims(cluster_pcl, obj_pcl)
+                d1, d2, depth, volume, orientedbox,aligned_box = estimate_dims(cluster_pcl, obj_pcl)
                 #cd1, cd2, cdepth, cvolume, chullbox = estimate_dims(chull, cluster_pcl)
             except TypeError:
                 print("Still not enough points..skipping")
@@ -318,11 +323,11 @@ class ObjectReasoner():
                 # do not consider that obj region in eval
                 non_processed_fnames.append(self.imglist[i].split('/')[-1])
                 self.dimglist[i] = None
-                plt.imshow(dimage, cmap='Greys_r')
-                plt.show()
-                plt.imshow(cv2.imread(self.imglist[i]))
-                plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                plt.show()
+                #plt.imshow(dimage, cmap='Greys_r')
+                #plt.show()
+                #plt.imshow(cv2.imread(self.imglist[i]))
+                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                #plt.show()
                 continue
             #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
             try:
@@ -353,60 +358,128 @@ class ObjectReasoner():
             #plt.imshow(cv2.imread(self.imglist[i]))
             #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
             #plt.show()
-            #if current_label != gt_label:
 
-            #.imshow(dimage, cmap='Greys_r')
-            #plt.show()
-            #plt.imshow(cv2.imread(self.imglist[i]))
-            #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-            #plt.show()
-            #cluster_pcl.paint_uniform_color(np.array([0.,0.,0.]))
-            #o3d.visualization.draw_geometries([obj_pcl,cluster_pcl,orientedbox])
-            qual = pred_size_qual(d1,d2)
-            #flat = pred_flat(d1,d2,depth)
-            thinness = pred_thinness(depth)
-            #if flat:
-            #    print("really flat object found")
+            """
+            Decide which predictions to correct
+            """
+            sizeValidate = False
+            full_vision_rank = all_predictions[i, :]
+            read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
+                                 range(current_ranking.shape[0])]
+            MLclasses = [l[0] for l in read_current_rank]
+            l_,c_ = Counter(MLclasses).most_common()[0]
+            if c_ >= 3: #if there is a class that appears at least three times in top 5 ranking
+                print("found agreement in the ranking - ML level")
+                #cnum = self.mapper[l_]
+                #rerank = full_vision_rank[[full_vision_rank[z,0] ==cnum for z in range(full_vision_rank.shape[0])]]
+                #self.predictions[i, :] = rerank[:5, :]
+                continue # avoid correction
+            else: # otherwise there is uncertainty in the top-5 ranking, proceed with correction
+                sizeValidate = True
 
-            #flat_flag = 'flat' if flat else 'non flat'
-            #select all objects beloging to the same qual bin, based on KB
-            candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
+            if sizeValidate: #current_label != gt_label:
+                #plt.imshow(dimage, cmap='Greys_r')
+                #plt.show()
+                #plt.imshow(cv2.imread(self.imglist[i]))
+                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
+                #plt.show()
+                #cluster_pcl.paint_uniform_color(np.array([0.,0.,0.]))
+                #o3d.visualization.draw_geometries([obj_pcl,cluster_pcl,orientedbox])
+                qual = pred_size_qual(d1,d2)
+                dims = [d1,d2]
+                mid = dims.copy()
+                mid.remove(max(dims))
+                mid = mid[0] #measure between min (i.e., depth here) and max measured
+                proportion = pred_proportion(qual,mid,depth)
+                flat = pred_flat(d1, d2, depth)
+                flat_flag = 'flat' if flat else 'non flat'
+                #Aspect ratio based on crop
+                aspect_ratio = pred_AR(dimage.shape)
+                #thinness = pred_thinness(depth)
+                #if flat:
+                #    print("really flat object found")
 
-            #candidates_flat = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
-            candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and thinness in str(self.KB[oname]["thinness"]))]
+                #select all objects beloging to the same area qual bin, based on KB
+                candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
+                candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
 
-            candidates_num = [self.mapper[oname.replace(' ','_')] for oname in candidates]
-            #candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
-            candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
+                candidates_flat = [oname for oname in self.KB.keys() if
+                                   (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
+                candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
 
-            full_vision_rank = all_predictions[i,:]
+                #candidates_prop = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and proportion in str(self.KB[oname]["thinness"]))]
+                #candidates_num_prop = [self.mapper[oname.replace(' ', '_')] for oname in candidates_prop]
 
-            valid_rank = full_vision_rank[[full_vision_rank[z,0] in candidates_num for z in range(full_vision_rank.shape[0])]]
-            read_rank = [(self.remapper[valid_rank[z,0]],valid_rank[z,1]) for z in range(valid_rank.shape[0])]
+                #candidates_prop_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                #                    and proportion in str(self.KB[oname]["thinness"])
+                #                    and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
 
-            #valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
-            #read_rank_flat = [(self.remapper[valid_rank_flat[z,0]],valid_rank_flat[z,1]) for z in range(valid_rank_flat.shape[0])]
-            valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
-            read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
+                #candidates_num_propAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_prop_AR]
 
-            read_current_rank = [(self.remapper[current_ranking[z,0]],current_ranking[z,1]) for z in range(current_ranking.shape[0])]
-            print("%s predicted as %s" % (gt_label,current_label))
-            print("Detected size is %s" % qual)
-            print("Object is %s" % thinness)
-            #print("Object is %s" % flat_flag)
-            print("Estimated dims %f x %f x %f m" % (d1,d2,depth))
-            print("ML based ranking")
-            print(read_current_rank)
-            print("Knowledge validated ranking (dim only)")
-            print(read_rank[:5])
-            print("Knowledge validated ranking (dim + flat/noflat)")
-            #print(read_rank_flat[:5])
-            print(read_rank_thin[:5])
-            print("================================")
-            #o3d.visualization.draw_geometries([cluster_pcl,orientedbox])
-            #self.predictions[i, :] = valid_rank_flat[:5,:]
-            self.predictions[i, :] = valid_rank_thin[:5,:]#_thin[:5,:]
-            #skip remainder
+                candidates_flat_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                                    and str(flat) in str(self.KB[oname]["is_flat"])
+                                    and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
+                candidates_num_flatAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat_AR]
+
+
+                #candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and thinness in str(self.KB[oname]["thinness"]))]
+                #candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
+
+                valid_rank = full_vision_rank[[full_vision_rank[z,0] in candidates_num for z in range(full_vision_rank.shape[0])]]
+                read_rank = [(self.remapper[valid_rank[z,0]],valid_rank[z,1]) for z in range(valid_rank.shape[0])]
+
+                valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
+                read_rank_flat = [(self.remapper[valid_rank_flat[z,0]],valid_rank_flat[z,1]) for z in range(valid_rank_flat.shape[0])]
+                #valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
+                #read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
+                #valid_rank_prop = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_prop for z in range(full_vision_rank.shape[0])]]
+                #read_rank_prop = [(self.remapper[valid_rank_prop[z,0]],valid_rank_prop[z,1]) for z in range(valid_rank_prop.shape[0])]
+                #valid_rank_propAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_propAR for z in range(full_vision_rank.shape[0])]]
+                #read_rank_propAR = [(self.remapper[valid_rank_propAR[z,0]],valid_rank_propAR[z,1]) for z in range(valid_rank_propAR.shape[0])]
+                valid_rank_flatAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR for z in range(full_vision_rank.shape[0])]]
+                read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z,0]],valid_rank_flatAR[z,1]) for z in range(valid_rank_flatAR.shape[0])]
+
+
+                print("%s predicted as %s" % (gt_label,current_label))
+                print("Detected size is %s" % qual)
+                print("Object is %s" % flat_flag)
+                print("Object is %s" % aspect_ratio)
+                #print("Object is %s" % thinness)
+                print("Object is %s" % proportion)
+
+                print("Estimated dims oriented %f x %f x %f m" % (d1,d2,depth))
+                #print("Estimated dims aligned %f x %f x %f m" % tuple(aligned_box.get_extent().tolist()))
+                print("ML based ranking")
+                print(read_current_rank)
+                print("Knowledge validated ranking (Area qual only)")
+                print(read_rank[:5])
+                #print("Knowledge validated ranking (Area qual + prop)")
+                #print(read_rank_flat[:5])
+                #print(read_rank_prop[:5])
+                print("Knowledge validated ranking (Area qual + flat)")
+                print(read_rank_flat[:5])
+                #print("Knowledge validated ranking (Area qual + prop+AR)")
+                print("Knowledge validated ranking (Area qual+flat+AR)")
+                print(read_rank_flatAR[:5])
+                print("================================")
+                #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
+                #self.predictions[i, :] = valid_rank_flat[:5,:]
+                found = False
+                for rank_,numrank_ in [(read_rank,valid_rank),(read_rank_flat,valid_rank_flat),(read_rank_flatAR,valid_rank_flatAR)]:
+                    clas_ = [l[0] for l in rank_]
+                    l_, c_ = Counter(clas_).most_common()[0]
+                    if c_ >= 3:  # if there is a class that appears at least three times in top 5 ranking
+                        print("found a majority winner - stop before full validation")
+                        self.predictions[i, :] = numrank_[:5, :]
+                        found = True
+                        break
+
+                #otherwise use ranking of last (most pruned) level
+                if not found: self.predictions[i, :] = valid_rank_flatAR[:5,:]
+                #self.predictions[i, :] = valid_rank_flatAR[:5,:]#_thin[:5,:]
+                #sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
+                #prop_copy[i, :] = valid_rank_flat[:5, :]
+                #skip remainder
 
             """
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
@@ -652,11 +725,23 @@ class ObjectReasoner():
                     size_summary[k]['min-%s' %subk] = min(v)
                     size_summary[k]['max-%s' %subk] = max(v)
 
-            with open("./data/logged_stats.json", 'wb') as fout:
+            with open("./data/logged_stats.json", 'w') as fout:
                 json.dump(size_summary, fout)
 
+            #print("Knowledge-corrected (size qual + prop+ AR)")
+            print("Knowledge-corrected (size qual + flat + AR)")
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True,K=5)
+            print("Knowledge-corrected (size qual)")
+            self.predictions = sizequal_copy
+            eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True, K=5)
+            #print("Knowledge-corrected (size qual+prop)")
+            print("Knowledge-corrected (size qual+flat)")
+            self.predictions = prop_copy
+            eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True, K=5)
+
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
         print("{} out of {} images need correction ".format(no_corrected,len(self.dimglist)))

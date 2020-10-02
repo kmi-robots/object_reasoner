@@ -175,18 +175,17 @@ def predict_classifier(test_data, model, device):
             predictions.append(int(np.argmax(out_logits.cpu().numpy()))) #torch.argmax(class_prob, dim=1).tolist())
     return predictions
 
-def pred_size_qual(dim1, dim2,t1=0.0868 , t2=0.2448):
+def pred_size_qual(dim1, dim2,t1=0.07,t2=0.5):#868): #t1=0.0868 #t2=0.4248
     estimated_area = dim1*dim2
     if estimated_area < t1: return 'small'
     elif estimated_area>= t1 and estimated_area <= t2: return 'medium'
     else: return 'large'
 
-def pred_flat(d1,d2,depth, cut=0.70): #if depth greater than x% of its min dim then non flat
-    len_thresh = 0.10 #min(d1,d2) * cut
+def pred_flat(d1,d2,depth, len_thresh = 0.10): #if depth greater than x% of its min dim then non flat
     if depth <= len_thresh: return True
     else: return False
 
-def pred_thinness(depth, cuts=[0.1,0.15]):
+def pred_thinness(depth, cuts=[0.079,0.121]):
     """
     Rates object thinness/thickness based on measured depth
     """
@@ -194,3 +193,37 @@ def pred_thinness(depth, cuts=[0.1,0.15]):
     if depth > cuts[0] and depth <= cuts[1]: return 'thin'
     #if depth > cuts[1] and depth <= cuts[2]: return 'thick'
     else: return 'thick'
+
+
+def pred_proportion(area_qual, mid_measure, depth_measure, cuts=[0.22,0.23,0.65]): #0.15,0.35,0.65
+    prop = float(depth_measure/mid_measure)
+    if area_qual == 'small':
+        if prop <= cuts[0]:  # flat bin common to all measures
+            return 'flat'
+        else:
+            return 'P' # small but not flat -->proportionate
+    elif area_qual =='medium': #extra bins for med and large
+        if prop <= cuts[0]:  # flat bin common to all measures
+            return 'flat'
+        elif prop> cuts[0] and prop<= cuts[1]: return 'thin'
+        elif prop > cuts[1]: return 'P'
+    elif area_qual == 'large':
+        if prop <= cuts[0]:  # flat bin common to all measures
+            return 'flat'
+        elif prop > cuts[0] and prop<= cuts[1]: return 'thin'
+        elif prop > cuts[1] and prop<=cuts[2]: return 'thick'
+        else: return 'P'
+
+def pred_AR(crop_dims, t=1.4):
+    """
+    Returns aspect ration based on 2D crop dimensions
+    """
+    height, width = crop_dims
+    if height >= width:
+        AR = height / width
+        if AR >= t: return 'TTW'
+        else: return 'EQ' #h and w are comparable
+    if height < width:
+        AR = width/height
+        if AR >= t: return 'WTT'
+        else: return 'EQ' #h and w are comparable

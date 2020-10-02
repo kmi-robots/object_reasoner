@@ -105,12 +105,13 @@ def estimate_dims(pcd,original_pcd, d=0.05):
 
     try:
         orthreedbox = pcd.get_oriented_bounding_box()
-        # threedbox = pcd.get_axis_aligned_bounding_box()
+        threedbox = pcd.get_axis_aligned_bounding_box()
     except:
         print("Not enough points in 3D cluster, reduced to planar surface... reverting back to full pcd")
         #print(str(e))
         try:
             orthreedbox = original_pcd.get_oriented_bounding_box()
+            threedbox = pcd.get_axis_aligned_bounding_box()
         except:
             return
 
@@ -137,4 +138,4 @@ def estimate_dims(pcd,original_pcd, d=0.05):
     Hard to know a priori what is the w and what is the h
     But we can assume the depth will be always the min due to how data are captured
     """
-    return (*nomin,min(dims), v, orthreedbox)
+    return (*nomin,min(dims), v, orthreedbox,threedbox)

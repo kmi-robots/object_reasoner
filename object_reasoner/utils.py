@@ -143,9 +143,10 @@ def arcify(root_img_path):
 #
 ##################################################################
 
-def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, dimg_list=None):
+def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, dimg_list=None,safpx =0,safpx_rect=0):
     """
     pass depth image to crop depth images, leave set to None to crop RGB images
+    safpx param reduces crop by x%edge per edge only in depth case, to increase chances of correct crop
     """
     if depth_img is None:
         with open(os.path.join(path_to_annotations, 'test-imgs-labels1.json')) as jf, \
@@ -218,7 +219,21 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                         # passed depth images as list
                         pout = os.path.join(path_to_out, label, fname[:-4] + 'depth_' + str(n) + '.png')
                         img = cv2.imread(pimg, cv2.IMREAD_UNCHANGED)
+                        #plt.imshow(img)
+                        #plt.title(label=label)
+                        #plt.show()
                         roi = img[ymin:ymax, xmin:xmax]
+                        #plt.imshow(roi)
+                        #plt.title(label=label)
+                        #plt.show()
+                        if safpx_rect > 0:
+                            h, w = roi.shape
+                            safx, safy = int(safpx_rect* w), int(safpx_rect*h)
+                            safxmax, safymax = int(w - safx), int(h - safy)
+                            roi = roi[safy:safymax, safx:safxmax]
+                        #plt.imshow(roi)
+                        #plt.title(label=label)
+                        #plt.show()
                         with open(pout, 'wb') as f:  # 16-bit PNG img, with values in millimeters
                             writer = png.Writer(width=roi.shape[1], height=roi.shape[0], bitdepth=16)
                             # Convert array to the Python list of lists expected by the png writer.
@@ -239,6 +254,13 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                 xmax = int(bbox.find('xmax').text)
                 ymax = int(bbox.find('ymax').text)
                 roi = img[ymin:ymax, xmin:xmax]
+                #dimg = Image.fromarray(roi)
+                #dimg.show()
+                if safpx_rect> 0:
+                    h, w = roi.shape
+                    safx, safy = int(safpx_rect * w), int(safpxsafpx_rect * h)
+                    safxmax, safymax = int(w - safx), int(h - safy)
+                    roi = roi[safy:safymax, safx:safxmax]
                 #dimg = Image.fromarray(roi)
                 #dimg.show()
                 # save as 16-bit one-channeled PNG
@@ -291,13 +313,39 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                                 sys.exit(0)
                     else: #save depth img
                         img = cv2.imread(pimg, cv2.IMREAD_UNCHANGED)
+                        #plt.imshow(img, cmap='Greys_r')
+                        #plt.show()
                         cropped_img, bounding_rect = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
-                        # depth img, no need to crop to rectangle bounding the polygonal mask
+                        #plt.imshow(cropped_img, cmap='Greys_r')
+                        #plt.show()
+                        if bounding_rect:
+                            y,ymax,x,xmax = bounding_rect
+                            #plt.imshow(cropped_img, cmap='Greys_r')
+                            #plt.show()
+                            pre_crop = cropped_img.copy()
+                            cropped_img = cropped_img[y:ymax,x:xmax]
+                            pre_scale = cropped_img.copy()
+                            #plt.imshow(cropped_img, cmap='Greys_r')
+                            #plt.show()
+                            if safpx > 0:
+                                h,w = cropped_img.shape
+                                safx, safy = int(safpx*w), int(safpx*h)
+                                safxmax, safymax = int(w-safx),int(h-safy)
+                                cropped_img = cropped_img[safy:safymax, safx:safxmax]
+                            #plt.imshow(cropped_img, cmap='Greys_r')
+                            #plt.show()
                         po = os.path.join(path_to_out,label, cropname)
+                        #continue
                         with open(po[:-4] + '_poly'+str(i)+'.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
-                            writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
-                            # Convert array to the Python list of lists expected by the png writer.
-                            gray2list = cropped_img.tolist()
+                            try:
+                                writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
+                                # Convert array to the Python list of lists expected by the png writer.
+                                gray2list = cropped_img.tolist()
+                            except png.ProtocolError: #too few points are non zero
+                                #reverting back to image pre-crop
+                                writer = png.Writer(width=pre_crop.shape[1], height=pre_crop.shape[0],bitdepth=16)
+                                # Convert array to the Python list of lists expected by the png writer.
+                                gray2list = pre_crop.tolist()
                             writer.write(f, gray2list)
 
             elif depth_img is not None and 'poly' in cropname.split('_')[-1]:
@@ -308,12 +356,26 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                 _,v = rois.items()[i]
                 all_x = v["shape_attributes"]["all_points_x"]
                 all_y = v["shape_attributes"]["all_points_y"]
-                cropped_img, _ = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
-                # depth img, no need to crop to rectangle bounding the polygonal mask
+                cropped_img, bounding_rect = crop_polygonal(img, list(zip(all_x, all_y)), rgb=False)
+                if bounding_rect:
+                    y,ymax,x,xmax = bounding_rect
+                    pre_crop = cropped_img.copy()
+                    cropped_img = cropped_img[y:ymax, x:xmax]
+                    if safpx > 0:
+                        h, w = cropped_img.shape
+                        safx, safy = int(safpx * w), int(safpx * h)
+                        safxmax, safymax = int(w - safx), int(h - safy)
+                        cropped_img = cropped_img[safy:safymax, safx:safxmax]
                 with open(pimg[:-4] + 'depth.png', 'wb') as f:  # 16-bit PNG img, with values in millimeters
-                    writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
-                    # Convert array to the Python list of lists expected by the png writer.
-                    gray2list = cropped_img.tolist()
+                    try:
+                        writer = png.Writer(width=cropped_img.shape[1], height=cropped_img.shape[0], bitdepth=16)
+                        # Convert array to the Python list of lists expected by the png writer.
+                        gray2list = cropped_img.tolist()
+                    except png.ProtocolError:  # too few points are non zero
+                        # reverting back to image pre-crop
+                        writer = png.Writer(width=pre_crop.shape[1], height=pre_crop.shape[0], bitdepth=16)
+                        # Convert array to the Python list of lists expected by the png writer.
+                        gray2list = pre_crop.tolist()
                     writer.write(f, gray2list)
                 dimg_list.append(cropped_img)
             else: pass #do nothing
@@ -355,15 +417,22 @@ def crop_polygonal(path_image, polygon, rgb=True):
         # transparency (4th column)
         newImArray[:, :, 3] = mask * 255
         bin_mask = newImArray.copy()[:, :, 3]
+        cropped_img_bin = Image.fromarray(bin_mask)
+        cropBox = cropped_img_bin.getbbox()
     else: #from depth, one-channeled
         #mask binary image
         newImArray = imArray.copy()
         newImArray[mask!=1]=0.
         bin_mask = newImArray
+        non_empty_columns = np.where(bin_mask.max(axis=0) > 0)[0]
+        non_empty_rows = np.where(bin_mask.max(axis=1) > 0)[0]
+        try:
+            cropBox = (min(non_empty_rows), max(non_empty_rows), min(non_empty_columns), max(non_empty_columns))
+        except ValueError: # mask is empty, no depth data
+            cropBox = None
 
-    cropped_img_bin = Image.fromarray(bin_mask)
     #cropped_img_bin.show()
-    return newImArray, cropped_img_bin.getbbox()
+    return newImArray, cropBox
 
 def create_class_map(path_to_json):
     """

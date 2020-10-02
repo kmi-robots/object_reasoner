@@ -5,7 +5,7 @@ from object_sizes import dict_from_csv
 import json
 
 
-def add_qual_hardcoded(obj_dict, ref_csv,thinness=True): #10% of obj dim
+def add_qual_hardcoded(obj_dict, ref_csv,thinness=False, proportion=True): #10% of obj dim
     """
     # Add hardcoded qualitative sizes as small, medium, etc
     returns: object dictionary with hardcoded values
@@ -28,6 +28,12 @@ def add_qual_hardcoded(obj_dict, ref_csv,thinness=True): #10% of obj dim
             if "-" in flat: obj_dict[obj_name]['is_flat'] =[True,False]
             elif '0' in flat: obj_dict[obj_name]['is_flat'] = False
             elif '1' in flat:obj_dict[obj_name]['is_flat'] = True
+        if proportion:
+            prop = row[9]
+            rates = prop.split('/')
+            if len(rates)>1: obj_dict[obj_name]['aspect_ratio'] = rates
+            else: obj_dict[obj_name]['aspect_ratio'] = rates[0]
+
     return obj_dict
 
 
