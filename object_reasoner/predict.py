@@ -175,24 +175,26 @@ def predict_classifier(test_data, model, device):
             predictions.append(int(np.argmax(out_logits.cpu().numpy()))) #torch.argmax(class_prob, dim=1).tolist())
     return predictions
 
-def pred_size_qual(dim1, dim2,t1=0.07,t2=0.5):#868): #t1=0.0868 #t2=0.4248
+def pred_size_qual(dim1, dim2,t1=0.007,t2=0.05, t3=0.35, t4=0.79): #): #t3=0.19
     estimated_area = dim1*dim2
-    if estimated_area < t1: return 'small'
-    elif estimated_area>= t1 and estimated_area <= t2: return 'medium'
-    else: return 'large'
+    if estimated_area < t1: return 'XS'
+    elif estimated_area >= t1 and estimated_area < t2: return 'small'
+    elif estimated_area>= t2 and estimated_area < t3: return 'medium'
+    elif estimated_area>= t3 and estimated_area < t4: return 'large'
+    else: return 'XL'
 
 def pred_flat(d1,d2,depth, len_thresh = 0.10): #if depth greater than x% of its min dim then non flat
     if depth <= len_thresh: return True
     else: return False
 
-def pred_thinness(depth, cuts=[0.079,0.121]):
+def pred_thinness(depth, cuts=[0.1,0.2,0.4]):
     """
     Rates object thinness/thickness based on measured depth
     """
     if depth <= cuts[0]: return 'flat'
-    if depth > cuts[0] and depth <= cuts[1]: return 'thin'
-    #if depth > cuts[1] and depth <= cuts[2]: return 'thick'
-    else: return 'thick'
+    elif depth > cuts[0] and depth <= cuts[1]: return 'thin'
+    elif depth > cuts[1] and depth <= cuts[2]: return 'thick'
+    else: return 'bulky'
 
 
 def pred_proportion(area_qual, mid_measure, depth_measure, cuts=[0.22,0.23,0.65]): #0.15,0.35,0.65

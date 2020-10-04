@@ -226,7 +226,9 @@ class ObjectReasoner():
         estimated_sizes = {}
 
         sizequal_copy = self.predictions.copy()
-        prop_copy = self.predictions.copy()
+        flat_copy = self.predictions.copy()
+        thin_copy = self.predictions.copy()
+        thinAR_copy = self.predictions.copy()
 
         for i,dimage in enumerate(self.dimglist):  # for each depth image
             # baseline predictions as (label, distance)
@@ -364,11 +366,12 @@ class ObjectReasoner():
             read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
                                  range(current_ranking.shape[0])]
 
+
             distance_t = 0.04
             MLclasses = [l[0] for l in read_current_rank]
             l_,c_ = Counter(MLclasses).most_common()[0]
             dis = read_current_rank[0][1] #distance between test embedding and prod embedding
-            if dis < distance_t:
+            if dis < distance_t and c_ >= 3: #lower distance/higher conf and class appears at least three times
                 #ML is confident, keep as is
                 print("%s predicted as %s" % (gt_label, current_label))
                 print("ML based ranking")
@@ -398,17 +401,18 @@ class ObjectReasoner():
                 #plt.show()
                 #cluster_pcl.paint_uniform_color(np.array([0.,0.,0.]))
                 #o3d.visualization.draw_geometries([obj_pcl,cluster_pcl,orientedbox])
+
                 qual = pred_size_qual(d1,d2)
                 dims = [d1,d2]
                 mid = dims.copy()
                 mid.remove(max(dims))
                 mid = mid[0] #measure between min (i.e., depth here) and max measured
-                proportion = pred_proportion(qual,mid,depth)
+                #proportion = pred_proportion(qual,mid,depth)
                 flat = pred_flat(d1, d2, depth)
                 flat_flag = 'flat' if flat else 'non flat'
                 #Aspect ratio based on crop
                 aspect_ratio = pred_AR(dimage.shape)
-                #thinness = pred_thinness(depth)
+                thinness = pred_thinness(depth)
                 #if flat:
                 #    print("really flat object found")
 
@@ -417,16 +421,23 @@ class ObjectReasoner():
                 candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
                 valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
                 read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in range(valid_rank.shape[0])]
+                candidates_flat = [oname for oname in self.KB.keys() if
+                                   (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
+                candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
+                valid_rank_flat = full_vision_rank[
+                    [full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
+                read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
+                                  range(valid_rank_flat.shape[0])]
 
-                sizevalidated_pred = read_rank[0][0]
+                sizevalidated_pred = read_rank_flat[0][0]#read_rank[0][0]
                 if current_label == sizevalidated_pred:
-                    # use size validated predictions and skip other size-based corrections
+                    # use size validated (qual + flat) predictions and skip other size-based corrections
                     print("%s predicted as %s" % (gt_label, current_label))
                     print("Detected size is %s" % qual)
                     print("Object is %s" % flat_flag)
                     print("Object is %s" % aspect_ratio)
-                    # print("Object is %s" % thinness)
-                    print("Object is %s" % proportion)
+                    print("Object is %s" % thinness)
+                    #print("Object is %s" % proportion)
 
                     print("Estimated dims oriented %f x %f x %f m" % (d1, d2, depth))
                     # print("Estimated dims aligned %f x %f x %f m" % tuple(aligned_box.get_extent().tolist()))
@@ -434,17 +445,21 @@ class ObjectReasoner():
                     print(read_current_rank)
                     print("Knowledge validated ranking (Area qual only)")
                     print(read_rank[:5])
+                    print("Knowledge validated ranking (Area qual + flat)")
+                    print(read_rank_flat[:5])
                     print("================================")
-                    self.predictions[i, :] = valid_rank[:5, :]
+                    self.predictions[i, :] = valid_rank_flat[:5, :]#valid_rank[:5, :]
 
                 else: # ML prediction is not confident nor size validated
                     #try out all size-based corrections
 
-                    candidates_flat = [oname for oname in self.KB.keys() if
-                                       (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
-                    candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
 
-                    #candidates_prop = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and proportion in str(self.KB[oname]["thinness"]))]
+                    candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                                                                             and thinness in str(self.KB[oname]["thinness"]))]
+                    candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
+
+                    #candidates_prop = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                                    #and proportion in str(self.KB[oname]["thinness"]))]
                     #candidates_num_prop = [self.mapper[oname.replace(' ', '_')] for oname in candidates_prop]
 
                     #candidates_prop_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
@@ -453,41 +468,41 @@ class ObjectReasoner():
 
                     #candidates_num_propAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_prop_AR]
 
-                    candidates_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                                    and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
-                    candidates_num_AR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_AR]
+                    #candidates_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                    #                and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
+                    #candidates_num_AR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_AR]
 
                     candidates_flat_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
                                         and str(flat) in str(self.KB[oname]["is_flat"])
                                         and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
                     candidates_num_flatAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat_AR]
 
+                    candidates_thin_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                                and str(thinness) in str(self.KB[oname]["thinness"]) and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
+                    candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
 
-                    #candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"] and thinness in str(self.KB[oname]["thinness"]))]
-                    #candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
 
-
-                    valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
-                    read_rank_flat = [(self.remapper[valid_rank_flat[z,0]],valid_rank_flat[z,1]) for z in range(valid_rank_flat.shape[0])]
-                    #valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
-                    #read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
+                    valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
+                    read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
                     #valid_rank_prop = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_prop for z in range(full_vision_rank.shape[0])]]
                     #read_rank_prop = [(self.remapper[valid_rank_prop[z,0]],valid_rank_prop[z,1]) for z in range(valid_rank_prop.shape[0])]
                     #valid_rank_propAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_propAR for z in range(full_vision_rank.shape[0])]]
                     #read_rank_propAR = [(self.remapper[valid_rank_propAR[z,0]],valid_rank_propAR[z,1]) for z in range(valid_rank_propAR.shape[0])]
                     valid_rank_flatAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR for z in range(full_vision_rank.shape[0])]]
-
                     read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z,0]],valid_rank_flatAR[z,1]) for z in range(valid_rank_flatAR.shape[0])]
 
-                    valid_rank_AR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_AR for z in range(full_vision_rank.shape[0])]]
-                    read_rank_AR = [(self.remapper[valid_rank_AR[z, 0]], valid_rank_AR[z, 1]) for z in range(valid_rank_AR.shape[0])]
+                    valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
+                    read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
+
+                    #valid_rank_AR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_AR for z in range(full_vision_rank.shape[0])]]
+                    #read_rank_AR = [(self.remapper[valid_rank_AR[z, 0]], valid_rank_AR[z, 1]) for z in range(valid_rank_AR.shape[0])]
 
                     print("%s predicted as %s" % (gt_label,current_label))
                     print("Detected size is %s" % qual)
                     print("Object is %s" % flat_flag)
                     print("Object is %s" % aspect_ratio)
-                    #print("Object is %s" % thinness)
-                    print("Object is %s" % proportion)
+                    print("Object is %s" % thinness)
+                    #print("Object is %s" % proportion)
 
                     print("Estimated dims oriented %f x %f x %f m" % (d1,d2,depth))
                     #print("Estimated dims aligned %f x %f x %f m" % tuple(aligned_box.get_extent().tolist()))
@@ -500,22 +515,25 @@ class ObjectReasoner():
                     #print(read_rank_prop[:5])
                     print("Knowledge validated ranking (Area qual + flat)")
                     print(read_rank_flat[:5])
-                    print("Knowledge validated ranking (Area qual + AR)")
-                    print(read_rank_AR[:5])
+                    print("Knowledge validated ranking (Area qual + thin)")
+                    print(read_rank_thin[:5])
+                    #print("Knowledge validated ranking (Area qual + AR)")
+                    #print(read_rank_AR[:5])
                     #print("Knowledge validated ranking (Area qual + prop+AR)")
                     print("Knowledge validated ranking (Area qual+flat+AR)")
                     print(read_rank_flatAR[:5])
+                    print("Knowledge validated ranking (Area qual+thin+AR)")
+                    print(read_rank_thinAR[:5])
                     print("================================")
                     #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
                     #self.predictions[i, :] = valid_rank_flat[:5,:]
                     self.predictions[i, :] = valid_rank_flatAR[:5, :]
+                    thinAR_copy[i, :] = valid_rank_thinAR[:5, :]
+                    thin_copy[i, :] = valid_rank_thin[:5, :]
                     sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
-                    prop_copy[i, :] = valid_rank_AR[:5, :] #valid_rank_flat[:5, :]
+                    flat_copy[i, :] = valid_rank_flat[:5, :]
                 """
                 found = False
-                for rank_,numrank_ in [(read_rank[:5],valid_rank[:5]),(read_rank_flat[:5],valid_rank_flat[:5]),(read_rank_flatAR[:5],valid_rank_flatAR[:5])]:
-                    clas_ = [l[0] for l in rank_]
-                    l_, c_ = Counter(clas_).most_common()[0]
                     if c_ >= 3:  # if there is a class that appears at least three times in top 5 ranking
                         print("found a majority winner - stop before full validation")
                         self.predictions[i, :] = numrank_[:5, :]
@@ -532,7 +550,10 @@ class ObjectReasoner():
             """
             if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
                     # If we detect a volume alpha times or more larger/smaller
-                    # than object predicted by baseline, then hypothesise object needs correction
+                    # than object predicted by baseline, t
+                for rank_,numrank_ in [(read_rank[:5],valid_rank[:5]),(read_rank_flat[:5],valid_rank_flat[:5]),(read_rank_flatAR[:5],valid_rank_flatAR[:5])]:
+                    clas_ = [l[0] for l in rank_]
+                    l_, c_ = Counter(clas_).most_common()[0]hen hypothesise object needs correction
                     # actually need to correct, gives upper bound
                     # TODO remove 1st check condition afterwards
                     \"""
@@ -785,9 +806,16 @@ class ObjectReasoner():
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True, K=5)
             #print("Knowledge-corrected (size qual+prop)")
-            #print("Knowledge-corrected (size qual+flat)")
-            print("Knowledge-corrected (size qual+AR)")
-            self.predictions = prop_copy
+            print("Knowledge-corrected (size qual+flat)")
+            self.predictions = flat_copy
+            eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True, K=5)
+            print("Knowledge-corrected (size qual+thin)")
+            self.predictions = thin_copy
+            eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True, K=5)
+            print("Knowledge-corrected (size qual + thin + AR)")
+            self.predictions = thinAR_copy
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True, K=5)
 
