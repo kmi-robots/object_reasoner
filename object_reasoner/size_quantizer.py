@@ -5,7 +5,7 @@ from object_sizes import dict_from_csv
 import json
 
 
-def add_qual_hardcoded(obj_dict, ref_csv,thinness=False, proportion=True): #10% of obj dim
+def add_qual_hardcoded(obj_dict, ref_csv,thinness=True, proportion=True): #10% of obj dim
     """
     # Add hardcoded qualitative sizes as small, medium, etc
     returns: object dictionary with hardcoded values
