@@ -42,7 +42,8 @@ and PointClouds (through the Open3D_ library).
 
 Features
 --------
-.. image:: https://raw.githubusercontent.com/kmi-robots/object-reasoner/master/object_reasoner/assets/framework.png
+.. image:: https://raw.githubusercontent.com/kmi-robots/object_reasoner/master/object_reasoner/assets/framework.png?token=AFIHZYJGTBVG5SXUAVQORYC7RBXQO
+
 
 - **ML-based object recognition.** supported models (see also models.py script):
    - Nearest Neighbour similarity matching of ResNet50 embeddings pre-trained on ImageNet
@@ -67,7 +68,7 @@ Links for download
 
 Proposed size representation
 
-.. image:: https://raw.githubusercontent.com/kmi-robots/object-reasoner/master/object_reasoner/assets/size_representation.png
+.. image:: ../blob/master/object_reasoner/assets/framework.png?raw=true
 
 Installation
 -------------
