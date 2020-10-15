@@ -10,7 +10,7 @@ def main():
     parser.add_argument('test_base', help="Base path to test imgs and product data")
     parser.add_argument('test_res', help="Base path to test predictions")
     parser.add_argument('--set', default='arc', choices=['arc', 'KMi'], help="Chosen dataset")
-    parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage','imprk-net', 'triplet'],
+    parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage','imprk-net', 'triplet', 'baselineNN'],
                         default="k-net",
                         help="Baseline method to retrieve predictions from."
                         "Imprk-net adds weight imprinting based on our pytorch re-implementation of k-net")

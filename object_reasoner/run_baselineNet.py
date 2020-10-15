@@ -118,10 +118,10 @@ def main():
             if args.chkp is None or not os.path.isfile(args.chkp):
                 print("Please provide a path to pre-trained model checkpoint")
                 return 0
-        else:
-            args.chkp = os.path.join('./data', args.model,'snapshots-with-class')
-            if not os.path.isdir(args.chkp):
-                os.makedirs(args.chkp)
+        #else:
+        #    args.chkp = os.path.join('./data', args.model,'snapshots-with-class')
+        #    if not os.path.isdir(args.chkp):
+        #        os.makedirs(args.chkp)
 
         if args.set == 'KMi':
             if not os.path.exists(os.path.join(args.out, '../class_to_index.json')):

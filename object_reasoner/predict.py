@@ -165,7 +165,6 @@ def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.0001):
     all_scores['proba'] = np.array(probabilities)
     return all_scores[np.argsort(all_scores['proba'])[::-1]] # rank by descending probability #[::-1] is used to reverse np.argsort
 
-
 def predict_classifier(test_data, model, device):
     predictions = []
     with torch.no_grad():
@@ -183,6 +182,14 @@ def pred_size_qual(dim1, dim2,t1=0.007,t2=0.05, t3=0.35, t4=0.79): #): #t3=0.19
     elif estimated_area>= t3 and estimated_area < t4: return 'large'
     else: return 'XL'
 
+"""
+
+def pred_size_qual(dim1, dim2,t1=0.07,t2=0.5):#868): #t1=0.0868 #t2=0.4248
+    estimated_area = dim1*dim2
+    if estimated_area < t1: return 'small'
+    elif estimated_area>= t1 and estimated_area <= t2: return 'medium'
+    else: return 'large'
+"""
 def pred_flat(d1,d2,depth, len_thresh = 0.10): #if depth greater than x% of its min dim then non flat
     if depth <= len_thresh: return True
     else: return False
@@ -216,16 +223,22 @@ def pred_proportion(area_qual, mid_measure, depth_measure, cuts=[0.22,0.23,0.65]
         elif prop > cuts[1] and prop<=cuts[2]: return 'thick'
         else: return 'P'
 
-def pred_AR(crop_dims, t=1.4):
+def pred_AR(crop_dims,estim_dims, t=1.4):
     """
     Returns aspect ration based on 2D crop dimensions
+    and estimated dimensions
     """
-    height, width = crop_dims
+    height, width = crop_dims #used to derive the orientation
+    d1,d2 = estim_dims # of which we do not know orientation
     if height >= width:
-        AR = height / width
+        #h = max(d1,d2)
+        #w = min(d1,d2)
+        AR = height/width
         if AR >= t: return 'TTW'
         else: return 'EQ' #h and w are comparable
     if height < width:
+        #h = min(d1, d2)
+        #w = max(d1, d2)
         AR = width/height
         if AR >= t: return 'WTT'
         else: return 'EQ' #h and w are comparable
