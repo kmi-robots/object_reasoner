@@ -2,16 +2,14 @@ Fit to Measure: a size-aware object recognition system
 ======================================================
 
 [![image](https://img.shields.io/pypi/v/object_reasoner.svg)](https://pypi.python.org/pypi/object_reasoner)
-
 [![image](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
-
 [![image](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Welcome! This repository provides you with a Command Line Interface to
 incorporate reasoning about the typical size of objects in your object
 recognition project.
 
-Our application focus is on **service robotics**,
+:robot: :heart: Our application focus is on **service robotics**,
 [here](http://robots.kmi.open.ac.uk/) you can find more info about how
 this work fits into our broader ideas.
 
@@ -36,7 +34,7 @@ depth images (via [OpenCV](https://opencv.org/)) and PointClouds
 Features
 --------
 
-![image](../blob/master/object_reasoner/assets/framework.png?raw=true)
+![image](assets/framework.png?raw=true)
 
 -   **ML-based object recognition.** supported models (see also models.py script):
     :   -   Nearest Neighbour similarity matching of ResNet50 embeddings
@@ -63,7 +61,7 @@ RGB-D and knowledge catalogue Links for download
 
 Proposed size representation
 
-![image](../blob/master/object_reasoner/assets/size_representation.png?raw=true)
+![image](assets/size_representation.png?raw=true)
 
 Installation
 ------------
