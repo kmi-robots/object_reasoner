@@ -85,7 +85,6 @@ def training_routine(args,device):
     elif args.model == 'triplet':
         model = BaselineNet().to(device)
     params_to_update = model.parameters()  # all params
-
     if not os.path.isdir(os.path.join('../data', args.model, 'snapshots-with-class')):
         os.makedirs(os.path.join('../data', args.model, 'snapshots-with-class'), exist_ok=True)
 

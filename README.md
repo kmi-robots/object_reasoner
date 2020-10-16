@@ -37,19 +37,19 @@ Features
 ![image](assets/framework.svg?raw=true)
 
 -   **ML-based object recognition.** supported models (see also models.py script):
-    :   -   Nearest Neighbour similarity matching of ResNet50 embeddings
+    -   Nearest Neighbour similarity matching of ResNet50 embeddings
             pre-trained on ImageNet
-        -   the N-net multi-branch Network of Zeng et al., 2018
-        -   the K-net multi-branch Network of Zeng et al., 2018
-        -   K-net with weight imprinting in the SoftMax layer (Chiatti
-            et al.,2020)
+    -   the N-net multi-branch Network of [Zeng et al., 2018](https://arxiv.org/abs/1710.01330)
+    -   the K-net multi-branch Network of [Zeng et al., 2018](https://arxiv.org/abs/1710.01330)
+    -   K-net with weight imprinting in the SoftMax layer ([Chiatti
+            et al.,2020](https://www.mdpi.com/2079-9292/9/3/380))
 
 -   **Knowledge-based reasoner**
 
 Supported datasets
 ------------------
 
--   the KMi set (see instructions below)
+-   the KMi dataset (see instructions below)
 -   the 2017 Amazon Robotic Challenge (ARC) image matching set - please
     refer to these
     [instructions](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/)
@@ -65,8 +65,22 @@ Proposed size representation
 
 Installation
 ------------
+**Tested on Ubuntu 18.04**
 
-Dependencies and installation steps
+* Pypi dependencies can be installed through pip.
+  If re-training on a GPU-enabled machine, change the last line to install torch & torchvision for GPU
+
+  ```
+    sudo apt install python3-pip
+    cd your_path_to/object_reasoner
+    pip3 install .
+    pip install torch==1.5.1+cpu torchvision==0.6.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+   ```
+
+* Other package dependencies:
+    ```
+    sudo apt install
+    ```
 
 Command examples
 ----------------
