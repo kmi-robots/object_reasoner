@@ -72,6 +72,9 @@ Command examples
 ----------------
 
 How to reproduce the results in the paper
+Test commands
+
+Commands to re-train or produce new predictions with ML.
 
 Credits
 -------
