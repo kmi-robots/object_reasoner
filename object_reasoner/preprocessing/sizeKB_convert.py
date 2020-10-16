@@ -1,3 +1,8 @@
+"""
+Methods to read qualitative size data in the same format as ./data/KMi_obj_catalogue_manual.csv
+and create a JSON file in the format of ./data/KMi_obj_catalogue.json
+"""
+
 import argparse
 import sys
 from object_sizes import get_csv_data
@@ -64,7 +69,7 @@ def main():
 
     #Save KB locally as JSON file
     print("Saving object catalogue under ./data ...")
-    with open('./data/KMi_obj_catalogue.json', 'w') as fout:
+    with open('../data/KMi_obj_catalogue.json', 'w') as fout:
         json.dump(KB, fout)
     print("File saved as KMi_object_catalogue.json")
     return 0

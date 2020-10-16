@@ -14,8 +14,8 @@ from train import train
 from validate import validate
 from object_reasoner import predict
 from object_reasoner import evalscript
-from object_reasoner import utils as utl
-
+import preprocessing.utils as utl
+from rgb_img_processing import crop_test
 
 """ Hardcoded training params
 """
@@ -148,7 +148,7 @@ def inference_routine(args, device):
             ilist = [os.path.join(args.path_to_arc, fname) for fname in os.listdir(args.path_to_arc) if
                      'depth' not in fname]
             # crop_test(ilist, os.path.join(args.path_to_arc, '../../exported'), args.out)
-            utl.crop_test(ilist, args.anns, args.out)
+            crop_test(ilist, args.anns, args.out)
 
     ##Init ML model (with feature extraction)
     if args.model == 'imprk-net':

@@ -1,5 +1,6 @@
 """
-In Python 2 to use rosbag
+Methods to process data recorded in rosbag format
+In Python 2 to use rosbag for ROS melodic
 """
 
 import rosbag
@@ -7,11 +8,9 @@ import datetime
 import os
 from cv_bridge import CvBridge
 import numpy as np
-from utils import crop_test
+from rgb_img_processing import crop_test
 import png
 import shutil
-
-# from PIL import Image
 
 def extract_from_bag(rgb_img_list,path_to_bags,path_to_annotations, tol_min=0.06,tol_max=0.2):
     """

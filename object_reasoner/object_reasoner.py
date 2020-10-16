@@ -8,18 +8,18 @@ import statistics
 import numpy as np
 import cv2
 from collections import Counter
-from utils import init_obj_catalogue, load_emb_space, load_camera_intrinsics_txt, call_python_version, crop_test, list_depth_filenames
-from predict import pred_singlemodel, pred_twostage, pred_by_vol, pred_vol_proba, pred_by_size, pred_size_qual, pred_flat, pred_thinness, pred_proportion, pred_AR
+import preprocessing.utils as utl
+import preprocessing.depth_img_processing as dimgproc
+import preprocessing.pcl_processing as pclproc
+import predict as predictors
 from evalscript import eval_singlemodel, eval_KMi
-from img_processing import extract_foreground_2D, detect_contours, remove_outliers_custom
-from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims, pcl_remove_outliers, pcl_remove_outliers_bydistance
 
 class ObjectReasoner():
     def __init__(self, args):
         self.set = args.set
         self.verbose = args.verbose
         start = time.time()
-        self.init_obj_catalogue(args)
+        self.obj_catalogue(args)
         print("Background KB initialized. Took %f seconds." % float(time.time() - start))
         # load metadata from txt files provided
         self.init_txt_files(args)
@@ -30,13 +30,13 @@ class ObjectReasoner():
         self.init_ML_predictions(args)
         print("%s recognition results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
 
-    def init_obj_catalogue(self,args):
+    def obj_catalogue(self,args):
         if self.set =='arc':
             try:
                 with open('./data/arc_obj_catalogue.json') as fin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
             except FileNotFoundError:
-                self.KB = init_obj_catalogue(args.test_base)
+                self.KB = utl.init_obj_catalogue(args.test_base)
                 with open('./data/arc_obj_catalogue.json', 'w') as fout:
                     json.dump(self.KB, fout)
             # Filter only known/novel objects
@@ -80,7 +80,7 @@ class ObjectReasoner():
             """
             self.tsamples = None
             #if no depth imgs stored locally, generate from bag
-            self.dimglist = list_depth_filenames(os.path.join(args.test_base, 'test-imgs'))
+            self.dimglist = utl.list_depth_filenames(os.path.join(args.test_base, 'test-imgs'))
             if self.dimglist is None: # create depth crops first
                 if args.bags is None or not os.path.isdir(args.bags):
                     print("Print provide a valid path to the bag files storing depth data")
@@ -101,7 +101,7 @@ class ObjectReasoner():
                     # call python2 method from python3 script
                     print("Starting depth image extraction from bag files... It may take long to complete")
                     try:
-                        call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
+                        utl.call_python_version("2.7", "bag_processing", "extract_from_bag", [self.imglist,args.bags,args.regions]) # retrieve data from bag
                     except Exception as e:
                         print(str(e))
                         sys.exit(0)
@@ -130,13 +130,13 @@ class ObjectReasoner():
         if not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt')) and\
             not os.path.exists(os.path.join(args.test_res,'./camera-intrinsics.txt')):
             bagpath = [os.path.join(args.bags, bagname) for bagname in os.listdir(args.bags) if bagname[-4:] == '.bag'][0]
-            self.camintr = self.dimglist = call_python_version("2.7", "bag_processing", "load_intrinsics",[bagpath,\
+            self.camintr = self.dimglist = utl.call_python_version("2.7", "bag_processing", "load_intrinsics",[bagpath,\
                                                                 os.path.join(args.test_base,'./camera-intrinsics.txt')])
         elif not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt')) \
             and os.path.exists(os.path.join(args.test_res, './camera-intrinsics.txt')):
-            self.camintr = load_camera_intrinsics_txt(os.path.join(args.test_res, './camera-intrinsics.txt'))
+            self.camintr = utl.load_camera_intrinsics_txt(os.path.join(args.test_res, './camera-intrinsics.txt'))
         else:
-            self.camintr = load_camera_intrinsics_txt(os.path.join(args.test_base, './camera-intrinsics.txt'))
+            self.camintr = utl.load_camera_intrinsics_txt(os.path.join(args.test_base, './camera-intrinsics.txt'))
 
         self.camera = o3d.camera.PinholeCameraIntrinsic()
         self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
@@ -144,11 +144,11 @@ class ObjectReasoner():
     def init_ML_predictions(self,args,fname='snapshot-test2-results.h5'):
         if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds, args.baseline))):
             # # First time loading preds from raw embeddings
-            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = load_emb_space(args,fname)
+            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = utl.load_emb_space(args,fname)
             if args.baseline == 'two-stage':
-                self.predictions = pred_twostage(self, args)
+                self.predictions = predictors.pred_twostage(self, args)
             else:
-                self.predictions, _,_ = pred_singlemodel(self, args)
+                self.predictions, _,_ = predictors.pred_singlemodel(self, args)
             if self.predictions is not None:
                 np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
             else:
@@ -240,7 +240,7 @@ class ObjectReasoner():
             #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl])
             """ 3. object size estimation """
             try:
-                d1, d2, depth, volume, orientedbox,aligned_box = estimate_dims(cluster_pcl, obj_pcl)
+                d1, d2, depth, volume, orientedbox,aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
             except TypeError:
                 print("Still not enough points..skipping")
                 non_processed_pcls += 1
@@ -271,12 +271,12 @@ class ObjectReasoner():
             else: #current_label != gt_label: #if
 
                 """ 5. size quantization """
-                qual = pred_size_qual(d1,d2)
-                flat = pred_flat(d1, d2, depth)
+                qual = predictors.pred_size_qual(d1,d2)
+                flat = predictors.pred_flat(d1, d2, depth)
                 flat_flag = 'flat' if flat else 'non flat'
                 #Aspect ratio based on crop
-                aspect_ratio = pred_AR(dimage.shape,(d1,d2))
-                thinness = pred_thinness(depth)
+                aspect_ratio = predictors.pred_AR(dimage.shape,(d1,d2))
+                thinness = predictors.pred_thinness(depth)
 
                 """ 6. Hybrid (area) """
                 candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
@@ -402,23 +402,23 @@ class ObjectReasoner():
     def depth2PCL(self,dimage,foregroundextract):
         if foregroundextract:
             #extract foreground before converting
-            cluster_bw = extract_foreground_2D(dimage)
+            cluster_bw = dimgproc.extract_foreground_2D(dimage)
             if cluster_bw is None:  # problem with 2D clustering
                 # Revert to full image
-                obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+                obj_pcl = pclproc.MatToPCL(dimage, self.camera, scale=self.scale)
             else:  # mask depth img based on largest contour
-                masked_dmatrix = detect_contours(dimage, cluster_bw)
-                obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+                masked_dmatrix = dimgproc.detect_contours(dimage, cluster_bw)
+                obj_pcl = pclproc.MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
         else:# just convert full image
-            obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+            obj_pcl = pclproc.MatToPCL(dimage, self.camera, scale=self.scale)
         return obj_pcl
 
     def PCL_3Dprocess(self,obj_pcl,pclcluster):
         if pclcluster:
             # remove statistical outliers from pcl
-            # obj_pcl = pcl_remove_outliers(obj_pcl)
-            # cluster_pcl = cluster_3D(obj_pcl, downsample=False)
-            cluster_pcl = pcl_remove_outliers(obj_pcl)
+            # obj_pcl = pclproc.pcl_remove_outliers(obj_pcl)
+            # cluster_pcl = pclproc.cluster_3D(obj_pcl, downsample=False)
+            cluster_pcl = pclproc.pcl_remove_outliers(obj_pcl)
             if cluster_pcl is None:
                 # revert to full pcl instead
                 cluster_pcl = obj_pcl

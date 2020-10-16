@@ -1,10 +1,11 @@
+"""
+Methods for 3D PCL processing
+"""
 import open3d as o3d
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-import time
 from collections import Counter
-
 
 def pcl_remove_outliers(pcl, vx=5, std_r=2.):
     uni_down_pcd = pcl.uniform_down_sample(every_k_points=vx)
@@ -23,7 +24,6 @@ def pcl_remove_outliers_bydistance(pcl, vx=5, r = 0.2):
     fpcl,_ = pcl.remove_radius_outlier(nb_points=neighbours, radius=r)
     print(len(np.asarray(fpcl.points)))
     return fpcl
-
 
 
 def cluster_3D(pcl, eps=0.1, minpoints=15, vsize=0.05, downsample=False):
@@ -118,17 +118,6 @@ def estimate_dims(pcd,original_pcd, d=0.05):
     box_points = np.asarray(orthreedbox.get_box_points())
     box_center = np.asarray(orthreedbox.get_center())
 
-    #o3d.visualization.draw_geometries([original_pcd, orthreedbox])
-    #Compute width, height and depth from bbox points
-    #Point order not documented. But First 3 vertices look like they lie always on same surface
-    # and the 4th one perpendicular to the first one
-    # Confirmed by double checking open3D source code
-    """
-    d1 = np.linalg.norm(box_points[0] - box_points[1])
-    d2 = np.linalg.norm(box_points[0] - box_points[2])
-    d3 = np.linalg.norm(box_points[0] - box_points[3])
-    dims = [d1, d2, d3]
-    """
     v = orthreedbox.volume()
     dims = orthreedbox.extent.tolist()
     nomin = dims.copy()

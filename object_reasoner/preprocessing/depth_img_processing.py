@@ -1,8 +1,10 @@
+"""
+Methods for 2D Depth image processing
+"""
 import cv2
 from sklearn.cluster import KMeans
 import numpy as np
 import matplotlib.pyplot as plt
-import yaml
 import warnings
 
 def extract_foreground_2D(dm):
@@ -71,17 +73,6 @@ def detect_contours(dmatrix, cbin):
     #plt.show()
     #plt.imshow(out,cmap='Greys_r')
     #plt.show()
-
     return out
 
 
-def remove_outliers_custom(dimg, min_thresh=0, max_thresh=600):
-    """
-    remove values too distant from avg from 2D image, replaced with zeros
-    """
-    nonzero_dimg = dimg[dimg != min_thresh]
-    mean_d = int(np.mean(nonzero_dimg))
-    #std_d = int(np.std(nonzero_dimg))
-    #recompute without potentially distant ones
-    dimg[dimg>=mean_d + max_thresh] = 0.
-    return dimg

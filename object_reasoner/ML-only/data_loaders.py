@@ -4,9 +4,8 @@
 import torch
 from torchvision import transforms
 import os
-import sys
-from utils import img_preproc, arcify
-import cv2
+from preprocessing.utils import arcify
+from rgb_img_processing import img_preproc
 import random
 
 # Mean and variance values for torchvision modules pre-trained on ImageNet
@@ -29,7 +28,6 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
             arcify(self.args.path_to_arc)
 
         if self.args.mode == 'train':
-
             #observed camera imgs were cropped and random hflipped on train
             #cropping done in PIL see utils.img_preproc
             if not load_validation:
