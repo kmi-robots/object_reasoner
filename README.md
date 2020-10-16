@@ -34,7 +34,7 @@ depth images (via [OpenCV](https://opencv.org/)) and PointClouds
 Features
 --------
 
-![image](assets/framework.png?raw=true)
+![image](assets/framework.svg?raw=true)
 
 -   **ML-based object recognition.** supported models (see also models.py script):
     :   -   Nearest Neighbour similarity matching of ResNet50 embeddings
@@ -61,7 +61,7 @@ RGB-D and knowledge catalogue Links for download
 
 Proposed size representation
 
-![image](assets/size_representation.png?raw=true)
+![image](assets/size_representation.svg?raw=true)
 
 Installation
 ------------
