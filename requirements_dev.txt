@@ -1,3 +1,8 @@
 h5py
 adabound
-
+open3d-python
+opencv-python
+execnet
+scikit-learn>=0.21
+matplotlib
+pypng

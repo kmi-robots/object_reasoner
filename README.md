@@ -67,6 +67,7 @@ Installation
 ------------
 **Tested on Ubuntu 18.04**
 
+
 * Pypi dependencies can be installed through pip.
   If re-training on a GPU-enabled machine, change the last line to install torch & torchvision for GPU
 
@@ -74,13 +75,12 @@ Installation
     sudo apt install python3-pip
     cd your_path_to/object_reasoner
     pip3 install .
-    pip install torch==1.5.1+cpu torchvision==0.6.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+    pip3 install torch==1.5.1+cpu torchvision==0.6.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
    ```
 
-* Other package dependencies:
-    ```
-    sudo apt install
-    ```
+* The ./object_reasoner/preprocessing/bag_processing.py is ROS dependent and to be run requires 
+  to install ROS. We tested it on ROS melodic. The reference instructions to install ROS on Ubuntu can be found [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
+
 
 Command examples
 ----------------
