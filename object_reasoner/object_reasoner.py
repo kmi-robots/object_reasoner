@@ -4,6 +4,7 @@ import json
 import os
 import time
 import sys
+import statistics
 import numpy as np
 import cv2
 from collections import Counter
@@ -13,17 +14,24 @@ from evalscript import eval_singlemodel, eval_KMi
 from img_processing import extract_foreground_2D, detect_contours, remove_outliers_custom
 from pcl_processing import cluster_3D, MatToPCL, PathToPCL, estimate_dims, pcl_remove_outliers, pcl_remove_outliers_bydistance
 
-import statistics
-
-import matplotlib.pyplot as plt
-
 class ObjectReasoner():
-
     def __init__(self, args):
-
         self.set = args.set
+        self.verbose = args.verbose
         start = time.time()
-        if args.set =='arc':
+        self.init_obj_catalogue(args)
+        print("Background KB initialized. Took %f seconds." % float(time.time() - start))
+        # load metadata from txt files provided
+        self.init_txt_files(args)
+        self.init_depth_imglist(args)
+        self.init_camera_intrinsics(args)
+        # Load predictions from baseline algo
+        start = time.time()
+        self.init_ML_predictions(args)
+        print("%s recognition results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
+
+    def init_obj_catalogue(self,args):
+        if self.set =='arc':
             try:
                 with open('./data/arc_obj_catalogue.json') as fin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
@@ -34,7 +42,6 @@ class ObjectReasoner():
             # Filter only known/novel objects
             self.known = dict((k, v) for k, v in self.KB.items() if v["known"] == True)
             self.novel = dict((k, v) for k, v in self.KB.items() if v["known"] == False)
-
             # KB sizes as 3D vectors
             # self.sizes = dict((k,np.array(v['dimensions'])) for k, v in self.KB.items())
             self.sizes = np.empty((len(self.KB.keys()), 3))
@@ -44,7 +51,7 @@ class ObjectReasoner():
                 self.sizes[i] = np.array(v['dimensions'])
                 self.volumes[i] = v['dimensions'][0] * v['dimensions'][1] * v['dimensions'][2]  # size catalogue in meters
                 self.labelset.append(v['label'])
-        elif args.set == 'KMi':
+        elif self.set == 'KMi':
             try:
                 with open('./data/KMi_obj_catalogue.json') as fin,\
                     open('./data/KMi-set-2020/class_to_index.json') as cin:
@@ -54,25 +61,30 @@ class ObjectReasoner():
             except FileNotFoundError:
                 print("No KMi catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
                 sys.exit(0)
-        print("Background KB initialized. Took %f seconds." % float(time.time() - start))
 
-        # load metadata from txt files provided
+    def init_txt_files(self,args):
         with open(os.path.join(args.test_base,'test-labels.txt')) as txtf, \
             open(os.path.join(args.test_base,'test-product-labels.txt')) as prf, \
             open(os.path.join(args.test_base,'test-imgs.txt')) as imgf:
             self.labels = txtf.read().splitlines()       #gt labels for each test img
-              # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
+            # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
-            self.imglist = imgf.read().splitlines()#[os.path.join(args.test_base,'..','..', pth) for pth in imgf.read().splitlines()]
+            self.imglist = imgf.read().splitlines()
 
+    def init_depth_imglist(self,args):
         if args.set =='KMi':
-            if args.bags is None or not os.path.isdir(args.bags):
-                print("Print provide a valid path to the bag files storing depth data")
-                sys.exit(0)
+            """
+                    KMi set: Picked nearest depth frame to RGB image, based on timestamp.
+                    Depth images are saved as 16-bit PNG, where depth values are saved in millimeters (10-3m).
+                    Invalid depth is set to 0.
+            """
             self.tsamples = None
             #if no depth imgs stored locally, generate from bag
             self.dimglist = list_depth_filenames(os.path.join(args.test_base, 'test-imgs'))
             if self.dimglist is None: # create depth crops first
+                if args.bags is None or not os.path.isdir(args.bags):
+                    print("Print provide a valid path to the bag files storing depth data")
+                    sys.exit(0)
                 if args.regions is None or not os.path.isdir(args.bags):
                     print("Print provide a valid path to the region annotation files")
                     sys.exit(0)
@@ -84,7 +96,6 @@ class ObjectReasoner():
                     tempdimglist = ['_'.join(p.split('_')[:-1]) + 'depth_' + p.split('_')[-1] for p in self.imglist]
                     crop_test(original_full_depth, args.regions, os.path.join(args.test_base,'test-imgs'),'depth')
                     self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in tempdimglist]
-
                 else:
                     #otherwise, start from temporal img matching too
                     # call python2 method from python3 script
@@ -96,24 +107,28 @@ class ObjectReasoner():
                         sys.exit(0)
                     print("Depth files creation complete.. Imgs saved under %s" % os.path.join(args.test_base,'test-imgs'))
                     self.dimglist = [cv2.imread(p[:-4]+'depth.png', cv2.IMREAD_UNCHANGED) for p in self.imglist]
-
             else:
                 tempdimglist = ['_'.join(p.split('_')[:-1]) + 'depth_' + p.split('_')[-1] for p in self.imglist]
                 self.dimglist = [cv2.imread(p, cv2.IMREAD_UNCHANGED) for p in tempdimglist]
-
             print("Empty depth files:")
             print("%s out of %s" % (len([d for d in self.dimglist if d is None]), len(self.dimglist)))
             self.scale = 1000.0 #depth values in mm
 
         else: #supports ARC set
+            """
+                    ARC set: Color images are saved as 24-bit RGB PNG.
+                    Depth images and heightmaps are saved as 16-bit PNG, where depth values are saved in deci-millimeters (10-4m).
+                    Invalid depth is set to 0.
+                    Depth images are aligned to their corresponding color images.
+            """
             self.dimglist = [cv2.imread(p.replace('color','depth'),cv2.IMREAD_UNCHANGED) for p in self.imglist]       # paths to test depth imgs
             self.scale = 10000.0  # depth values in deci-mm
             with open(os.path.join(args.test_base, 'test-other-objects-list.txt')) as smpf:
                 self.tsamples = [l.split(',') for l in smpf.read().splitlines()]
 
-        # Camera intrinsics
-        if not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt'))\
-            and not os.path.exists(os.path.join(args.test_res,'./camera-intrinsics.txt')):
+    def init_camera_intrinsics(self, args):
+        if not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt')) and\
+            not os.path.exists(os.path.join(args.test_res,'./camera-intrinsics.txt')):
             bagpath = [os.path.join(args.bags, bagname) for bagname in os.listdir(args.bags) if bagname[-4:] == '.bag'][0]
             self.camintr = self.dimglist = call_python_version("2.7", "bag_processing", "load_intrinsics",[bagpath,\
                                                                 os.path.join(args.test_base,'./camera-intrinsics.txt')])
@@ -126,97 +141,48 @@ class ObjectReasoner():
         self.camera = o3d.camera.PinholeCameraIntrinsic()
         self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
 
-        # Load predictions from baseline algo
-        start = time.time()
-        if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds,args.baseline))):
-            # then retrieve from raw embeddings
-            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = load_emb_space(args,fname='snapshot-test2-results.h5')
+    def init_ML_predictions(self,args,fname='snapshot-test2-results.h5'):
+        if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds, args.baseline))):
+            # # First time loading preds from raw embeddings
+            self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = load_emb_space(args,fname)
             if args.baseline == 'two-stage':
                 self.predictions = pred_twostage(self, args)
             else:
-                self.predictions,self.avg_predictions, self.min_predictions = pred_singlemodel(self, args)
+                self.predictions, _,_ = pred_singlemodel(self, args)
             if self.predictions is not None:
-                np.save(('%s/test_predictions_%s.npy' % (args.preds,args.baseline)), self.predictions)
+                np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
             else:
                 print("Prediction mode not supported yet. Please choose a different one.")
                 sys.exit(0)
-            if self.avg_predictions is not None:
-                np.save(('%s/test_avg_predictions_%s.npy' % (args.preds,args.baseline)), self.avg_predictions)
-            if self.min_predictions is not None:
-                np.save(('%s/test_min_predictions_%s.npy' % (args.preds,args.baseline)), self.min_predictions)
-
-        else:
-            self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds,args.baseline)),allow_pickle=True)
-            try:
-                self.avg_predictions = np.load(('%s/test_avg_predictions_%s.npy' % (args.preds,args.baseline)), allow_pickle=True)
-                self.min_predictions = np.load(('%s/test_min_predictions_%s.npy' % (args.preds,args.baseline)), allow_pickle=True)
-            except FileNotFoundError:
-                self.avg_predictions = None
-                self.min_predictions = None
-
-        print("%s detection results retrieved. Took %f seconds." % (args.baseline,float(time.time() - start)))
-        print("Double checking top-1 accuracies to reproduce baseline...")
-        if args.set == 'KMi': #class-wise report
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True, K=5)
-        else: #separate eval for known vs novel
-            eval_singlemodel(self)
-
-        """
-        print("Results if matches are average by class / across views")
-        # print("Results if min across views is taken")
-        tmp_copy = self.predictions
-        self.predictions = self.avg_predictions
-        # self.predictions = self.min_predictions
-        eval_singlemodel(self)
-        self.predictions = tmp_copy
-        del tmp_copy
-        sys.exit(0)
-        """
+        else: #Load from local npy file
+            self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), allow_pickle=True)
 
     def run(self):
-        """
-        ARC set: Color images are saved as 24-bit RGB PNG.
-        Depth images and heightmaps are saved as 16-bit PNG, where depth values are saved in deci-millimeters (10-4m).
-        Invalid depth is set to 0.
-        Depth images are aligned to their corresponding color images.
-        """
-        """
-        KMi set: Picked nearest depth frame to RGB image, based on timestamp.
-        Depth images are saved as 16-bit PNG, where depth values are saved in millimeters (10-3m).
-        Invalid depth is set to 0.
-        """
+        """ Evaluate ML predictions before hybrid reasoning"""
+        print("Double checking top-1 accuracies for ML baseline...")
+        if self.set == 'KMi':  # class-wise report
+            eval_KMi(self, depth_aligned=True)
+            eval_KMi(self, depth_aligned=True, K=5)
+        else:  # separate eval for known vs novel
+            eval_singlemodel(self)
+
         print("Reasoning for correction ... ")
+        """Data stats and monitoring vars for debugging"""
         start = time.time()
         non_processed_pcls = 0
         non_processed_fnames = []
         non_depth_aval = 0
         no_corrected =0
         nfallbacks = 0
-        alpha = 4
-        volOnly = True  # if True, dims based rankings are excluded
-        combined = False  # if True, all types of ranking used
-        novision = True  # if True, vision based ranking is excluded
-        knowledge_only = False
-        foregroundextract = True
-        pclcluster = True
-        reranking = False
 
+        pclcluster = True
         if self.set == 'KMi':
-            # only based on volume
-            combined = False
-            volOnly = True
-            novision = False
-            knowledge_only = False
+            # segmented areas are higher quality and foreground extract is skipped
             foregroundextract = False
-            pclcluster = False
-            reranking = False
-            mean = False
-            sizevisionmean = True
-            intersect = True
-            epsilon = 0.0001 # conf threshold for size probas
             all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
             self.predictions = self.predictions[:, :5, :]
+        elif self.set =='arc':
+            foregroundextract = True
 
         pred_counts = Counter()
         need_corr_by_class = Counter()
@@ -230,14 +196,9 @@ class ObjectReasoner():
         thin_copy = self.predictions.copy()
         thinAR_copy = self.predictions.copy()
 
-        for i,dimage in enumerate(self.dimglist):  # for each depth image
+        """For each depth image ... """
+        for i,dimage in enumerate(self.dimglist):
             # baseline predictions as (label, distance)
-
-            if self.min_predictions is not None:
-                # current_avg_ranking = self.avg_predictions[i,:]
-                current_min_ranking = self.min_predictions[i, :]
-            else: current_min_ranking = None
-
             current_ranking = self.predictions[i, :]
             current_prediction = self.predictions[i, 0, 0]
             if self.set == 'KMi':
@@ -246,9 +207,8 @@ class ObjectReasoner():
             else:
                 current_label = list(self.KB.keys())[current_prediction]
                 gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
-                pr_volume = self.volumes[current_prediction]  # ground truth volume and dims for current prediction
-                # pr_dims = self.sizes[current_prediction]
-            if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
+
+            if current_label != gt_label:
                 no_corrected += 1
             if dimage is None:
                 # no synchronised depth data found
@@ -256,34 +216,16 @@ class ObjectReasoner():
                 non_depth_aval += 1
                 continue
 
+            """Uncomment to visually inspect images/debug"""
             #plt.imshow(dimage, cmap='Greys_r')
             #plt.show()
             #plt.imshow(cv2.imread(self.imglist[i]))
             #plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
             #plt.show()
 
-            orig_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
-
-            if foregroundextract:
-                cluster_bw = extract_foreground_2D(dimage)
-                # plt.imshow(cluster_bw, cmap='Greys_r')
-                # plt.show()
-
-                if cluster_bw is None:  # problem with 2D clustering
-                    # non_processed_pcls += 1
-                    # print("There was a problem extracting a relevant 2D cluster for img no %i, skipping correction" % i)
-                    # Revert to full image
-                    obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
-                else:  # mask depth img based on largest contour
-                    masked_dmatrix = detect_contours(dimage, cluster_bw)
-                    # plt.imshow(masked_dmatrix, cmap='Greys_r')
-                    # plt.show()
-                    obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
-            else:
-                # just filter out outliers
-                #fdimage = remove_outliers_custom(dimage)
-                obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
-
+            """ 1. Depth image to pointcloud conversion
+                2. OPTIONAL foreground extraction """
+            obj_pcl = self.depth2PCL(dimage,foregroundextract)
             pcl_points = np.asarray(obj_pcl.points).shape[0]
             if pcl_points <= 1:
                 print("Empty pcl, skipping")
@@ -291,44 +233,20 @@ class ObjectReasoner():
                 # do not consider that obj region in eval
                 non_processed_fnames.append(self.imglist[i].split('/')[-1])
                 self.dimglist[i] = None
-                #plt.imshow(dimage, cmap='Greys_r')
-                #plt.show()
-                #plt.imshow(cv2.imread(self.imglist[i]))
-                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                #plt.show()
                 continue
-            # o3d.visualization.draw_geometries([obj_pcl])
-            if pclcluster:
-                obj_pcl = pcl_remove_outliers(obj_pcl)
-                cluster_pcl = cluster_3D(obj_pcl, downsample=False)
-                # o3d.visualization.draw_geometries([cluster_pcl])
-                if cluster_pcl is None:  # or with 3D clustering
-                    print(
-                        "There was a problem extracting a relevant 3D cluster for img no %i, proceeding with original pcl" % i)
-                    cluster_pcl = obj_pcl  # original pcl used instead
-            else:
-                cluster_pcl = obj_pcl
-
-            #remove statistical outliers from pcl
-            #cluster_pcl = pcl_remove_outliers_bydistance(cluster_pcl)
-            cluster_pcl = pcl_remove_outliers(cluster_pcl)
+            """ 2. noise removal """
+            cluster_pcl = self.PCL_3Dprocess(obj_pcl,pclcluster)
             #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
             #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl])
-
+            """ 3. object size estimation """
             try:
                 d1, d2, depth, volume, orientedbox,aligned_box = estimate_dims(cluster_pcl, obj_pcl)
-                #cd1, cd2, cdepth, cvolume, chullbox = estimate_dims(chull, cluster_pcl)
             except TypeError:
                 print("Still not enough points..skipping")
                 non_processed_pcls += 1
                 # do not consider that obj region in eval
                 non_processed_fnames.append(self.imglist[i].split('/')[-1])
                 self.dimglist[i] = None
-                #plt.imshow(dimage, cmap='Greys_r')
-                #plt.show()
-                #plt.imshow(cv2.imread(self.imglist[i]))
-                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                #plt.show()
                 continue
             #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
             try:
@@ -345,82 +263,28 @@ class ObjectReasoner():
                 estimated_sizes[gt_label]['d2'].append(d2)
                 estimated_sizes[gt_label]['depth'].append(depth)
 
-            """
-            try:
-                o3d.visualization.draw_geometries([cluster_pcl])
-            except RuntimeError as e:
-                print(str(e))
-                pass
-            """
-            #pclpts=np.asarray(obj_pcl.points)
-
-            #invalidpts = pclpts[[pclpts[z,:]==np.array([0.,0.,0.])
-            #              for z in range(pclpts.shape[0])]]
-            #plt.imshow(cv2.imread(self.imglist[i]))
-            #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-            #plt.show()
-            """
-            Decide which predictions to correct
-            """
+            """# 4. ML prediction selection module"""
             full_vision_rank = all_predictions[i, :]
-            read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
-                                 range(current_ranking.shape[0])]
-            #sizeValidate = False
+            sizeValidate,read_current_rank = self.MLpred_selection(current_ranking,current_label,gt_label)
 
-            distance_t = 0.04
-            MLclasses = [l[0] for l in read_current_rank]
-            l_,c_ = Counter(MLclasses).most_common()[0]
-            dis = read_current_rank[0][1] #distance between test embedding and prod embedding
-            if dis < distance_t and c_ >= 3: #lower distance/higher conf and class appears at least three times
-                #ML is confident, keep as is
-                print("%s predicted as %s" % (gt_label, current_label))
-                print("ML based ranking")
-                print(read_current_rank)
-                print("ML confident, skipping size-based validation")
-                print("================================")
-                continue
-            else:
-                sizeValidate = True
+            if not sizeValidate: continue #skip correction
+            else: #current_label != gt_label: #if
 
-            #if current_label != gt_label: sizeValidate=True
-            if sizeValidate: #current_label == gt_label: #if
-                """MLclasses = [l[0] for l in read_current_rank]
-                l_, c_ = Counter(MLclasses).most_common()[0]
-                if c_ >= 3:  # if there is a class that appears at least three times in top 5 ranking
-                    print("found agreement in the ranking - ML level")
-                    # cnum = self.mapper[l_]
-                    # rerank = full_vision_rank[[full_vision_rank[z,0] ==cnum for z in range(full_vision_rank.shape[0])]]
-                    # self.predictions[i, :] = rerank[:5, :]
-                    continue  # avoid correction
-                else:
-                """
-                #plt.imshow(dimage, cmap='Greys_r')
-                #plt.show()
-                #plt.imshow(cv2.imread(self.imglist[i]))
-                #plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                #plt.show()
-                #cluster_pcl.paint_uniform_color(np.array([0.,0.,0.]))
-                #o3d.visualization.draw_geometries([obj_pcl,cluster_pcl,orientedbox])
-
+                """ 5. size quantization """
                 qual = pred_size_qual(d1,d2)
-                dims = [d1,d2]
-                mid = dims.copy()
-                mid.remove(max(dims))
-                mid = mid[0] #measure between min (i.e., depth here) and max measured
-                #proportion = pred_proportion(qual,mid,depth)
                 flat = pred_flat(d1, d2, depth)
                 flat_flag = 'flat' if flat else 'non flat'
                 #Aspect ratio based on crop
                 aspect_ratio = pred_AR(dimage.shape,(d1,d2))
                 thinness = pred_thinness(depth)
-                #if flat:
-                #    print("really flat object found")
 
-                #select all objects beloging to the same area qual bin, based on KB
+                """ 6. Hybrid (area) """
                 candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
                 candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
                 valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
                 read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in range(valid_rank.shape[0])]
+
+                """ 6. Hybrid (area + flat) """
                 candidates_flat = [oname for oname in self.KB.keys() if
                                    (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
                 candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
@@ -428,373 +292,81 @@ class ObjectReasoner():
                     [full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
                 read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
                                   range(valid_rank_flat.shape[0])]
-                """
-                sizevalidated_pred = read_rank_flat[0][0]#read_rank[0][0]
-                if current_label == sizevalidated_pred:
-                    # use size validated (qual + flat) predictions and skip other size-based corrections
-                    print("%s predicted as %s" % (gt_label, current_label))
-                    print("Detected size is %s" % qual)
-                    print("Object is %s" % flat_flag)
-                    print("Object is %s" % aspect_ratio)
-                    print("Object is %s" % thinness)
-                    #print("Object is %s" % proportion)
 
-                    print("Estimated dims oriented %f x %f x %f m" % (d1, d2, depth))
-                    # print("Estimated dims aligned %f x %f x %f m" % tuple(aligned_box.get_extent().tolist()))
-                    print("ML based ranking")
-                    print(read_current_rank)
-                    print("Knowledge validated ranking (Area qual only)")
-                    print(read_rank[:5])
-                    print("Knowledge validated ranking (Area qual + flat)")
-                    print(read_rank_flat[:5])
-                    print("================================")
-                    self.predictions[i, :] = valid_rank_flat[:5, :]#valid_rank[:5, :]
-
-                else: # ML prediction is not confident nor size validated
-                """
-                #try out all size-based corrections
+                """ 6. Hybrid (area + thin) """
                 candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
                                                                         and thinness in str(self.KB[oname]["thinness"]))]
                 candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
+                valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
+                read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
 
-                #candidates_prop = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                                #and proportion in str(self.KB[oname]["thinness"]))]
-                #candidates_num_prop = [self.mapper[oname.replace(' ', '_')] for oname in candidates_prop]
-
-                #candidates_prop_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                #                    and proportion in str(self.KB[oname]["thinness"])
-                #                    and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
-                #candidates_num_propAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_prop_AR]
-
-                #candidates_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                #                and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
-                #candidates_num_AR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_AR]
+                """ 6. Hybrid (area + flat+AR) """
 
                 candidates_flat_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
                                     and str(flat) in str(self.KB[oname]["is_flat"])
                                     and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
                 candidates_num_flatAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat_AR]
-
-                candidates_thin_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                            and str(thinness) in str(self.KB[oname]["thinness"]) and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
-                candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
-
-
-                valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
-                read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
-                #valid_rank_prop = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_prop for z in range(full_vision_rank.shape[0])]]
-                #read_rank_prop = [(self.remapper[valid_rank_prop[z,0]],valid_rank_prop[z,1]) for z in range(valid_rank_prop.shape[0])]
-                #valid_rank_propAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_propAR for z in range(full_vision_rank.shape[0])]]
-                #read_rank_propAR = [(self.remapper[valid_rank_propAR[z,0]],valid_rank_propAR[z,1]) for z in range(valid_rank_propAR.shape[0])]
                 valid_rank_flatAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR for z in range(full_vision_rank.shape[0])]]
                 read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z,0]],valid_rank_flatAR[z,1]) for z in range(valid_rank_flatAR.shape[0])]
 
+                """ 6. Hybrid (area + thin +AR) """
+                candidates_thin_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+                            and str(thinness) in str(self.KB[oname]["thinness"]) and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
+                candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
                 valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
                 read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
 
-                #valid_rank_AR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_AR for z in range(full_vision_rank.shape[0])]]
-                #read_rank_AR = [(self.remapper[valid_rank_AR[z, 0]], valid_rank_AR[z, 1]) for z in range(valid_rank_AR.shape[0])]
+                self.predictions[i, :] = valid_rank_flatAR[:5, :]
+                thinAR_copy[i, :] = valid_rank_thinAR[:5, :]
+                thin_copy[i, :] = valid_rank_thin[:5, :]
+                sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
+                flat_copy[i, :] = valid_rank_flat[:5, :]
 
                 print("%s predicted as %s" % (gt_label,current_label))
                 print("Detected size is %s" % qual)
                 print("Object is %s" % flat_flag)
                 print("Object is %s" % aspect_ratio)
                 print("Object is %s" % thinness)
-                #print("Object is %s" % proportion)
-
                 print("Estimated dims oriented %f x %f x %f m" % (d1,d2,depth))
-                #print("Estimated dims aligned %f x %f x %f m" % tuple(aligned_box.get_extent().tolist()))
                 print("ML based ranking")
                 print(read_current_rank)
-                print("Knowledge validated ranking (Area qual only)")
+                print("Knowledge validated ranking (area)")
                 print(read_rank[:5])
-                #print("Knowledge validated ranking (Area qual + prop)")
-                #print(read_rank_flat[:5])
-                #print(read_rank_prop[:5])
-                print("Knowledge validated ranking (Area qual + flat)")
-                print(read_rank_flat[:5])
-                print("Knowledge validated ranking (Area qual + thin)")
-                print(read_rank_thin[:5])
-                #print("Knowledge validated ranking (Area qual + AR)")
-                #print(read_rank_AR[:5])
-                #print("Knowledge validated ranking (Area qual + prop+AR)")
-                print("Knowledge validated ranking (Area qual+flat+AR)")
+                print("Knowledge validated ranking (area + flat + AR)")
                 print(read_rank_flatAR[:5])
-                print("Knowledge validated ranking (Area qual+thin+AR)")
-                print(read_rank_thinAR[:5])
+                if self.verbose:
+                    print("Knowledge validated ranking (area + flat)")
+                    print(read_rank_flat[:5])
+                    print("Knowledge validated ranking (area + thin)")
+                    print(read_rank_thin[:5])
+                    print("Knowledge validated ranking (area + thin + AR)")
+                    print(read_rank_thinAR[:5])
                 print("================================")
-                #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
-                #self.predictions[i, :] = valid_rank_flat[:5,:]
-                self.predictions[i, :] = valid_rank_flatAR[:5, :]
-                thinAR_copy[i, :] = valid_rank_thinAR[:5, :]
-                thin_copy[i, :] = valid_rank_thin[:5, :]
-                sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
-                flat_copy[i, :] = valid_rank_flat[:5, :]
-                """
-                    found = False
-                        if c_ >= 3:  # if there is a class that appears at least three times in top 5 ranking
-                            print("found a majority winner - stop before full validation")
-                            self.predictions[i, :] = numrank_[:5, :]
-                            found = True
-                            break
-                    #otherwise use ranking of last (most pruned) level
-                    if not found: self.predictions[i, :] = valid_rank_flatAR[:5,:]
-                    """
-                    #self.predictions[i, :] = valid_rank_flatAR[:5,:]#_thin[:5,:]
-                    #sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
-                    #prop_copy[i, :] = valid_rank_flat[:5, :]
-                    #skip remainder
 
-            """
-            if current_label != gt_label: # and abs(volume - pr_volume) > alpha*pr_volume :
-                    # If we detect a volume alpha times or more larger/smaller
-                    # than object predicted by baseline, t
-                for rank_,numrank_ in [(read_rank[:5],valid_rank[:5]),(read_rank_flat[:5],valid_rank_flat[:5]),(read_rank_flatAR[:5],valid_rank_flatAR[:5])]:
-                    clas_ = [l[0] for l in rank_]
-                    l_, c_ = Counter(clas_).most_common()[0]hen hypothesise object needs correction
-                    # actually need to correct, gives upper bound
-                    # TODO remove 1st check condition afterwards
-                    \"""
-                    plt.imshow(dimage, cmap='Greys_r')
-                    plt.show()
-                    plt.imshow(cv2.imread(self.imglist[i]))
-                    plt.title(gt_label + " - " + self.imglist[i].split("/")[-1].split(".png")[0])
-                    plt.show()
-                    \"""
-                    try:
-                        need_corr_by_class[gt_label] +=1
-                    except KeyError:
-                        need_corr_by_class[gt_label] = 1
 
-                    #o3d.visualization.draw_geometries([cluster_pcl])
-
-                    if self.set =='KMi':
-                        try:
-                            estimated_vols[gt_label].append(volume)
-                        except KeyError:
-                            estimated_vols[gt_label] = []
-                            estimated_vols[gt_label].append(volume)
-
-                        vol_ranking = pred_vol_proba(self,volume,dist='lognormal')
-                    else:
-                        gt_dims = self.sizes[int(self.labels[i]) - 1]
-                        #from predict import pred_by_size
-                        # compare estimated dims with ground truth dims
-                        # first possible permutation
-                        dims_ranking = pred_by_size(self, np.array([d1,d2,depth]),i)
-                        #second possible permutation
-                        p2_rank = pred_by_size(self, np.array([d2, d1, depth]),i)
-                        vol_ranking = pred_by_vol(self,volume, i)
-
-                    final_rank = Counter()
-                    if self.set =='KMi' and not knowledge_only:
-                        class_set = list(np.unique(current_ranking[:,0]))
-                    elif self.set =='KMi' and knowledge_only:
-                        for h,cat in enumerate(list(vol_ranking['class'])):
-                            clabel = self.mapper[cat]
-                            final_rank[clabel] = vol_ranking['proba'][h]
-                        #print(final_rank.most_common())
-                        final_rank = final_rank.most_common(5)
-                        winclass = self.remapper[final_rank[0][0]]
-                        winproba = final_rank[0][1]
-                        if winproba <= epsilon:
-                            # no matching measurement could be found
-                            # or not confident enough
-                            # skip and fallback to vision ranking
-                            nfallbacks +=1
-                            #print("Fell back due to this result")
-                            #print((winclass, winproba))
-                            continue
-
-                        try: pred_counts[winclass] +=1
-                        except KeyError: pred_counts[winclass] =1
-                        self.predictions[i, :] = final_rank
-                        continue
-
-                    else: class_set = list(np.unique(current_min_ranking[:,0]))
-
-                    if reranking:
-                        if not intersect:
-                            clist = current_ranking.tolist()
-                            vision_rank = Counter((self.remapper[k], score) for k, score in clist)
-                        else:
-                            # search top-25 in each ranking, retain only objects that appear in both
-                            K = 25
-                            toppreds = all_predictions[i, :K, :]
-                            vision_rank = Counter((self.remapper[toppreds[n, 0]], toppreds[n, 1]) for n in range(K))
-                            topsize = vol_ranking[:25]
-                            topsizeclasses = topsize['class'].tolist()
-
-                            for label, vision_score in list(vision_rank.keys()):
-                                if label not in topsizeclasses:
-                                    del vision_rank[(label,vision_score)]
-
-                        size_plausible_rank = Counter()
-                        readable_rank = Counter() #same as above, but with readable labels
-                        # if vision_rank includes class with near-zero prob do not include as plausible
-                        for label,vision_score in vision_rank:
-                            size_idx = np.argwhere(vol_ranking['class'] == label)[0][0]
-                            size_proba = vol_ranking['proba'][size_idx]
-                            if size_proba > epsilon:
-                                # init with zero score
-                                size_plausible_rank[self.mapper[label]] = 0.
-                                readable_rank[label] = 0.
-
-                        \""" Uncomment for rank refill
-                        # for each removed one in descending score, replace with one class from vol_ranking (descending order)
-                        delta = len(vision_rank) - len(size_plausible_rank.keys())
-                        if delta >0:
-                            for d in range(delta):
-                                # add class name based on size ranking
-                                o,prob = vol_ranking[d]
-                                if prob > epsilon:
-                                    numeric_label = self.mapper[o]
-                                    #init with zero score
-                                    size_plausible_rank[numeric_label] = 0.
-                                    readable_rank[o] = 0.
-                        \"""
-
-                        # now add scores to size-plausible ranking
-                        for l in readable_rank.keys():
-                            numeric_label = self.mapper[l]
-                            # find first occurrence of that label in Vision predictions
-                            # tgti = np.where(all_predictions[i,:,0] == numeric_label)[0][0]
-                            sub_pred = all_predictions[i, :, :].copy()
-                            # find all occurrences of that label in Vision predictions
-                            sub_pred = sub_pred[sub_pred[:, 0] == numeric_label]
-                            if mean:
-                                # (arithmetic) mean of vision similarity score for that class
-                                # find all occurrences of that label in Vision predictions
-                                mean_score = np.mean(sub_pred[:, 1])
-                                score = mean_score
-                            else:
-                                # max similarity score is taken
-                                max_score = np.max(sub_pred[:, 1])
-                                score = max_score
-                            if sizevisionmean: #further averaged with size probabilities
-                                size_idx = np.argwhere(vol_ranking['class'] == l)[0][0]
-                                size_proba = vol_ranking['proba'][size_idx]
-                                score = sum([score, size_proba]) / 2
-
-                            size_plausible_rank[numeric_label] = score
-                            readable_rank[l] = score
-                        # init final_rank with this modified ranking
-                        # in the end, results will be re-sorted again, based on vision similarity score
-                        final_rank = size_plausible_rank
-                    else:
-                        for cname in class_set:
-                            try:
-                                if self.set =='KMi':
-                                    base_score = current_ranking[current_ranking[:, 0] == cname][:, 1][0]
-                                else:
-                                    base_score = current_min_ranking[current_min_ranking[:, 0] == cname][:, 1][0]
-                            except:
-                                #class is not in the base top-5
-                                base_score = 0.
-                            if combined:
-                                if novision:
-                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                                    final_rank[cname] = sum([dim_p1_score, dim_p2_score, vol_score]) / 3
-                                else:
-                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                    vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                                    final_rank[cname] = sum([base_score,dim_p1_score,dim_p2_score,vol_score])/4
-                            else:
-                                if volOnly and not novision:
-                                    if self.set =='KMi':
-                                        try:
-                                            clabel = self.remapper[cname]
-                                            vol_score = vol_ranking[vol_ranking['class'] == clabel]["proba"][0]
-                                            if vol_score <=epsilon:
-                                                #no size match or not confident enough for this class,fallback to Vision score
-                                                final_rank[cname] = base_score
-                                                continue
-                                        except IndexError:
-                                            #object is in Vision ranking but no size available
-                                            # fallback to vision score
-                                            final_rank[cname] = base_score
-                                            continue
-                                    else:
-                                        vol_score = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-
-                                    final_rank[cname] = sum([base_score, vol_score]) / 2
-
-                                elif volOnly and novision:
-                                    if self.set == 'KMi': #only based on size prediction
-                                        clabel = self.remapper[cname]
-                                        vol_score = vol_ranking[vol_ranking['class']==clabel]["proba"][0]
-                                        if vol_score <= epsilon:
-                                            # no size match or not confident enough, fallback to Vision score
-                                            final_rank[cname] = base_score
-                                        else:
-                                            final_rank[cname] = vol_score
-                                    else:
-                                        final_rank[cname] = vol_ranking[vol_ranking[:, 0] == cname][:, 1][0]
-                                elif not volOnly and novision:
-                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                    final_rank[cname] = sum([dim_p1_score, dim_p2_score]) / 2
-                                else:
-                                    dim_p1_score = dims_ranking[dims_ranking[:, 0] == cname][:, 1][0]
-                                    dim_p2_score = p2_rank[p2_rank[:, 0] == cname][:, 1][0]
-                                    final_rank[cname] = sum([base_score, dim_p1_score, dim_p2_score]) / 3
-
-                    if self.set =='KMi': final_rank = final_rank.most_common(5)
-                    else: final_rank = final_rank.most_common()[:-6:-1] # nearest 5 from new ranking
-                    delta = 5 - len(final_rank)
-                    if delta> 0:
-                         final_rank.extend([(None,None) for i in range(delta)]) #fill up the space
-                    try:
-                        winclass = self.remapper[final_rank[0][0]]
-                    except KeyError:
-                        #no plausible re-ranking was found, fall back to original vision ranking/prediction
-                        # skip correction
-                        nfallbacks+=1
-                        continue
-                    try: pred_counts[winclass] +=1
-                    except KeyError: pred_counts[winclass] =1
-                    self.predictions[i, :] = final_rank
-            """
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
         if self.set == 'KMi':
-            # Summary stats about predicted values
-            """
-            pred_counts = list(pred_counts.most_common()) # used to check class imbalances in number of predictions
-            need_corr_by_class =[(k,float(v/supports[k])) for k,v in need_corr_by_class.items()]
-            need_corr_by_class = sorted(need_corr_by_class, key=lambda x: x[1], reverse=True)
-            mean_est_vols = []
-            for n, (k, v) in enumerate(estimated_vols.items()):
-                try:
-                    KBvol = self.KB[k.replace('_',' ')]['volume_m3']
-                    KBvol = statistics.mean(KBvol)
-                except Exception as e:
-                    print(str(e))
-                    KBvol = None
-                mean_est_vols.append((k, statistics.mean(v), KBvol))
-            """
-            size_summary = estimated_sizes.copy()
-            for k in list(estimated_sizes.keys()):
-                sub_dict = estimated_sizes[k]
-                for subk,v in list(sub_dict.items()):
-                    try:
-                        size_summary[k]['mean-%s' %subk] = statistics.mean(v)
-                    except: #not enough data points
-                        size_summary[k]['mean-%s' % subk] = None
-                    try:
-                        size_summary[k]['std-%s' %subk] = statistics.stdev(v)
-                    except: #not enough data points
-                        size_summary[k]['std-%s' % subk] = None
-                    size_summary[k]['min-%s' %subk] = min(v)
-                    size_summary[k]['max-%s' %subk] = max(v)
+            if self.verbose:
+                """# Summary stats about predicted values"""
+                size_summary = estimated_sizes.copy()
+                for k in list(estimated_sizes.keys()):
+                    sub_dict = estimated_sizes[k]
+                    for subk,v in list(sub_dict.items()):
+                        try:
+                            size_summary[k]['mean-%s' %subk] = statistics.mean(v)
+                        except: #not enough data points
+                            size_summary[k]['mean-%s' % subk] = None
+                        try:
+                            size_summary[k]['std-%s' %subk] = statistics.stdev(v)
+                        except: #not enough data points
+                            size_summary[k]['std-%s' % subk] = None
+                        size_summary[k]['min-%s' %subk] = min(v)
+                        size_summary[k]['max-%s' %subk] = max(v)
 
-            with open("./data/logged_stats.json", 'w') as fout:
-                json.dump(size_summary, fout)
+                with open("./data/logged_stats.json", 'w') as fout:
+                    json.dump(size_summary, fout)
 
-            #print("Knowledge-corrected (size qual + prop+ AR)")
             print("Knowledge-corrected (size qual + flat + AR)")
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True,K=5)
@@ -825,7 +397,48 @@ class ObjectReasoner():
         print("{} images {} not corrected due to processing issues".format(non_processed_pcls,len(self.dimglist)))
         print("Names of discarded img files: %s" % str(non_processed_fnames))
         print("for {} out of {} images size predictor was not confident enough, fallback to ML score".format(nfallbacks,len(self.dimglist)))
-
         return
 
+    def depth2PCL(self,dimage,foregroundextract):
+        if foregroundextract:
+            #extract foreground before converting
+            cluster_bw = extract_foreground_2D(dimage)
+            if cluster_bw is None:  # problem with 2D clustering
+                # Revert to full image
+                obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+            else:  # mask depth img based on largest contour
+                masked_dmatrix = detect_contours(dimage, cluster_bw)
+                obj_pcl = MatToPCL(masked_dmatrix, self.camera, scale=self.scale)
+        else:# just convert full image
+            obj_pcl = MatToPCL(dimage, self.camera, scale=self.scale)
+        return obj_pcl
 
+    def PCL_3Dprocess(self,obj_pcl,pclcluster):
+        if pclcluster:
+            # remove statistical outliers from pcl
+            # obj_pcl = pcl_remove_outliers(obj_pcl)
+            # cluster_pcl = cluster_3D(obj_pcl, downsample=False)
+            cluster_pcl = pcl_remove_outliers(obj_pcl)
+            if cluster_pcl is None:
+                # revert to full pcl instead
+                cluster_pcl = obj_pcl
+        else:
+            cluster_pcl = obj_pcl
+        return cluster_pcl
+
+    def ML_predselection(self,current_ranking,current_label,gt_label,distance_t = 0.04,n=3):
+        read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
+                             range(current_ranking.shape[0])]
+        MLclasses = [l[0] for l in read_current_rank]
+        l_, c_ = Counter(MLclasses).most_common()[0]
+        dis = read_current_rank[0][1]  # distance between test embedding and prod embedding
+        if dis < distance_t and c_ >= n:  # lower distance/higher conf and class appears at least three times
+            # ML is confident, keep as is
+            print("%s predicted as %s" % (gt_label, current_label))
+            print("ML based ranking")
+            print(read_current_rank)
+            print("ML confident, skipping size-based validation")
+            print("================================")
+            return
+        else:
+            return True

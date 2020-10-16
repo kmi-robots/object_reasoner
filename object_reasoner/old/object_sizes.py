@@ -492,9 +492,9 @@ def main():
         print("Please provide valid input paths as specified in the helper")
         return 0
 
-    if os.path.exists('./data/KMi_obj_catalogue.json'):
+    if os.path.exists('../data/KMi_obj_catalogue.json'):
         print("Retrieve existing catalogue for update...")
-        with open('./data/KMi_obj_catalogue.json', 'r') as fin:
+        with open('../data/KMi_obj_catalogue.json', 'r') as fin:
             matches = json.load(fin)
         print("Starting lognormal fitting")
         matches = log_normalise(matches,args.N,args.cloth)
@@ -541,7 +541,7 @@ def main():
 
     #In both cases, save result locally
     print("Saving object catalogue under ./data ...")
-    with open('./data/KMi_obj_catalogue.json', 'w') as fout:
+    with open('../data/KMi_obj_catalogue.json', 'w') as fout:
         json.dump(matches, fout)
     print("File saved as KMi_object_catalogue.json")
     return 0
