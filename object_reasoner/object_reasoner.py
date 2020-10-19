@@ -143,6 +143,8 @@ class ObjectReasoner():
 
     def init_ML_predictions(self,args,fname='snapshot-test2-results.h5'):
         if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds, args.baseline))):
+            if not os.path.isdir(args.preds):
+                os.mkdir(args.preds)
             # # First time loading preds from raw embeddings
             self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = utl.load_emb_space(args,fname)
             if args.baseline == 'two-stage':
