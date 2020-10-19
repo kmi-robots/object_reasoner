@@ -109,12 +109,26 @@ Getting started
 
 Command examples
 ----------------
-To reproduce inference results on KMi set (as reported in our paper):
+To reproduce inference results on KMi set (as reported in our paper).
 ```
 cd your_path_to/object_reasoner/object_reasoner
-
 ```
-
+* Realistic scenario (correcting selected predictions, based on ML confidence):
+    ```
+    python3 cli.hpy ./data/KMi-set-2020-test ./data
+    ```
+* Best-case scenario (correcting only those predictions which need correction, based on ground truth):
+    ```
+    python3 cli.py ./data/KMi-set-2020-test ./data --scenario best
+    ```
+* Worst-case scenario (correcting only those predictions which need correction, based on ground truth):
+    ```
+    python3 cli.py ./data/KMi-set-2020-test ./data --scenario worst
+    ```
+You can also run the following for other combinations (e.g., starting from a different ML baseline, or on the ARC set):
+```
+python3 cli.py --help
+```
 For usage details on how to re-train or produce new ML-based predictions on a different dataset,
 you can run the following commands:
 ```

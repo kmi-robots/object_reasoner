@@ -9,11 +9,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('test_base', help="Base path to test imgs and product data")
     parser.add_argument('test_res', help="Base path to test predictions")
-    parser.add_argument('--set', default='arc', choices=['arc', 'KMi'], help="Chosen dataset")
+    parser.add_argument('--set', default='KMi', choices=['arc', 'KMi'], help="Chosen dataset")
     parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage','imprk-net', 'triplet', 'baselineNN'],
                         default="k-net",
                         help="Baseline method to retrieve predictions from."
                         "Imprk-net adds weight imprinting based on our pytorch implementation of k-net")
+    parser.add_argument('--scenario', nargs='?',
+                        choices=['best', 'worst','selected'],
+                        default="selected",
+                        help="Hybrid correction scenario."
+                             "best: correct all which need correction, based on ground truth"
+                             "worst: correct all ML predictions indiscriminately"
+                             "selected: apply selection based on ML confidence")
     parser.add_argument('--mode', nargs='?', choices=['size'],
                         default="size",
                         help="Reasoning mode. Only reasoning on obj sizes is currently supported.")

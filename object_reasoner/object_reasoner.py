@@ -18,6 +18,7 @@ class ObjectReasoner():
     def __init__(self, args):
         self.set = args.set
         self.verbose = args.verbose
+        self.scenario = args.scenario
         start = time.time()
         self.obj_catalogue(args)
         print("Background KB initialized. Took %f seconds." % float(time.time() - start))
@@ -267,7 +268,12 @@ class ObjectReasoner():
 
             """# 4. ML prediction selection module"""
             full_vision_rank = all_predictions[i, :]
-            sizeValidate,read_current_rank = self.MLpred_selection(current_ranking,current_label,gt_label)
+            if self.scenario == 'selected':
+                sizeValidate,read_current_rank = self.ML_predselection(current_ranking,current_label,gt_label)
+            elif self.scenario=='best':
+                if current_label!= gt_label: sizeValidate = True
+                else: sizeValidate = False
+            elif self.scenario =='worst': sizeValidate = True
 
             if not sizeValidate: continue #skip correction
             else: #current_label != gt_label: #if
@@ -441,6 +447,6 @@ class ObjectReasoner():
             print(read_current_rank)
             print("ML confident, skipping size-based validation")
             print("================================")
-            return
+            return (False,read_current_rank)
         else:
-            return True
+            return (True,read_current_rank)
