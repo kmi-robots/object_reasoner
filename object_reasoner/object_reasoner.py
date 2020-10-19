@@ -10,6 +10,7 @@ import cv2
 from collections import Counter
 import preprocessing.utils as utl
 import preprocessing.depth_img_processing as dimgproc
+from preprocessing.rgb_img_processing import crop_test
 import preprocessing.pcl_processing as pclproc
 import predict as predictors
 from evalscript import eval_singlemodel, eval_KMi

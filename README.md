@@ -100,7 +100,7 @@ Getting started
 ---------------
 * After completing all the installation steps, it is time to download our starter kit!
   **Note: this step requires 21 GB of free disk space**.
-  The kit can be downloaded [here](http://www.mediafire.com/file/phdliyiz9tn15h4/starter_kit.zip/file) and includes the KMi test RGB-D set as well as the pre-trained
+  The kit can be downloaded [here](http://www.mediafire.com/file/df2upaslfrpbd0d/starter_kit.zip/file) and includes the KMi test RGB-D set as well as the pre-trained
   models to rerun our pipeline directly for inference.
 
 * After downloading and unzipping the starter kit:
