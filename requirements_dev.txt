@@ -1,5 +1,6 @@
 h5py
 adabound
+scikit-build
 open3d-python
 opencv-python
 execnet
