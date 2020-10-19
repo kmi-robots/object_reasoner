@@ -14,8 +14,8 @@ from train import train
 from validate import validate
 from object_reasoner import predict
 from object_reasoner import evalscript
-import preprocessing.utils as utl
-from rgb_img_processing import crop_test
+import object_reasoner.preprocessing.utils as utl 
+from object_reasoner.preprocessing.rgb_img_processing import crop_test
 
 """ Hardcoded training params
 """

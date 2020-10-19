@@ -77,10 +77,12 @@ Installation
     pip3 install torch==1.5.1+cpu torchvision==0.6.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
     cd your_path_to/object_reasoner
     pip3 install -r requirements_dev.txt
+    pip3 install . 
    ```
 
 * The ./object_reasoner/preprocessing/bag_processing.py is ROS dependent and to be run requires 
   to install ROS. We tested it on ROS melodic. The barebone ROS installation is sufficient to run this code. The reference instructions to install ROS on Ubuntu can be found [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
+
 
 
 Command examples

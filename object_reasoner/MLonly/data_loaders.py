@@ -4,8 +4,8 @@
 import torch
 from torchvision import transforms
 import os
-from ..preprocessing.utils import arcify
-from ..preprocessing.rgb_img_processing import img_preproc
+from object_reasoner.preprocessing.utils import arcify
+from object_reasoner.preprocessing.rgb_img_processing import img_preproc
 import random
 
 # Mean and variance values for torchvision modules pre-trained on ImageNet
