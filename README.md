@@ -56,17 +56,30 @@ Supported datasets
 
 The KMi Dataset
 ---------------
+* **Train-validation RGB set**: includes 60 object classes commonly found at the Knowledge Media Institute (KMi).
+It is conceived for a few-shot metric learning scenario: only 4 images per class are devoted to training and 1 image for validation.
+For each class, a support set of 5 reference images is also provided. Triplets are formed directly
+at training time (you can refer to the code at `./object_reasoner/MLonly/data_loaders.py` and to our paper for more details).
+This set is already available under `./object_reasoner/data/KMi-set-2020`
 
-RGB-D and knowledge catalogue Links for download
+* **RGB-D test dataset**: includes **1414 object regions** (polygonal masks
+or rectangular bounding boxes, depending on the object). For each RGB region,
+also the matching Depth image region is provided. Objects in this test set belong to 47 of
+the 60 object classes. Annotations follow the same text formatting as the [ARC2017 image
+matching set](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/).
+This dataset is much larger than the training set and can be downloaded here: .
 
-Proposed size representation
+* **KMi size catalogue**: we also provide ground truth size annotations for all 60 classes,
+in csv and JSON format (under `./object_reasoner/data`). The reasoning modules expects the JSON catalogue as input, so
+we also provide a script to convert raw csv data to JSON, in case you needed to repeat the.
+steps for your own data/set of classes. The size representation is multi-dimensional and categorises
+objects qualitatively, based on their surface area, depth, and Aspect Ratio (AR), as exemplified in the below picture:
 
 ![image](assets/size_representation.svg?raw=true)
 
 Installation
 ------------
 **Tested on Ubuntu 18.04**
-
 
 * Pypi dependencies can be installed through pip.
   If re-training on a GPU-enabled machine, change the last line to install torch & torchvision for GPU
@@ -77,22 +90,36 @@ Installation
     pip3 install torch==1.5.1+cpu torchvision==0.6.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
     cd your_path_to/object_reasoner
     pip3 install -r requirements_dev.txt
-    pip3 install . 
+    pip3 install .
    ```
 
-* The ./object_reasoner/preprocessing/bag_processing.py is ROS dependent and to be run requires 
+* The ./object_reasoner/preprocessing/bag_processing.py is ROS dependent and to be run requires
   to install ROS. We tested it on ROS melodic. The barebone ROS installation is sufficient to run this code. The reference instructions to install ROS on Ubuntu can be found [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
 
+Getting started
+---------------
+* After completing all the installation steps, it is time to download our starter kit!
+**Note: requires GB of free disk space**. The kit can be downloaded [here](http://www.mediafire.com/file/7ihe0clr3xi5rcc/starter_kit.zip/file) and includes the KMi test RGB-D set as well as the pre-trained
+models to rerun our pipeline directly for inference.
 
+* After downloading and unzipping the starter kit:
+    * Move or copy the baselineNN, imprk-net, k-net and n-net folders under `object_reasoner/data`
+    * Move or copy the remaining files and folders (i.e., KMi test set) under `object_reasoner/data/KMi-set-2020`
 
 Command examples
 ----------------
+To reproduce inference results on KMi set (as reported in our paper):
+```
+cd your_path_to/object_reasoner/object_reasoner
 
-How to reproduce the results in the paper
-Test commands
+```
 
-Commands to re-train or produce new predictions with ML.
-
+For usage details on how to re-train or produce new ML-based predictions on a different dataset,
+you can run the following commands:
+```
+cd your_path_to/object_reasoner/object_reasoner
+python3 MLonly/main.py --help
+```
 Credits
 -------
 
