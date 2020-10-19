@@ -99,8 +99,9 @@ Installation
 Getting started
 ---------------
 * After completing all the installation steps, it is time to download our starter kit!
-**Note: requires GB of free disk space**. The kit can be downloaded [here](http://www.mediafire.com/file/7ihe0clr3xi5rcc/starter_kit.zip/file) and includes the KMi test RGB-D set as well as the pre-trained
-models to rerun our pipeline directly for inference.
+  **Note: this step requires 21 GB of free disk space**.
+  The kit can be downloaded [here](http://www.mediafire.com/file/7ihe0clr3xi5rcc/starter_kit.zip/file) and includes the KMi test RGB-D set as well as the pre-trained
+  models to rerun our pipeline directly for inference.
 
 * After downloading and unzipping the starter kit:
     * Move or copy the baselineNN, imprk-net, k-net and n-net folders under `object_reasoner/data`
