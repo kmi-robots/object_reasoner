@@ -268,8 +268,10 @@ class ObjectReasoner():
 
             """# 4. ML prediction selection module"""
             full_vision_rank = all_predictions[i, :]
+            read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
+                                 range(current_ranking.shape[0])]
             if self.scenario == 'selected':
-                sizeValidate,read_current_rank = self.ML_predselection(current_ranking,current_label,gt_label)
+                sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label)
             elif self.scenario=='best':
                 if current_label!= gt_label: sizeValidate = True
                 else: sizeValidate = False
@@ -434,9 +436,8 @@ class ObjectReasoner():
             cluster_pcl = obj_pcl
         return cluster_pcl
 
-    def ML_predselection(self,current_ranking,current_label,gt_label,distance_t = 0.04,n=3):
-        read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
-                             range(current_ranking.shape[0])]
+    def ML_predselection(self,read_current_rank,current_label,gt_label,distance_t = 0.04,n=3):
+
         MLclasses = [l[0] for l in read_current_rank]
         l_, c_ = Counter(MLclasses).most_common()[0]
         dis = read_current_rank[0][1]  # distance between test embedding and prod embedding
@@ -447,6 +448,6 @@ class ObjectReasoner():
             print(read_current_rank)
             print("ML confident, skipping size-based validation")
             print("================================")
-            return (False,read_current_rank)
+            return (False,None)
         else:
-            return (True,read_current_rank)
+            return (True,None)
