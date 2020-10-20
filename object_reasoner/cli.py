@@ -8,7 +8,7 @@ def main():
     """Console script for object_reasoner."""
     parser = argparse.ArgumentParser()
     parser.add_argument('test_base', help="Base path to test imgs and product data")
-    parser.add_argument('test_res', help="Base path to test predictions")
+    parser.add_argument('test_res', help="Base path to dataset")
     parser.add_argument('--set', default='KMi', choices=['arc', 'KMi'], help="Chosen dataset")
     parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage','imprk-net', 'triplet', 'baselineNN'],
                         default="k-net",

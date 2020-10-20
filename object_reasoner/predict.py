@@ -26,30 +26,19 @@ def pred_singlemodel(ReasonerObj, args):
     prod_space = prod_space / np.linalg.norm(prod_space)
 
     # For each test embedding, find Nearest Neighbour in prod space
-    # Filter out classes which are not in the current N=20 test sample
-    predictions = np.empty((tgt_space.shape[0],prod_space.shape[0],2),dtype="object")
-
     if args.set=='arc': # ARC2017 (simplified case) - 20 valid classes per run
-        avg_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
-        min_predictions = np.empty((tgt_space.shape[0], 20, 2), dtype="object")
+        predictions = []  #np.empty((tgt_space.shape[0], 472, 2), dtype="object")
         for i,classlist in enumerate(ReasonerObj.tsamples):
             t_emb = tgt_space[i,:] #1x2048
             l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
             all_dists = np.column_stack((ReasonerObj.plabels, l2dist.astype(np.object)))    # keep 2nd column as numeric
             valid_dists = all_dists[np.isin(all_dists, classlist)[:,0]]
             ranking = valid_dists[np.argsort(valid_dists[:, 1])]                            # sort by distance, ascending
-            predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
-            valid_classes = list(np.unique(ranking[:,0]))
-            #avg by class
-            avg_ranking= np.array([(c,np.mean(ranking[ranking[:,0]==c][:,1])) for c in valid_classes], dtype='object')
-            avg_predictions[i,:] = avg_ranking[np.argsort(avg_ranking[:, 1])]  # and redo sorting
-            #select min for each class
-            min_ranking = np.array([(c, np.min(ranking[ranking[:, 0] == c][:, 1])) for c in valid_classes], dtype='object')
-            min_predictions[i, :] = min_ranking[np.argsort(avg_ranking[:, 1])]  # and redo sorting
+            #predictions[i,:] = ranking.astype(np.object)
+            predictions.append(ranking.astype(np.object)) # variable length, predictions is a list and not an array in this case
     else:
         #KMi set case, all classes are valid in all runs
-        avg_predictions = None
-        min_predictions = None
+        predictions = np.empty((tgt_space.shape[0], prod_space.shape[0], 2), dtype="object")
         for i in range(len(ReasonerObj.imglist)):
             t_emb = tgt_space[i,:] #1x2048/
             l2dist = np.linalg.norm(t_emb - prod_space, axis=1)
@@ -57,7 +46,7 @@ def pred_singlemodel(ReasonerObj, args):
             ranking = all_dists[np.argsort(all_dists[:, 1])]                            # sort by distance, ascending
             #predictions[i,:] = ranking[:5, :].astype(np.object)   # keep track of top 5
             predictions[i, :] = ranking.astype(np.object)
-    return predictions, avg_predictions, min_predictions
+    return predictions
 
 def pred_twostage(ReasonerObj, args):
     """A Python re-writing of part of the procedure followed in

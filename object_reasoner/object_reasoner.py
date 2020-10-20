@@ -7,6 +7,7 @@ import sys
 import statistics
 import numpy as np
 import cv2
+import pickle
 from collections import Counter
 import preprocessing.utils as utl
 import preprocessing.depth_img_processing as dimgproc
@@ -71,7 +72,8 @@ class ObjectReasoner():
             self.labels = txtf.read().splitlines()       #gt labels for each test img
             # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
-            self.imglist = imgf.read().splitlines()
+            if args.set =='KMi': self.imglist = imgf.read().splitlines()
+            else: self.imglist = [ os.path.join(args.test_res,pp) for pp in imgf.read().splitlines()] #ARC support
 
     def init_depth_imglist(self,args):
         if args.set =='KMi':
@@ -144,7 +146,8 @@ class ObjectReasoner():
         self.camera.set_intrinsics(640, 480, self.camintr[0], self.camintr[4], self.camintr[2], self.camintr[5])
 
     def init_ML_predictions(self,args,fname='snapshot-test2-results.h5'):
-        if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds, args.baseline))):
+        if not os.path.isfile(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)))\
+            and not os.path.isfile(('%s/test_predictions_%s.txt' % (args.preds, args.baseline))):
             if not os.path.isdir(args.preds):
                 os.mkdir(args.preds)
             # # First time loading preds from raw embeddings
@@ -152,14 +155,20 @@ class ObjectReasoner():
             if args.baseline == 'two-stage':
                 self.predictions = predictors.pred_twostage(self, args)
             else:
-                self.predictions, _,_ = predictors.pred_singlemodel(self, args)
-            if self.predictions is not None:
+                self.predictions = predictors.pred_singlemodel(self, args)
+            if self.predictions is not None and args.set=='KMi':
                 np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
+            elif self.predictions is not None and args.set=='arc':
+                with open(('%s/test_predictions_%s.txt' % (args.preds, args.baseline)),'wb') as fp:
+                    pickle.dump(self.predictions, fp)
             else:
                 print("Prediction mode not supported yet. Please choose a different one.")
                 sys.exit(0)
         else: #Load from local npy file
-            self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), allow_pickle=True)
+            if args.set =='KMi':self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), allow_pickle=True)
+            else:
+                with open(('%s/test_predictions_%s.txt' % (args.preds, args.baseline)),'rb') as fp:
+                    self.predictions = pickle.load(fp) #ARC set support
 
     def run(self):
         """ Evaluate ML predictions before hybrid reasoning"""
