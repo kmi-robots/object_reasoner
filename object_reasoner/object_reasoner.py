@@ -8,6 +8,7 @@ import statistics
 import numpy as np
 import cv2
 import pickle
+import matplotlib.pyplot as plt
 from collections import Counter
 import preprocessing.utils as utl
 import preprocessing.depth_img_processing as dimgproc
@@ -54,16 +55,17 @@ class ObjectReasoner():
                 self.sizes[i] = np.array(v['dimensions'])
                 self.volumes[i] = v['dimensions'][0] * v['dimensions'][1] * v['dimensions'][2]  # size catalogue in meters
                 self.labelset.append(v['label'])
+            self.mapper = dict((k, self.KB[k]['label']) for k in self.KB.keys())
         elif self.set == 'KMi':
             try:
                 with open('./data/KMi_obj_catalogue.json') as fin,\
                     open('./data/KMi-set-2020/class_to_index.json') as cin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
                     self.mapper = json.load(cin)
-                    self.remapper =dict((v, k) for k, v in self.mapper.items())  # swap keys with indices
             except FileNotFoundError:
                 print("No KMi catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
                 sys.exit(0)
+        self.remapper = dict((v, k) for k, v in self.mapper.items())  # swap keys with indices
 
     def init_txt_files(self,args):
         with open(os.path.join(args.test_base,'test-labels.txt')) as txtf, \
@@ -196,6 +198,8 @@ class ObjectReasoner():
             self.predictions = self.predictions[:, :5, :]
         elif self.set =='arc':
             foregroundextract = True
+            all_predictions = self.predictions
+            self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
 
         pred_counts = Counter()
         need_corr_by_class = Counter()
@@ -211,15 +215,16 @@ class ObjectReasoner():
 
         """For each depth image ... """
         for i,dimage in enumerate(self.dimglist):
-            # baseline predictions as (label, distance)
-            current_ranking = self.predictions[i, :]
-            current_prediction = self.predictions[i, 0, 0]
+
             if self.set == 'KMi':
-                current_label = self.remapper[current_prediction]
-                gt_label = self.remapper[self.labels[i]]
+                current_ranking = self.predictions[i, :]
+                current_prediction = self.predictions[i, 0, 0]
             else:
-                current_label = list(self.KB.keys())[current_prediction]
-                gt_label = list(self.KB.keys())[int(self.labels[i]) - 1]
+                current_ranking = self.predictions[i]
+                current_prediction = self.predictions[i][0][0]
+
+            current_label = self.remapper[current_prediction]
+            gt_label = self.remapper[self.labels[i]]
 
             if current_label != gt_label:
                 no_corrected += 1
@@ -239,6 +244,7 @@ class ObjectReasoner():
             """ 1. Depth image to pointcloud conversion
                 2. OPTIONAL foreground extraction """
             obj_pcl = self.depth2PCL(dimage,foregroundextract)
+            #o3d.visualization.draw_geometries([obj_pcl])
             pcl_points = np.asarray(obj_pcl.points).shape[0]
             if pcl_points <= 1:
                 print("Empty pcl, skipping")
@@ -249,8 +255,8 @@ class ObjectReasoner():
                 continue
             """ 2. noise removal """
             cluster_pcl = self.PCL_3Dprocess(obj_pcl,pclcluster)
-            #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
-            #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl])
+            cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+            #o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
             """ 3. object size estimation """
             try:
                 d1, d2, depth, volume, orientedbox,aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
@@ -277,7 +283,9 @@ class ObjectReasoner():
                 estimated_sizes[gt_label]['depth'].append(depth)
 
             """# 4. ML prediction selection module"""
-            full_vision_rank = all_predictions[i, :]
+            if self.set =='KMi': full_vision_rank = all_predictions[i, :]
+            else: full_vision_rank = all_predictions[i]
+
             read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
                                  range(current_ranking.shape[0])]
             if self.scenario == 'selected':
@@ -289,7 +297,6 @@ class ObjectReasoner():
 
             if not sizeValidate: continue #skip correction
             else: #current_label != gt_label: #if
-
                 """ 5. size quantization """
                 qual = predictors.pred_size_qual(d1,d2)
                 flat = predictors.pred_flat(d1, d2, depth)
@@ -336,11 +343,18 @@ class ObjectReasoner():
                 valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
                 read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
 
-                self.predictions[i, :] = valid_rank_flatAR[:5, :]
-                thinAR_copy[i, :] = valid_rank_thinAR[:5, :]
-                thin_copy[i, :] = valid_rank_thin[:5, :]
-                sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
-                flat_copy[i, :] = valid_rank_flat[:5, :]
+                if self.set =='KMi':
+                    self.predictions[i, :] = valid_rank_flatAR[:5, :]
+                    thinAR_copy[i, :] = valid_rank_thinAR[:5, :]
+                    thin_copy[i, :] = valid_rank_thin[:5, :]
+                    sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
+                    flat_copy[i, :] = valid_rank_flat[:5, :]
+                else: #ARC support
+                    self.predictions[i] = valid_rank_flatAR[:5, :]
+                    thinAR_copy[i] = valid_rank_thinAR[:5, :]
+                    thin_copy[i] = valid_rank_thin[:5, :]
+                    sizequal_copy[i] = valid_rank[:5, :]
+                    flat_copy[i] = valid_rank_flat[:5, :]
 
                 print("%s predicted as %s" % (gt_label,current_label))
                 print("Detected size is %s" % qual)
@@ -390,7 +404,6 @@ class ObjectReasoner():
             print("Knowledge-corrected (size qual + flat + AR)")
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True,K=5)
-
             print("Knowledge-corrected (size qual)")
             self.predictions = sizequal_copy
             eval_KMi(self, depth_aligned=True)
@@ -411,7 +424,27 @@ class ObjectReasoner():
             eval_KMi(self, depth_aligned=True, K=5)
 
         else:  # separate eval for known vs novel
+            print("Knowledge-corrected (size qual + flat + AR)")
             eval_singlemodel(self)
+            eval_singlemodel(self,K=5)
+            print("Knowledge-corrected (size qual)")
+            self.predictions = sizequal_copy
+            eval_singlemodel(self)
+            eval_singlemodel(self, K=5)
+            # print("Knowledge-corrected (size qual+prop)")
+            print("Knowledge-corrected (size qual+flat)")
+            self.predictions = flat_copy
+            eval_singlemodel(self)
+            eval_singlemodel(self, K=5)
+            print("Knowledge-corrected (size qual+thin)")
+            self.predictions = thin_copy
+            eval_singlemodel(self)
+            eval_singlemodel(self, K=5)
+            print("Knowledge-corrected (size qual + thin + AR)")
+            self.predictions = thinAR_copy
+            eval_singlemodel(self)
+            eval_singlemodel(self, K=5)
+
         print("{} out of {} images need correction ".format(no_corrected,len(self.dimglist)))
         print("{} out of {} images were not corrected, no depth data available ".format(non_depth_aval,len(self.dimglist)))
         print("{} images {} not corrected due to processing issues".format(non_processed_pcls,len(self.dimglist)))
@@ -446,7 +479,7 @@ class ObjectReasoner():
             cluster_pcl = obj_pcl
         return cluster_pcl
 
-    def ML_predselection(self,read_current_rank,current_label,gt_label,distance_t = 0.04,n=3):
+    def ML_predselection(self,read_current_rank,current_label,gt_label,distance_t=0.04,n=3):
 
         MLclasses = [l[0] for l in read_current_rank]
         l_, c_ = Counter(MLclasses).most_common()[0]
