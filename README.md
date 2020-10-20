@@ -44,7 +44,10 @@ Features
     -   K-net with weight imprinting in the SoftMax layer ([Chiatti
             et al.,2020](https://www.mdpi.com/2079-9292/9/3/380))
 
--   **Knowledge-based reasoner**
+-   **Knowledge-based reasoner**. Reasoning is used after applying ML to generate a first set of predictions.
+    Specifically, we estimate the real size of an object based on depth data and then infer a set of candidate
+    classes which are plausible from the standpoint of size. This validation step is used to correct the ML predictions.
+    Ultimately, the validated prediction which maximises the ML similarity score is picked to classify the object.
 
 Supported datasets
 ------------------
@@ -92,14 +95,20 @@ Installation
     pip3 install -r requirements_dev.txt
     pip3 install .
    ```
-
-* The ./object_reasoner/preprocessing/bag_processing.py is ROS dependent and to be run requires
+* It is recommended to build Open3D from source: step-by-step instructions can be found on the [official docs](http://www.open3d.org/docs/release/compilation.html). Note: no C++ installation required, you can build the package
+for python3 by making cmake point to Python3 (e.g.: `cmake -DPYTHON_EXECUTABLE=/usr/bin/python3 ..`)
+and then using the `make pip-package` before installing the python lib manually with pip3:
+    ```
+    cd open3d/build/lib/python_package
+    pip3 install .
+    ```
+* **[OPTIONAL]** The `./object_reasoner/preprocessing/bag_processing.py` is ROS dependent and to be run requires
   to install ROS. We tested it on ROS melodic. The barebone ROS installation is sufficient to run this code. The reference instructions to install ROS on Ubuntu can be found [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
 
 Getting started
 ---------------
 * After completing all the installation steps, it is time to download our starter kit!
-  **Note: this step requires 21 GB of free disk space**.
+  **Note: this step requires about 21 GB of free disk space**.
   The kit can be downloaded [here](http://www.mediafire.com/file/df2upaslfrpbd0d/starter_kit.zip/file) and includes the KMi test RGB-D set as well as the pre-trained
   models to rerun our pipeline directly for inference.
 
@@ -115,15 +124,15 @@ cd your_path_to/object_reasoner/object_reasoner
 ```
 * Realistic scenario (correcting selected predictions, based on ML confidence):
     ```
-    python3 cli.hpy ./data/KMi-set-2020-test ./data
+    python3 cli.py ./data/KMi-set-2020 ./data
     ```
 * Best-case scenario (correcting only those predictions which need correction, based on ground truth):
     ```
-    python3 cli.py ./data/KMi-set-2020-test ./data --scenario best
+    python3 cli.py ./data/KMi-set-2020 ./data --scenario best
     ```
 * Worst-case scenario (correcting only those predictions which need correction, based on ground truth):
     ```
-    python3 cli.py ./data/KMi-set-2020-test ./data --scenario worst
+    python3 cli.py ./data/KMi-set-2020 ./data --scenario worst
     ```
 You can also run the following for other combinations (e.g., starting from a different ML baseline, or on the ARC set):
 ```
