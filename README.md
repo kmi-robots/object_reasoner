@@ -36,7 +36,7 @@ Features
 
 ![image](assets/framework.svg?raw=true)
 
--   **ML-based object recognition.** supported models (see also models.py script):
+-   **ML-based object recognition.** supported models (see also the `MLonly/models.py` script):
     -   Nearest Neighbour similarity matching of ResNet50 embeddings
             pre-trained on ImageNet
     -   the N-net multi-branch Network of [Zeng et al., 2018](https://arxiv.org/abs/1710.01330)
@@ -69,12 +69,12 @@ This set is already available under `./object_reasoner/data/KMi-set-2020`
 or rectangular bounding boxes, depending on the object). For each RGB region,
 also the matching Depth image region is provided. Objects in this test set belong to 47 of
 the 60 object classes. Annotations follow the same text formatting as the [ARC2017 image
-matching set](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/).
-This dataset is much larger than the training set and can be downloaded here: .
+matching set](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/). Instructions to download this larger dataset are in the "Getting started" section.
+
 
 * **KMi size catalogue**: we also provide ground truth size annotations for all 60 classes,
-in csv and JSON format (under `./object_reasoner/data`). The reasoning modules expects the JSON catalogue as input, so
-we also provide a script to convert raw csv data to JSON, in case you needed to repeat the.
+in csv and JSON format (under `./object_reasoner/data`). The reasoning modules expect the JSON catalogue as input, so
+we also provide a script to convert raw csv data to JSON, in case you needed to repeat the
 steps for your own data/set of classes. The size representation is multi-dimensional and categorises
 objects qualitatively, based on their surface area, depth, and Aspect Ratio (AR), as exemplified in the below picture:
 
@@ -102,8 +102,7 @@ and then using the `make pip-package` before installing the python lib manually 
     cd open3d/build/lib/python_package
     pip3 install .
     ```
-* **[OPTIONAL]** The `./object_reasoner/preprocessing/bag_processing.py` is ROS dependent and to be run requires
-  to install ROS. We tested it on ROS melodic. The barebone ROS installation is sufficient to run this code. The reference instructions to install ROS on Ubuntu can be found [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
+* **[OPTIONAL]** The `./object_reasoner/preprocessing/bag_processing.py` is ROS dependent and was tested on ROS melodic. The barebone ROS installation is sufficient to run this code. The reference instructions to install ROS melodic on Ubuntu can be found [here](http://wiki.ros.org/melodic/Installation/Ubuntu)
 
 Getting started
 ---------------
