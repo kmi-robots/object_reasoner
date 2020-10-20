@@ -14,7 +14,8 @@ def eval_singlemodel(ReasonerObj):
     all_labels = ReasonerObj.labels
     knownclasses = [v['label'] for v in ReasonerObj.known.values()]
     newclasses = [v['label'] for v in ReasonerObj.novel.values()]
-    all_preds = ReasonerObj.predictions[:,0,0].astype('int').astype('str').tolist()
+    all_preds = [ar[0][0] for ar in  ReasonerObj.predictions] #only top-1 pred
+    #all_preds = ReasonerObj.predictions[:,0,0].astype('int').astype('str').tolist()
     known_labels = [l for l in all_labels if l in knownclasses]
     new_labels = [l for l in all_labels if l in newclasses]
 
