@@ -49,22 +49,17 @@ def pred_singlemodel(ReasonerObj, args):
     return predictions
 
 def pred_twostage(ReasonerObj, args):
-    """A Python re-writing of part of the procedure followed in
+    """Skipped because based on gt labels in original implementation by Zeng et al.:
         https://github.com/andyzeng/arc-robot-vision/image-matching/evaluateTwoStage.m"
     """
-
     #Decide if object is Known or Novel, based on best threshold
-    # Not clear from their code how to do it without GT
-
     #If assumed to be Known use K-net
     # pred_singlemodel(ReasonerObj, args, model='k-net')
     #Otherwise use N-net
     # pred_singlemodel(ReasonerObj, args, model='n-net')
-
     return
 
 def pred_by_size(ReasonerObj, dims,current_index):
-
     """Find NN based on size catalogue"""
     prod_space = ReasonerObj.sizes
     if ReasonerObj.set !='KMi':
@@ -79,7 +74,6 @@ def pred_by_size(ReasonerObj, dims,current_index):
         ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
     else:
         ranking = all_dists[np.argsort(all_dists[:, 1])] # all classes valid across all test runs
-
     return ranking #[:5, :] # keep track of top 5
 
 def pred_by_vol(ReasonerObj,volume,current_index):
@@ -96,7 +90,6 @@ def pred_by_vol(ReasonerObj,volume,current_index):
         ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
     else:
         ranking = all_dists[np.argsort(all_dists[:, 1])] # all classes valid across all test runs
-
     return ranking #[:5, :] # keep track of top 5
 
 
