@@ -196,10 +196,19 @@ class ObjectReasoner():
             foregroundextract = False
             all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
             self.predictions = self.predictions[:, :5, :]
+            T= [0.007, 0.05, 0.35, 0.79]
+            lam = [0.1, 0.2, 0.4]
+            epsilon = 0.04
+            N=3
+
         elif self.set =='arc':
             foregroundextract = True
             all_predictions = self.predictions
             self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
+            T = [0.06, 0.01326, 0.0208, 0.032]
+            lam = [0.022,0.033,0.063]
+            epsilon = 0.04
+            N = 3
 
         pred_counts = Counter()
         need_corr_by_class = Counter()
@@ -289,7 +298,7 @@ class ObjectReasoner():
             read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
                                  range(current_ranking.shape[0])]
             if self.scenario == 'selected':
-                sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label)
+                sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
             elif self.scenario=='best':
                 if current_label!= gt_label: sizeValidate = True
                 else: sizeValidate = False
@@ -298,12 +307,12 @@ class ObjectReasoner():
             if not sizeValidate: continue #skip correction
             else: #current_label != gt_label: #if
                 """ 5. size quantization """
-                qual = predictors.pred_size_qual(d1,d2)
-                flat = predictors.pred_flat(d1, d2, depth)
+                qual = predictors.pred_size_qual(d1,d2,thresholds=T)
+                flat = predictors.pred_flat(d1, d2, depth,len_thresh=lam[0])
                 flat_flag = 'flat' if flat else 'non flat'
                 #Aspect ratio based on crop
                 aspect_ratio = predictors.pred_AR(dimage.shape,(d1,d2))
-                thinness = predictors.pred_thinness(depth)
+                thinness = predictors.pred_thinness(depth,cuts=lam)
 
                 """ 6. Hybrid (area) """
                 candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]

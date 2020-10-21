@@ -156,7 +156,8 @@ def predict_classifier(test_data, model, device):
             predictions.append(int(np.argmax(out_logits.cpu().numpy()))) #torch.argmax(class_prob, dim=1).tolist())
     return predictions
 
-def pred_size_qual(dim1, dim2,t1=0.007,t2=0.05, t3=0.35, t4=0.79): #): #t3=0.19
+def pred_size_qual(dim1, dim2,thresholds=[0.007,0.05,0.35,0.79]): #): #t3=0.19
+    t1,t2,t3,t4 = thresholds
     estimated_area = dim1*dim2
     if estimated_area < t1: return 'XS'
     elif estimated_area >= t1 and estimated_area < t2: return 'small'
