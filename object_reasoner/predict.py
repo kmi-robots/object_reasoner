@@ -2,6 +2,7 @@ import numpy as np
 import sys
 import torch
 import scipy.stats as stats
+import copy
 
 def pred_singlemodel(ReasonerObj, args):
     """A Python re-writing of part of the procedure followed in
@@ -49,15 +50,16 @@ def pred_singlemodel(ReasonerObj, args):
     return predictions
 
 def pred_twostage(ReasonerObj, args):
-    """Skipped because based on gt labels in original implementation by Zeng et al.:
+    """Based on gt labels in original implementation by Zeng et al.:
         https://github.com/andyzeng/arc-robot-vision/image-matching/evaluateTwoStage.m"
+        but here no novel vs known prediction are made, simply both K-net and N-net preds are returned
     """
-    #Decide if object is Known or Novel, based on best threshold
-    #If assumed to be Known use K-net
-    # pred_singlemodel(ReasonerObj, args, model='k-net')
-    #Otherwise use N-net
-    # pred_singlemodel(ReasonerObj, args, model='n-net')
-    return
+    args_ = copy.deepcopy(args)
+    args_.baseline = 'k-net'
+    knet_pred = pred_singlemodel(ReasonerObj, args_)
+    args_.baseline = 'n-net'
+    nnet_pred = pred_singlemodel(ReasonerObj, args_)
+    return knet_pred, nnet_pred
 
 def pred_by_size(ReasonerObj, dims,current_index):
     """Find NN based on size catalogue"""

@@ -154,23 +154,48 @@ class ObjectReasoner():
                 os.mkdir(args.preds)
             # # First time loading preds from raw embeddings
             self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = utl.load_emb_space(args,fname)
-            if args.baseline == 'two-stage':
-                self.predictions = predictors.pred_twostage(self, args)
+            if args.baseline == 'two-stage': #both k-net and n-net pred are loaded
+                self.predictions, self.predictions_B = predictors.pred_twostage(self, args)
             else:
                 self.predictions = predictors.pred_singlemodel(self, args)
+                self.predictions_B = None
             if self.predictions is not None and args.set=='KMi':
-                np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
+                if args.baseline !='two-stage':
+                    np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
+                else:
+                    np.save(('%s/test_predictions_%s.npy' % (args.preds, 'k-net')), self.predictions)
+                    np.save(('%s/test_predictions_%s.npy' % (args.preds, 'n-net')), self.predictions_B)
             elif self.predictions is not None and args.set=='arc':
-                with open(('%s/test_predictions_%s.txt' % (args.preds, args.baseline)),'wb') as fp:
-                    pickle.dump(self.predictions, fp)
+                if args.baseline !='two-stage':
+                    with open(('%s/test_predictions_%s.txt' % (args.preds, args.baseline)),'wb') as fp:
+                        pickle.dump(self.predictions, fp)
+                else:
+                    with open(('%s/test_predictions_%s.txt' % (args.preds, 'k-net')),'wb') as fp, \
+                    open(('%s/test_predictions_%s.txt' % (args.preds, 'n-net')),'wb') as fp2:
+                        pickle.dump(self.predictions, fp)
+                        pickle.dump(self.predictions_B, fp2)
             else:
                 print("Prediction mode not supported yet. Please choose a different one.")
                 sys.exit(0)
+
         else: #Load from local npy file
-            if args.set =='KMi':self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), allow_pickle=True)
+            if args.set =='KMi':
+                if args.baseline != 'two-stage':
+                    self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), allow_pickle=True)
+                    self.predictions_B = None
+                else:
+                    self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, 'k-net')),allow_pickle=True)
+                    self.predictions_B = np.load(('%s/test_predictions_%s.npy' % (args.preds, 'n-net')),allow_pickle=True)
             else:
-                with open(('%s/test_predictions_%s.txt' % (args.preds, args.baseline)),'rb') as fp:
-                    self.predictions = pickle.load(fp) #ARC set support
+                if args.baseline != 'two-stage':
+                    with open(('%s/test_predictions_%s.txt' % (args.preds, args.baseline)),'rb') as fp:
+                        self.predictions = pickle.load(fp) #ARC set support
+                        self.predictions_B = None
+                else:
+                    with open(('%s/test_predictions_%s.txt' % (args.preds, 'k-net')), 'rb') as fp,\
+                    open(('%s/test_predictions_%s.txt' % (args.preds, 'n-net')), 'rb') as fp2:
+                        self.predictions = pickle.load(fp)
+                        self.predictions_B = pickle.load(fp2)
 
     def run(self):
         """ Evaluate ML predictions before hybrid reasoning"""
@@ -192,11 +217,14 @@ class ObjectReasoner():
         nfallbacks = 0
 
         pclcluster = True
+        all_predictions = self.predictions # copy to store all similarity scores, not just top 5
+        all_predictions_B = self.predictions_B
+
         if self.set == 'KMi':
             # segmented areas are higher quality and foreground extract is skipped
             foregroundextract = False
-            all_predictions = self.predictions  # copy to store all similarity scores, not just top 5
             self.predictions = self.predictions[:, :5, :]
+            if self.predictions_B: self.predictions_B = self.predictions_B[:, :5, :]
             T= [0.007, 0.05, 0.35, 0.79]
             lam = [0.1, 0.2, 0.4]
             epsilon = 0.04
@@ -204,18 +232,13 @@ class ObjectReasoner():
 
         elif self.set =='arc':
             foregroundextract = True
-            all_predictions = self.predictions
             self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
-            T = [0.06, 0.01326, 0.0208, 0.032]
+            if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
+            T = [0.0085, 0.01326, 0.0208, 0.033]
             lam = [0.022,0.033,0.063]
             epsilon = 0.03
             N = 3
 
-        pred_counts = Counter()
-        need_corr_by_class = Counter()
-        all_gt_labels = [self.remapper[l] for i,l in enumerate(self.labels) if self.dimglist[i] is not None]
-        supports = Counter(all_gt_labels)
-        estimated_vols = {}
         estimated_sizes = {}
 
         sizequal_copy = self.predictions.copy()
@@ -229,9 +252,16 @@ class ObjectReasoner():
             if self.set == 'KMi':
                 current_ranking = self.predictions[i, :]
                 current_prediction = self.predictions[i, 0, 0]
+                full_vision_rank = all_predictions[i, :]
+                full_vision_rank_B = all_predictions_B[i, :]
             else:
                 current_ranking = self.predictions[i]
                 current_prediction = self.predictions[i][0][0]
+                full_vision_rank = all_predictions[i]
+                full_vision_rank_B = all_predictions_B[i]
+
+            read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
+                                 range(current_ranking.shape[0])]
 
             current_label = self.remapper[current_prediction]
             gt_label = self.remapper[self.labels[i]]
@@ -244,60 +274,7 @@ class ObjectReasoner():
                 non_depth_aval += 1
                 continue
 
-            """Uncomment to visually inspect images/debug"""
-            """plt.imshow(dimage, cmap='Greys_r')
-            plt.show()
-            plt.imshow(cv2.imread(self.imglist[i]))
-            plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
-            plt.show()"""
-
-            """ 1. Depth image to pointcloud conversion
-                2. OPTIONAL foreground extraction """
-            obj_pcl = self.depth2PCL(dimage,foregroundextract)
-            #o3d.visualization.draw_geometries([obj_pcl])
-            pcl_points = np.asarray(obj_pcl.points).shape[0]
-            if pcl_points <= 1:
-                print("Empty pcl, skipping")
-                non_processed_pcls += 1
-                # do not consider that obj region in eval
-                non_processed_fnames.append(self.imglist[i].split('/')[-1])
-                self.dimglist[i] = None
-                continue
-            """ 2. noise removal """
-            cluster_pcl = self.PCL_3Dprocess(obj_pcl,pclcluster)
-            #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
-            #o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
-            """ 3. object size estimation """
-            try:
-                d1, d2, depth, volume, orientedbox,aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
-            except TypeError:
-                print("Still not enough points..skipping")
-                non_processed_pcls += 1
-                # do not consider that obj region in eval
-                non_processed_fnames.append(self.imglist[i].split('/')[-1])
-                self.dimglist[i] = None
-                continue
-            #o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
-            try:
-                estimated_sizes[gt_label]['d1'].append(d1)
-                estimated_sizes[gt_label]['d2'].append(d2)
-                estimated_sizes[gt_label]['depth'].append(depth)
-            except KeyError:
-                estimated_sizes[gt_label] = {}
-                estimated_sizes[gt_label]['d1'] = []
-                estimated_sizes[gt_label]['d2'] = []
-                estimated_sizes[gt_label]['depth'] = []
-
-                estimated_sizes[gt_label]['d1'].append(d1)
-                estimated_sizes[gt_label]['d2'].append(d2)
-                estimated_sizes[gt_label]['depth'].append(depth)
-
             """# 4. ML prediction selection module"""
-            if self.set =='KMi': full_vision_rank = all_predictions[i, :]
-            else: full_vision_rank = all_predictions[i]
-
-            read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
-                                 range(current_ranking.shape[0])]
             if self.scenario == 'selected':
                 sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
             elif self.scenario=='best':
@@ -307,6 +284,55 @@ class ObjectReasoner():
 
             if not sizeValidate: continue #skip correction
             else: #current_label != gt_label: #if
+                """Uncomment to visually inspect images/debug"""
+                """plt.imshow(dimage, cmap='Greys_r')
+                plt.show()
+                plt.imshow(cv2.imread(self.imglist[i]))
+                plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
+                plt.show()"""
+
+                #TODO move steps 1,2&3 up once finished with ARC set
+                """ 1. Depth image to pointcloud conversion
+                                2. OPTIONAL foreground extraction """
+                obj_pcl = self.depth2PCL(dimage, foregroundextract)
+                # o3d.visualization.draw_geometries([obj_pcl])
+                pcl_points = np.asarray(obj_pcl.points).shape[0]
+                if pcl_points <= 1:
+                    print("Empty pcl, skipping")
+                    non_processed_pcls += 1
+                    # do not consider that obj region in eval
+                    non_processed_fnames.append(self.imglist[i].split('/')[-1])
+                    self.dimglist[i] = None
+                    continue
+                """ 2. noise removal """
+                cluster_pcl = self.PCL_3Dprocess(obj_pcl, pclcluster)
+                #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+                #o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
+                """ 3. object size estimation """
+                try:
+                    d1, d2, depth, volume, orientedbox, aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
+                except TypeError:
+                    print("Still not enough points..skipping")
+                    non_processed_pcls += 1
+                    # do not consider that obj region in eval
+                    non_processed_fnames.append(self.imglist[i].split('/')[-1])
+                    self.dimglist[i] = None
+                    continue
+                # o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
+                try:
+                    estimated_sizes[gt_label]['d1'].append(d1)
+                    estimated_sizes[gt_label]['d2'].append(d2)
+                    estimated_sizes[gt_label]['depth'].append(depth)
+                except KeyError:
+                    estimated_sizes[gt_label] = {}
+                    estimated_sizes[gt_label]['d1'] = []
+                    estimated_sizes[gt_label]['d2'] = []
+                    estimated_sizes[gt_label]['depth'] = []
+
+                    estimated_sizes[gt_label]['d1'].append(d1)
+                    estimated_sizes[gt_label]['d2'].append(d2)
+                    estimated_sizes[gt_label]['depth'].append(depth)
+
                 """ 5. size quantization """
                 qual = predictors.pred_size_qual(d1,d2,thresholds=T)
                 flat = predictors.pred_flat(d1, d2, depth,len_thresh=lam[0])
@@ -319,23 +345,18 @@ class ObjectReasoner():
                 candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
                 candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
                 valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
-                read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in range(valid_rank.shape[0])]
 
                 """ 6. Hybrid (area + flat) """
                 candidates_flat = [oname for oname in self.KB.keys() if
                                    (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
                 candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
-                valid_rank_flat = full_vision_rank[
-                    [full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
-                read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
-                                  range(valid_rank_flat.shape[0])]
+                valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
 
                 """ 6. Hybrid (area + thin) """
                 candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                                                                        and thinness in str(self.KB[oname]["thinness"]))]
+                                                         and thinness in str(self.KB[oname]["thinness"]))]
                 candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
                 valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
-                read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
 
                 """ 6. Hybrid (area + flat+AR) """
                 candidates_flat_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
@@ -343,13 +364,39 @@ class ObjectReasoner():
                                     and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
                 candidates_num_flatAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat_AR]
                 valid_rank_flatAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR for z in range(full_vision_rank.shape[0])]]
-                read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z,0]],valid_rank_flatAR[z,1]) for z in range(valid_rank_flatAR.shape[0])]
 
                 """ 6. Hybrid (area + thin +AR) """
                 candidates_thin_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
                             and str(thinness) in str(self.KB[oname]["thinness"]) and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
                 candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
                 valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
+
+                if full_vision_rank_B is not None:  # or in other baseline rank (two-stage pipeline)
+                    # add n-net predictions and resort by ascending distance
+                    valid_rank = np.vstack([valid_rank,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank = valid_rank[np.argsort(valid_rank[:, 1])]
+
+                    valid_rank_flat = np.vstack([valid_rank_flat,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_flat = valid_rank_flat[np.argsort(valid_rank_flat[:, 1])]
+
+                    valid_rank_thin = np.vstack([valid_rank_thin,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_thin = valid_rank_thin[np.argsort(valid_rank_thin[:, 1])]
+
+                    valid_rank_flatAR = np.vstack([valid_rank_flatAR,full_vision_rank_B[
+                                                 [full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_flatAR = valid_rank_flatAR[np.argsort(valid_rank_flatAR[:, 1])]
+
+                    valid_rank_thinAR= np.vstack([valid_rank_thinAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_thinAR = valid_rank_thinAR[np.argsort(valid_rank_thinAR[:, 1])]
+
+                #convert rankings to readable labels
+                read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in range(valid_rank.shape[0])]
+                read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
+                                  range(valid_rank_flat.shape[0])]
+                read_rank_thin = [(self.remapper[valid_rank_thin[z, 0]], valid_rank_thin[z, 1]) for z in
+                                  range(valid_rank_thin.shape[0])]
+                read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z, 0]], valid_rank_flatAR[z, 1]) for z in
+                                    range(valid_rank_flatAR.shape[0])]
                 read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
 
                 if self.set =='KMi':
@@ -387,7 +434,6 @@ class ObjectReasoner():
                     print("Knowledge validated ranking (area + thin + AR)")
                     print(read_rank_thinAR[:5])
                 print("================================")
-
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")

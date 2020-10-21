@@ -77,7 +77,7 @@ oral_b_toothbrush_red 0.018
 staples_index_cards 0.018
 cherokee_easy_tee_shirt 0.02
 glue_sticks 0.022
-hinged_rule_index_cards 0.022
+hinged_ruled_index_cards 0.022
 colgate_toothbrush_4pk 0.023
 table_cloth 0.023
 creativity_chenille_stems 0.024
