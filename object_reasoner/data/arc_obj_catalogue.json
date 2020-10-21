@@ -349,10 +349,10 @@
 		],
 		"known": true,
 		"label": "19",
-		"has_size": null,
+		"has_size": "",
 		"is_flat": null,
-		"thinness": null,
-		"aspect_ratio": null
+		"thinness": "",
+		"aspect_ratio": ""
 	},
 	"epsom_salts": {
 		"name": "epsom_salts",

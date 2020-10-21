@@ -180,6 +180,7 @@ class ObjectReasoner():
             eval_KMi(self, depth_aligned=True, K=5)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
+            eval_singlemodel(self,K=5)
 
         print("Reasoning for correction ... ")
         """Data stats and monitoring vars for debugging"""
@@ -207,7 +208,7 @@ class ObjectReasoner():
             self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
             T = [0.06, 0.01326, 0.0208, 0.032]
             lam = [0.022,0.033,0.063]
-            epsilon = 0.04
+            epsilon = 0.03
             N = 3
 
         pred_counts = Counter()
@@ -244,11 +245,11 @@ class ObjectReasoner():
                 continue
 
             """Uncomment to visually inspect images/debug"""
-            #plt.imshow(dimage, cmap='Greys_r')
-            #plt.show()
-            #plt.imshow(cv2.imread(self.imglist[i]))
-            #plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
-            #plt.show()
+            """plt.imshow(dimage, cmap='Greys_r')
+            plt.show()
+            plt.imshow(cv2.imread(self.imglist[i]))
+            plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
+            plt.show()"""
 
             """ 1. Depth image to pointcloud conversion
                 2. OPTIONAL foreground extraction """
@@ -264,7 +265,7 @@ class ObjectReasoner():
                 continue
             """ 2. noise removal """
             cluster_pcl = self.PCL_3Dprocess(obj_pcl,pclcluster)
-            cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+            #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
             #o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
             """ 3. object size estimation """
             try:
@@ -337,7 +338,6 @@ class ObjectReasoner():
                 read_rank_thin = [(self.remapper[valid_rank_thin[z,0]],valid_rank_thin[z,1]) for z in range(valid_rank_thin.shape[0])]
 
                 """ 6. Hybrid (area + flat+AR) """
-
                 candidates_flat_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
                                     and str(flat) in str(self.KB[oname]["is_flat"])
                                     and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
@@ -359,11 +359,13 @@ class ObjectReasoner():
                     sizequal_copy[i, :] = valid_rank[:5, :]  # _thin[:5,:]
                     flat_copy[i, :] = valid_rank_flat[:5, :]
                 else: #ARC support
-                    self.predictions[i] = valid_rank_flatAR[:5, :]
-                    thinAR_copy[i] = valid_rank_thinAR[:5, :]
-                    thin_copy[i] = valid_rank_thin[:5, :]
-                    sizequal_copy[i] = valid_rank[:5, :]
-                    flat_copy[i] = valid_rank_flat[:5, :]
+                    # len check in this case, because some of the size-validation predictions
+                    # may be empty if the plausible candidates are not in the 20 sample classes
+                    if len(valid_rank_flatAR[:5, :]) >0: self.predictions[i] = valid_rank_flatAR[:5, :]
+                    if len(valid_rank_thinAR[:5, :])>0: thinAR_copy[i] = valid_rank_thinAR[:5, :]
+                    if len(valid_rank_thin[:5, :])>0: thin_copy[i] = valid_rank_thin[:5, :]
+                    if len(valid_rank[:5, :])>0: sizequal_copy[i] = valid_rank[:5, :]
+                    if len(valid_rank_flat[:5, :])>0: flat_copy[i] = valid_rank_flat[:5, :]
 
                 print("%s predicted as %s" % (gt_label,current_label))
                 print("Detected size is %s" % qual)
