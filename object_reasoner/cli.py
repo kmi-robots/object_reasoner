@@ -36,6 +36,9 @@ def main():
                         help='prints more stats on console, if True')
 
     args = parser.parse_args()
+    if args.set == 'KMi' and args.baseline == 'two-stage':
+        print("Known vs Novel leverage only supported for arc set")
+        return 0
     reasoner = ObjectReasoner(args)
     reasoner.run()
     return 0

@@ -22,6 +22,7 @@ class ObjectReasoner():
         self.set = args.set
         self.verbose = args.verbose
         self.scenario = args.scenario
+        self.p_to_preds = args.preds
         start = time.time()
         self.obj_catalogue(args)
         print("Background KB initialized. Took %f seconds." % float(time.time() - start))
@@ -236,7 +237,7 @@ class ObjectReasoner():
             if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
             T = [0.0085, 0.01326, 0.0208, 0.033]
             lam = [0.022,0.033,0.063]
-            epsilon = 0.03
+            epsilon = 0.0309 #0.03
             N = 3
 
         estimated_sizes = {}
@@ -253,15 +254,21 @@ class ObjectReasoner():
                 current_ranking = self.predictions[i, :]
                 current_prediction = self.predictions[i, 0, 0]
                 full_vision_rank = all_predictions[i, :]
-                full_vision_rank_B = all_predictions_B[i, :]
             else:
                 current_ranking = self.predictions[i]
                 current_prediction = self.predictions[i][0][0]
                 full_vision_rank = all_predictions[i]
-                full_vision_rank_B = all_predictions_B[i]
 
             read_current_rank = [(self.remapper[current_ranking[z, 0]], current_ranking[z, 1]) for z in
                                  range(current_ranking.shape[0])]
+
+            if self.predictions_B:
+                current_ranking_B = self.predictions_B[i]
+                current_prediction_B = self.predictions_B[i][0][0]
+                current_label_B = self.remapper[current_prediction_B]
+                full_vision_rank_B = all_predictions_B[i]
+                read_current_rank_B = [(self.remapper[current_ranking_B[z, 0]], current_ranking_B[z, 1]) for z in
+                                 range(current_ranking_B.shape[0])]
 
             current_label = self.remapper[current_prediction]
             gt_label = self.remapper[self.labels[i]]
@@ -277,6 +284,12 @@ class ObjectReasoner():
             """# 4. ML prediction selection module"""
             if self.scenario == 'selected':
                 sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
+                if sizeValidate and self.predictions_B:
+                    # ARC case: if one ML baseline (e.g..,K-net) not confident & a second ML baseline (e.g..,N-net) available
+                    # judge confidence of second ML baseline
+                    sizeValidate,_ = self.ML_predselection(read_current_rank_B,current_label_B,gt_label,distance_t=epsilon,n=N)
+                    if not sizeValidate: # second method is confident, use its predictions as ranking
+                        self.predictions[i] = self.predictions_B[i]
             elif self.scenario=='best':
                 if current_label!= gt_label: sizeValidate = True
                 else: sizeValidate = False
@@ -285,12 +298,11 @@ class ObjectReasoner():
             if not sizeValidate: continue #skip correction
             else: #current_label != gt_label: #if
                 """Uncomment to visually inspect images/debug"""
-                """plt.imshow(dimage, cmap='Greys_r')
+                plt.imshow(dimage, cmap='Greys_r')
                 plt.show()
                 plt.imshow(cv2.imread(self.imglist[i]))
                 plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
-                plt.show()"""
-
+                plt.show()
                 #TODO move steps 1,2&3 up once finished with ARC set
                 """ 1. Depth image to pointcloud conversion
                                 2. OPTIONAL foreground extraction """
@@ -373,20 +385,24 @@ class ObjectReasoner():
 
                 if full_vision_rank_B is not None:  # or in other baseline rank (two-stage pipeline)
                     # add n-net predictions and resort by ascending distance
-                    valid_rank = np.vstack([valid_rank,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]])
+                    #valid_rank = np.vstack([valid_rank,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]
                     valid_rank = valid_rank[np.argsort(valid_rank[:, 1])]
 
-                    valid_rank_flat = np.vstack([valid_rank_flat,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]])
+                    #valid_rank_flat = np.vstack([valid_rank_flat,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_flat = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]
                     valid_rank_flat = valid_rank_flat[np.argsort(valid_rank_flat[:, 1])]
 
-                    valid_rank_thin = np.vstack([valid_rank_thin,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]])
+                    #valid_rank_thin = np.vstack([valid_rank_thin,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_thin = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]
                     valid_rank_thin = valid_rank_thin[np.argsort(valid_rank_thin[:, 1])]
 
-                    valid_rank_flatAR = np.vstack([valid_rank_flatAR,full_vision_rank_B[
-                                                 [full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]])
+                    #valid_rank_flatAR = np.vstack([valid_rank_flatAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_flatAR = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]
                     valid_rank_flatAR = valid_rank_flatAR[np.argsort(valid_rank_flatAR[:, 1])]
 
-                    valid_rank_thinAR= np.vstack([valid_rank_thinAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]])
+                    #valid_rank_thinAR= np.vstack([valid_rank_thinAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]])
+                    valid_rank_thinAR= full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]
                     valid_rank_thinAR = valid_rank_thinAR[np.argsort(valid_rank_thinAR[:, 1])]
 
                 #convert rankings to readable labels
@@ -437,27 +453,25 @@ class ObjectReasoner():
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
         print("Re-evaluating post size correction...")
+        if self.verbose:
+            """# Summary stats about predicted values"""
+            size_summary = estimated_sizes.copy()
+            for k in list(estimated_sizes.keys()):
+                sub_dict = estimated_sizes[k]
+                for subk, v in list(sub_dict.items()):
+                    try:
+                        size_summary[k]['mean-%s' % subk] = statistics.mean(v)
+                    except:  # not enough data points
+                        size_summary[k]['mean-%s' % subk] = None
+                    try:
+                        size_summary[k]['std-%s' % subk] = statistics.stdev(v)
+                    except:  # not enough data points
+                        size_summary[k]['std-%s' % subk] = None
+                    size_summary[k]['min-%s' % subk] = min(v)
+                    size_summary[k]['max-%s' % subk] = max(v)
+            with open(os.path.join(self.p_to_preds,"../logged_stats.json"), 'w') as fout:
+                json.dump(size_summary, fout)
         if self.set == 'KMi':
-            if self.verbose:
-                """# Summary stats about predicted values"""
-                size_summary = estimated_sizes.copy()
-                for k in list(estimated_sizes.keys()):
-                    sub_dict = estimated_sizes[k]
-                    for subk,v in list(sub_dict.items()):
-                        try:
-                            size_summary[k]['mean-%s' %subk] = statistics.mean(v)
-                        except: #not enough data points
-                            size_summary[k]['mean-%s' % subk] = None
-                        try:
-                            size_summary[k]['std-%s' %subk] = statistics.stdev(v)
-                        except: #not enough data points
-                            size_summary[k]['std-%s' % subk] = None
-                        size_summary[k]['min-%s' %subk] = min(v)
-                        size_summary[k]['max-%s' %subk] = max(v)
-
-                with open("./data/logged_stats.json", 'w') as fout:
-                    json.dump(size_summary, fout)
-
             print("Knowledge-corrected (size qual + flat + AR)")
             eval_KMi(self, depth_aligned=True)
             eval_KMi(self, depth_aligned=True,K=5)
