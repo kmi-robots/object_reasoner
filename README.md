@@ -6,11 +6,11 @@ Fit to Measure: a size-aware object recognition system
 [![image](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Welcome! This repository provides you with a Command Line Interface to
-incorporate reasoning about the typical size of objects in your object
+incorporate reasoning about the typical size of objects into your object
 recognition project.
 
 :robot: :heart: Our application focus is on **service robotics**,
-[here](http://robots.kmi.open.ac.uk/) you can find more info about how
+[here](http://robots.kmi.open.ac.uk/) you can find out more about how
 this work fits into our broader ideas.
 
 For more information, you can check out our paper:
@@ -128,7 +128,7 @@ cd your_path_to/object_reasoner/object_reasoner
     ```
     python3 cli.py ./data/KMi-set-2020 ./data --scenario best
     ```
-* Worst-case scenario (correcting only those predictions which need correction, based on ground truth):
+* Worst-case scenario (correcting all predictions):
     ```
     python3 cli.py ./data/KMi-set-2020 ./data --scenario worst
     ```
