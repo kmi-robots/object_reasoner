@@ -227,7 +227,9 @@ class ObjectReasoner():
             self.predictions = self.predictions[:, :5, :]
             if self.predictions_B: self.predictions_B = self.predictions_B[:, :5, :]
             T= [0.007, 0.05, 0.35, 0.79]
+            T_view2,T_view3 = None, None #assumption: one natural orientation
             lam = [0.1, 0.2, 0.4]
+            lam_view2, lam_view3 = None, None  # assumption: one natural orientation
             epsilon = 0.04
             N=3
 
@@ -236,12 +238,15 @@ class ObjectReasoner():
             self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
             if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
             T = [0.0085, 0.01326, 0.0208, 0.033]
+            T_view2 = [0.0021,0.0037,0.0049,0.0092] #objects can be grasped from different angles
+            T_view3 = [0.00203,0.0037,0.0066,0.013]
             lam = [0.022,0.033,0.063]
+            lam_view2 = [0.075,0.126,0.185] #objects can be grasped from different angles
+            lam_view3 = [0.083,0.11,0.16]
             epsilon = 0.0309 #0.03
             N = 3
 
         estimated_sizes = {}
-
         sizequal_copy = self.predictions.copy()
         flat_copy = self.predictions.copy()
         thin_copy = self.predictions.copy()
