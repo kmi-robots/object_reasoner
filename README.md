@@ -15,8 +15,7 @@ this work fits into our broader ideas.
 
 For more information, you can check out our paper:
 
-> **Fit to Measure: combining the knowledge of object sizes with Machine
-> Learning for robust object recognition**
+> **Fit to Measure: Reasoning about Sizes for Robust Object Recognition**
 > ([arxiv]())
 >
 >[Agnese Chiatti](https://achiatti.github.io/), [Enrico Motta](http://people.kmi.open.ac.uk/motta/),
