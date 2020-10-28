@@ -16,7 +16,7 @@ this work fits into our broader ideas.
 For more information, you can check out our paper:
 
 > **Fit to Measure: Reasoning about Sizes for Robust Object Recognition**
-> ([arxiv]())
+> ([arXiv](https://arxiv.org/abs/2010.14296))
 >
 >[Agnese Chiatti](https://achiatti.github.io/), [Enrico Motta](http://people.kmi.open.ac.uk/motta/),
 > [Enrico Daga](http://www.enridaga.net/about/), [Gianluca Bardaro](http://kmi.open.ac.uk/people/member/gianluca-bardaro)
