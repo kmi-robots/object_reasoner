@@ -38,7 +38,7 @@ class ObjectReasoner():
     def obj_catalogue(self,args):
         if self.set =='arc':
             try:
-                with open('./data/arc_obj_catalogue.json') as fin:
+                with open('./data/arc_obj_catalogue_multiview.json') as fin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
             except FileNotFoundError:
                 self.KB = utl.init_obj_catalogue(args.test_base)
@@ -284,31 +284,7 @@ class ObjectReasoner():
                 # no synchronised depth data found
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
-                continue
 
-            """# 4. ML prediction selection module"""
-            if self.scenario == 'selected':
-                sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
-                if sizeValidate and self.predictions_B:
-                    # ARC case: if one ML baseline (e.g..,K-net) not confident & a second ML baseline (e.g..,N-net) available
-                    # judge confidence of second ML baseline
-                    sizeValidate,_ = self.ML_predselection(read_current_rank_B,current_label_B,gt_label,distance_t=epsilon,n=N)
-                    if not sizeValidate: # second method is confident, use its predictions as ranking
-                        self.predictions[i] = self.predictions_B[i]
-            elif self.scenario=='best':
-                if current_label!= gt_label: sizeValidate = True
-                else: sizeValidate = False
-            elif self.scenario =='worst': sizeValidate = True
-
-            if not sizeValidate: continue #skip correction
-            else: #current_label != gt_label: #if
-                """Uncomment to visually inspect images/debug"""
-                plt.imshow(dimage, cmap='Greys_r')
-                plt.show()
-                plt.imshow(cv2.imread(self.imglist[i]))
-                plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
-                plt.show()
-                #TODO move steps 1,2&3 up once finished with ARC set
                 """ 1. Depth image to pointcloud conversion
                                 2. OPTIONAL foreground extraction """
                 obj_pcl = self.depth2PCL(dimage, foregroundextract)
@@ -323,8 +299,8 @@ class ObjectReasoner():
                     continue
                 """ 2. noise removal """
                 cluster_pcl = self.PCL_3Dprocess(obj_pcl, pclcluster)
-                #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
-                #o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
+                # cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+                # o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
                 """ 3. object size estimation """
                 try:
                     d1, d2, d3, volume, orientedbox, aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
@@ -350,15 +326,46 @@ class ObjectReasoner():
                     estimated_sizes[gt_label]['d2'].append(d2)
                     estimated_sizes[gt_label]['d3'].append(d3)
 
+                print("%s predicted as %s" % (gt_label, current_label))
+                print("Estimated dims oriented %f x %f x %f m" % (d1, d2, d3))
+
+            """# 4. ML prediction selection module"""
+            if self.scenario == 'selected':
+                sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
+                if sizeValidate and self.predictions_B:
+                    # ARC case: if one ML baseline (e.g..,K-net) not confident & a second ML baseline (e.g..,N-net) available
+                    # judge confidence of second ML baseline
+                    sizeValidate,_ = self.ML_predselection(read_current_rank_B,current_label_B,gt_label,distance_t=epsilon,n=N)
+                    if not sizeValidate: # second method is confident, use its predictions as ranking
+                        self.predictions[i] = self.predictions_B[i]
+            elif self.scenario=='best':
+                if current_label!= gt_label: sizeValidate = True
+                else: sizeValidate = False
+            elif self.scenario =='worst': sizeValidate = True
+
+            if not sizeValidate: continue #skip correction
+            else: #current_label != gt_label: #if
+                """Uncomment to visually inspect images/debug"""
+                """plt.imshow(dimage, cmap='Greys_r')
+                plt.show()
+                plt.imshow(cv2.imread(self.imglist[i]))
+                plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
+                plt.show()"""
+
                 if T_view2 is None: #KMi set case
                     depth=d3
                     """ 5. size quantization """
                     qual = predictors.pred_size_qual(d1,d2,thresholds=T)
-                    flat = predictors.pred_flat(d1, d2, depth,len_thresh=lam[0])
+                    flat = predictors.pred_flat(depth,len_thresh=lam[0])
                     flat_flag = 'flat' if flat else 'non flat'
                     #Aspect ratio based on crop
                     aspect_ratio = predictors.pred_AR(dimage.shape,(d1,d2))
                     thinness = predictors.pred_thinness(depth,cuts=lam)
+
+                    print("Detected size is %s" % qual)
+                    print("Object is %s" % flat_flag)
+                    print("Object is %s" % aspect_ratio)
+                    print("Object is %s" % thinness)
 
                     """ 6. Hybrid (area) """
                     candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
@@ -390,11 +397,15 @@ class ObjectReasoner():
                     candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
                     valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
 
-                else:  # TODO complete multiview case in ARC
+                else:
                     res = self.size_reasoner_multiview((d1, d2, d3), (T, T_view2, T_view3),(lam, lam_view2, lam_view3))
                     candidates_num,candidates_num_flat,candidates_num_thin = res
                     candidates_num_flatAR, candidates_num_thinAR = None, None # Aspect Ratio is not relevant if multiple orientations are possible
 
+                    valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_flatAR,valid_rank_thinAR = [],[]
 
                 if full_vision_rank_B is not None:  # or in other baseline rank (two-stage pipeline)
                     # add n-net predictions and resort by ascending distance
@@ -413,13 +424,10 @@ class ObjectReasoner():
                         #valid_rank_flatAR = np.vstack([valid_rank_flatAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]])
                         valid_rank_flatAR = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]
                         valid_rank_flatAR = valid_rank_flatAR[np.argsort(valid_rank_flatAR[:, 1])]
-                    else: valid_rank_flatAR = []
-
                     if candidates_num_thinAR is not None:
                         #valid_rank_thinAR= np.vstack([valid_rank_thinAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]])
                         valid_rank_thinAR= full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]
                         valid_rank_thinAR = valid_rank_thinAR[np.argsort(valid_rank_thinAR[:, 1])]
-                    else: valid_rank_thinAR = []
 
                 #convert rankings to readable labels
                 read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in range(valid_rank.shape[0])]
@@ -427,9 +435,11 @@ class ObjectReasoner():
                                   range(valid_rank_flat.shape[0])]
                 read_rank_thin = [(self.remapper[valid_rank_thin[z, 0]], valid_rank_thin[z, 1]) for z in
                                   range(valid_rank_thin.shape[0])]
-                read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z, 0]], valid_rank_flatAR[z, 1]) for z in
+                if candidates_num_flatAR is not None:
+                    read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z, 0]], valid_rank_flatAR[z, 1]) for z in
                                     range(valid_rank_flatAR.shape[0])]
-                read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
+                if candidates_num_thinAR is not None:
+                    read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
 
                 if self.set =='KMi':
                     self.predictions[i, :] = valid_rank_flatAR[:5, :]
@@ -440,31 +450,27 @@ class ObjectReasoner():
                 else: #ARC support
                     # len check in this case, because some of the size-validation predictions
                     # may be empty if the plausible candidates are not in the 20 sample classes
-                    if len(valid_rank_flatAR[:5, :]) >0: self.predictions[i] = valid_rank_flatAR[:5, :]
-                    if len(valid_rank_thinAR[:5, :])>0: thinAR_copy[i] = valid_rank_thinAR[:5, :]
-                    if len(valid_rank_thin[:5, :])>0: thin_copy[i] = valid_rank_thin[:5, :]
-                    if len(valid_rank[:5, :])>0: sizequal_copy[i] = valid_rank[:5, :]
-                    if len(valid_rank_flat[:5, :])>0: flat_copy[i] = valid_rank_flat[:5, :]
+                    if len(valid_rank_flatAR)>0: self.predictions[i] = valid_rank_flatAR[:5, :]
+                    if len(valid_rank_thinAR)>0: thinAR_copy[i] = valid_rank_thinAR[:5, :]
+                    if len(valid_rank_thin)>0: thin_copy[i] = valid_rank_thin[:5, :]
+                    if len(valid_rank)>0: sizequal_copy[i] = valid_rank[:5, :]
+                    if len(valid_rank_flat)>0: flat_copy[i] = valid_rank_flat[:5, :]
 
-                print("%s predicted as %s" % (gt_label,current_label))
-                print("Detected size is %s" % qual)
-                print("Object is %s" % flat_flag)
-                print("Object is %s" % aspect_ratio)
-                print("Object is %s" % thinness)
-                print("Estimated dims oriented %f x %f x %f m" % (d1,d2,d3))
                 print("ML based ranking")
                 print(read_current_rank)
                 print("Knowledge validated ranking (area)")
                 print(read_rank[:5])
-                print("Knowledge validated ranking (area + flat + AR)")
-                print(read_rank_flatAR[:5])
                 if self.verbose:
                     print("Knowledge validated ranking (area + flat)")
                     print(read_rank_flat[:5])
                     print("Knowledge validated ranking (area + thin)")
                     print(read_rank_thin[:5])
-                    print("Knowledge validated ranking (area + thin + AR)")
-                    print(read_rank_thinAR[:5])
+                    if candidates_num_flatAR is not None:
+                        print("Knowledge validated ranking (area + flat + AR)")
+                        print(read_rank_flatAR[:5])
+                    if candidates_num_thinAR is not None:
+                        print("Knowledge validated ranking (area + thin + AR)")
+                        print(read_rank_thinAR[:5])
                 print("================================")
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
@@ -589,7 +595,40 @@ class ObjectReasoner():
         T1,T2,T3 = area_thresholds
         lam1,lam2,lam3 = depth_thresholds
 
+        """ 5. size quantization (config 1)"""
+        qual = predictors.pred_size_qual(d1, d2, thresholds=T1)
+        flat = predictors.pred_flat(d3, len_thresh=lam1[0])
+        thinness = predictors.pred_thinness(d3, cuts=lam1)
+        cluster = qual + "-" + thinness
+        """ 5. size quantization (config 2)"""
+        qual2 = predictors.pred_size_qual(d1, d3, thresholds=T2)
+        flat2 = predictors.pred_flat(d2, len_thresh=lam2[0])
+        thinness2 = predictors.pred_thinness(d2, cuts=lam2)
+        cluster2 = qual2 + "-" + thinness2
+        """ 5. size quantization (config 3)"""
+        qual3 = predictors.pred_size_qual(d2, d3, thresholds=T3)
+        flat3 = predictors.pred_flat(d1, len_thresh=lam3[0])
+        thinness3 = predictors.pred_thinness(d1, cuts=lam3)
+        cluster3 = qual3 + "-" + thinness3
 
+        print("Detected size is %s (config 1), %s (config 2), or %s (config 3)" % (qual,qual2,qual3))
+        print("Object is %s (config 1), %s (config 2), or %s (config 3)" % (str(flat),str(flat2),str(flat3)))
+        print("Object is %s (config 1), %s (config 2), or %s (config 3)" % (thinness,thinness2,thinness3))
 
+        candidates = [oname for oname in self.KB.keys() if
+                      len([s for s in self.KB[oname]["has_size"]
+                           if (s.startswith(qual) or s.startswith(qual2) or s.startswith(qual3))
+                         ])>0 ]
+        candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
+        candidates_flat = [oname for oname in candidates if
+                           str(flat) in str(self.KB[oname]["is_flat"])
+                           or str(flat2) in str(self.KB[oname]["is_flat"])
+                           or str(flat3) in str(self.KB[oname]["is_flat"])]
+        candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
+        candidates_thin = [oname for oname in self.KB.keys() if
+                           cluster in self.KB[oname]["has_size"]
+                           or cluster2 in self.KB[oname]["has_size"]
+                           or cluster3 in self.KB[oname]["has_size"]]
+        candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
 
-        return []
+        return [candidates_num,candidates_num_flat,candidates_num_thin]

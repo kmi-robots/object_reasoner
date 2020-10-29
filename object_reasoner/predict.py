@@ -175,7 +175,7 @@ def pred_size_qual(dim1, dim2,t1=0.07,t2=0.5):#868): #t1=0.0868 #t2=0.4248
     elif estimated_area>= t1 and estimated_area <= t2: return 'medium'
     else: return 'large'
 """
-def pred_flat(d1,d2,depth, len_thresh = 0.10): #if depth greater than x% of its min dim then non flat
+def pred_flat(depth, len_thresh = 0.10): #if depth greater than x% of its min dim then non flat
     if depth <= len_thresh: return True
     else: return False
 
