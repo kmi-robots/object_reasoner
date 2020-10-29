@@ -286,49 +286,6 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
 
-            """ 1. Depth image to pointcloud conversion
-                            2. OPTIONAL foreground extraction """
-            obj_pcl = self.depth2PCL(dimage, foregroundextract)
-            # o3d.visualization.draw_geometries([obj_pcl])
-            pcl_points = np.asarray(obj_pcl.points).shape[0]
-            if pcl_points <= 1:
-                print("Empty pcl, skipping")
-                non_processed_pcls += 1
-                # do not consider that obj region in eval
-                non_processed_fnames.append(self.imglist[i].split('/')[-1])
-                self.dimglist[i] = None
-                continue
-            """ 2. noise removal """
-            cluster_pcl = self.PCL_3Dprocess(obj_pcl, pclcluster)
-            # cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
-            # o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
-            """ 3. object size estimation """
-            try:
-                d1, d2, d3, volume, orientedbox, aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
-            except TypeError:
-                print("Still not enough points..skipping")
-                non_processed_pcls += 1
-                # do not consider that obj region in eval
-                non_processed_fnames.append(self.imglist[i].split('/')[-1])
-                self.dimglist[i] = None
-                continue
-            # o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
-            try:
-                estimated_sizes[gt_label]['d1'].append(d1)
-                estimated_sizes[gt_label]['d2'].append(d2)
-                estimated_sizes[gt_label]['d3'].append(d3)
-            except KeyError:
-                estimated_sizes[gt_label] = {}
-                estimated_sizes[gt_label]['d1'] = []
-                estimated_sizes[gt_label]['d2'] = []
-                estimated_sizes[gt_label]['d3'] = []
-
-                estimated_sizes[gt_label]['d1'].append(d1)
-                estimated_sizes[gt_label]['d2'].append(d2)
-                estimated_sizes[gt_label]['d3'].append(d3)
-
-            print("%s predicted as %s" % (gt_label, current_label))
-            print("Estimated dims oriented %f x %f x %f m" % (d1, d2, d3))
 
             """# 4. ML prediction selection module"""
             if self.scenario == 'selected':
@@ -352,6 +309,52 @@ class ObjectReasoner():
                 plt.imshow(cv2.imread(self.imglist[i]))
                 plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
                 plt.show()"""
+
+                #TODO move 1,2 & 3 up after ARC eval done
+                """ 1. Depth image to pointcloud conversion
+                                            2. OPTIONAL foreground extraction """
+                obj_pcl = self.depth2PCL(dimage, foregroundextract)
+                # o3d.visualization.draw_geometries([obj_pcl])
+                pcl_points = np.asarray(obj_pcl.points).shape[0]
+                if pcl_points <= 1:
+                    print("Empty pcl, skipping")
+                    non_processed_pcls += 1
+                    # do not consider that obj region in eval
+                    non_processed_fnames.append(self.imglist[i].split('/')[-1])
+                    self.dimglist[i] = None
+                    continue
+                """ 2. noise removal """
+                cluster_pcl = self.PCL_3Dprocess(obj_pcl, pclcluster)
+                # cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+                # o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
+                """ 3. object size estimation """
+                try:
+                    d1, d2, d3, volume, orientedbox, aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
+                except TypeError:
+                    print("Still not enough points..skipping")
+                    non_processed_pcls += 1
+                    # do not consider that obj region in eval
+                    non_processed_fnames.append(self.imglist[i].split('/')[-1])
+                    self.dimglist[i] = None
+                    continue
+                # o3d.visualization.draw_geometries([orig_pcl, cluster_pcl, orientedbox])
+                try:
+                    estimated_sizes[gt_label]['d1'].append(d1)
+                    estimated_sizes[gt_label]['d2'].append(d2)
+                    estimated_sizes[gt_label]['d3'].append(d3)
+                except KeyError:
+                    estimated_sizes[gt_label] = {}
+                    estimated_sizes[gt_label]['d1'] = []
+                    estimated_sizes[gt_label]['d2'] = []
+                    estimated_sizes[gt_label]['d3'] = []
+
+                    estimated_sizes[gt_label]['d1'].append(d1)
+                    estimated_sizes[gt_label]['d2'].append(d2)
+                    estimated_sizes[gt_label]['d3'].append(d3)
+
+                print("%s predicted as %s" % (gt_label, current_label))
+                print("Estimated dims oriented %f x %f x %f m" % (d1, d2, d3))
+
 
                 if T_view2 is None: #KMi set case
                     depth=d3
