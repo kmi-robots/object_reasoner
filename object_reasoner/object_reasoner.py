@@ -38,12 +38,11 @@ class ObjectReasoner():
     def obj_catalogue(self,args):
         if self.set =='arc':
             try:
-                with open('./data/arc_obj_catalogue_multiview.json') as fin:
+                with open('./data/arc_obj_catalogue.json') as fin: #
                     self.KB = json.load(fin) #where the ground truth knowledge is
             except FileNotFoundError:
-                self.KB = utl.init_obj_catalogue(args.test_base)
-                with open('./data/arc_obj_catalogue.json', 'w') as fout:
-                    json.dump(self.KB, fout)
+                print("Please copy the arc_obj_catalogue.json file under the ./data folder")
+                sys.exit(0)
             # Filter only known/novel objects
             self.known = dict((k, v) for k, v in self.KB.items() if v["known"] == True)
             self.novel = dict((k, v) for k, v in self.KB.items() if v["known"] == False)
@@ -355,8 +354,7 @@ class ObjectReasoner():
                 print("%s predicted as %s" % (gt_label, current_label))
                 print("Estimated dims oriented %f x %f x %f m" % (d1, d2, d3))
 
-
-                if T_view2 is None: #KMi set case
+                if T_view2 is None: #single view case, e.g., KMi set case
                     depth=d3
                     """ 5. size quantization """
                     qual = predictors.pred_size_qual(d1,d2,thresholds=T)
@@ -405,7 +403,6 @@ class ObjectReasoner():
                     res = self.size_reasoner_multiview((d1, d2, d3), (T, T_view2, T_view3),(lam, lam_view2, lam_view3))
                     candidates_num,candidates_num_flat,candidates_num_thin = res
                     candidates_num_flatAR, candidates_num_thinAR = None, None # Aspect Ratio is not relevant if multiple orientations are possible
-
                     valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
                     valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
                     valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
