@@ -22,6 +22,7 @@ class ObjectReasoner():
         self.set = args.set
         self.verbose = args.verbose
         self.scenario = args.scenario
+        self.baseline = args.baseline
         self.p_to_preds = args.preds
         start = time.time()
         self.obj_catalogue(args)
@@ -242,7 +243,7 @@ class ObjectReasoner():
             lam = [0.022,0.033,0.063]
             lam_view2 = [0.075,0.126,0.185] #objects can be grasped from different angles
             lam_view3 = [0.083,0.11,0.16]
-            epsilon = 0.0309 #0.03
+            epsilon = 0.03 #0.0309 #0.03
             N = 3
 
         estimated_sizes = {}
@@ -285,16 +286,40 @@ class ObjectReasoner():
                 print("No depth data available for this RGB frame... Skipping size-based correction")
                 non_depth_aval += 1
 
+            print("%s predicted as %s" % (gt_label, current_label))
 
             """# 4. ML prediction selection module"""
             if self.scenario == 'selected':
-                sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
-                if sizeValidate and self.predictions_B:
-                    # ARC case: if one ML baseline (e.g..,K-net) not confident & a second ML baseline (e.g..,N-net) available
-                    # judge confidence of second ML baseline
-                    sizeValidate,_ = self.ML_predselection(read_current_rank_B,current_label_B,gt_label,distance_t=epsilon,n=N)
-                    if not sizeValidate: # second method is confident, use its predictions as ranking
-                        self.predictions[i] = self.predictions_B[i]
+                if self.set=='KMi' or self.baseline!='two-stage':
+                    if current_label == 'empty':
+                        sizeValidate=False
+                    else:
+                        sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
+                else:# ARC case: two ML baselines could be leveraged
+                    if current_label ==current_label_B or current_label=='empty':
+                        # if there is agreement between the 2 Nets, retain predictions as-is
+                        # or object categorised as empty (i.e., size is misleading)
+                        sizeValidate=False
+                        if current_label=='empty':
+                            print("empty image, skipping size reasoning")
+                        else: print("Agreement ..retain ML ranking")
+                        print("ML based ranking - K-net")
+                        print(read_current_rank)
+                        print("================================")
+                    else: #disagreement, proceed with size validation
+                        sizeValidate = True
+                        """sizeValidate, _ = self.ML_predselection(read_current_rank, current_label, gt_label,distance_t=epsilon, n=N)
+                        print("Disagreement..checking confidence")
+                        if sizeValidate: #K-net is not confident
+                            sizeValidate, _ = self.ML_predselection(read_current_rank_B, current_label_B, gt_label,distance_t=epsilon, n=N)
+                            if not sizeValidate:  # second method is confident, use its predictions as ranking
+                                self.predictions[i] = self.predictions_B[i]
+                                print("Confident object is unknown..retain ML ranking")
+                                print("ML based ranking - N-net")
+                                print(read_current_rank_B)
+                                print("================================")
+                        """
+                        #otherwise it will select which one to use based on size validation results
             elif self.scenario=='best':
                 if current_label!= gt_label: sizeValidate = True
                 else: sizeValidate = False
@@ -309,9 +334,22 @@ class ObjectReasoner():
                 plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
                 plt.show()"""
 
+
+                """if self.scenario =='best' and self.set=='arc':
+                    #best case gt includes knowning if the object is known
+                    # or novel, in the context of ARC
+                    \"""if not self.KB[gt_label]['known']:
+                    \"""
+                    #Use N-net instead
+                    self.predictions[i] = self.predictions_B[i]
+                    continue
+                    \"""if self.KB[gt_label]['known']:
+                        # size validate only K-net
+                        full_vision_rank_B = None\"""
+                """
                 #TODO move 1,2 & 3 up after ARC eval done
                 """ 1. Depth image to pointcloud conversion
-                                            2. OPTIONAL foreground extraction """
+                    2. OPTIONAL foreground extraction """
                 obj_pcl = self.depth2PCL(dimage, foregroundextract)
                 # o3d.visualization.draw_geometries([obj_pcl])
                 pcl_points = np.asarray(obj_pcl.points).shape[0]
@@ -324,8 +362,8 @@ class ObjectReasoner():
                     continue
                 """ 2. noise removal """
                 cluster_pcl = self.PCL_3Dprocess(obj_pcl, pclcluster)
-                # cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
-                # o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
+                #cluster_pcl.paint_uniform_color(np.array([0., 0., 0.]))
+                #o3d.visualization.draw_geometries([obj_pcl, cluster_pcl])
                 """ 3. object size estimation """
                 try:
                     d1, d2, d3, volume, orientedbox, aligned_box = pclproc.estimate_dims(cluster_pcl, obj_pcl)
@@ -351,7 +389,6 @@ class ObjectReasoner():
                     estimated_sizes[gt_label]['d2'].append(d2)
                     estimated_sizes[gt_label]['d3'].append(d3)
 
-                print("%s predicted as %s" % (gt_label, current_label))
                 print("Estimated dims oriented %f x %f x %f m" % (d1, d2, d3))
 
                 if T_view2 is None: #single view case, e.g., KMi set case
@@ -399,7 +436,7 @@ class ObjectReasoner():
                     candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
                     valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
 
-                else:
+                else: #multi-view case, e.g., ARC set
                     res = self.size_reasoner_multiview((d1, d2, d3), (T, T_view2, T_view3),(lam, lam_view2, lam_view3))
                     candidates_num,candidates_num_flat,candidates_num_thin = res
                     candidates_num_flatAR, candidates_num_thinAR = None, None # Aspect Ratio is not relevant if multiple orientations are possible
@@ -410,28 +447,46 @@ class ObjectReasoner():
 
                 if full_vision_rank_B is not None:  # or in other baseline rank (two-stage pipeline)
                     # add n-net predictions and resort by ascending distance
-                    #valid_rank = np.vstack([valid_rank,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]])
-                    valid_rank = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]
-                    valid_rank = valid_rank[np.argsort(valid_rank[:, 1])]
+                    valid_rank_B = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num for z in range(full_vision_rank_B.shape[0])]]
+                    valid_rank_B = valid_rank_B[np.argsort(valid_rank_B[:, 1])]
 
-                    #valid_rank_flat = np.vstack([valid_rank_flat,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]])
-                    valid_rank_flat = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]
-                    valid_rank_flat = valid_rank_flat[np.argsort(valid_rank_flat[:, 1])]
+                    valid_rank_flat_B = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flat for z in range(full_vision_rank_B.shape[0])]]
+                    valid_rank_flat_B = valid_rank_flat_B[np.argsort(valid_rank_flat_B[:, 1])]
 
-                    #valid_rank_thin = np.vstack([valid_rank_thin,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]])
-                    valid_rank_thin = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]
-                    valid_rank_thin = valid_rank_thin[np.argsort(valid_rank_thin[:, 1])]
+                    valid_rank_thin_B = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thin for z in range(full_vision_rank_B.shape[0])]]
+                    valid_rank_thin_B = valid_rank_thin_B[np.argsort(valid_rank_thin_B[:, 1])]
+
+                    #Is the k-net prediction size-validated? Is the n-net one?
+                    if (str(current_prediction) in candidates_num and str(current_prediction_B) in candidates_num) \
+                        or (str(current_prediction) not in candidates_num and str(current_prediction_B) not in candidates_num):
+                        print("Both or neither predictions are area-validated..picking most confident one")
+                        topscore_Knet = valid_rank[0][1]
+                        topscore_Nnet = valid_rank_B[0][1]
+                        #i_knet = len([lbl for lbl in valid_rank[:5, 0] if lbl==valid_rank[0][0]])
+                        #i_nnet = len([lbl for lbl in valid_rank_B[:5, 0] if lbl==valid_rank_B[0][0]])
+                        if topscore_Nnet < topscore_Knet:
+                            print("N-net more confident")
+                            valid_rank = valid_rank_B
+                            valid_rank_flat = valid_rank_flat_B
+                            valid_rank_thin = valid_rank_thin_B
+                        else: print("K-net more confident") # keep ranking as-is/do nothing
+                    elif (str(current_prediction) not in candidates_num and str(current_prediction_B) in candidates_num):
+                        print("Only N-net is size validated") # use N-net's validated ranking
+                        valid_rank = valid_rank_B
+                        valid_rank_flat = valid_rank_flat_B
+                        valid_rank_thin = valid_rank_thin_B
+                    else: print("Only K-net is size validated") # keep ranking as-is/do nothing
+
                     if candidates_num_flatAR is not None:
-                        #valid_rank_flatAR = np.vstack([valid_rank_flatAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]])
                         valid_rank_flatAR = full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_flatAR for z in range(full_vision_rank_B.shape[0])]]
                         valid_rank_flatAR = valid_rank_flatAR[np.argsort(valid_rank_flatAR[:, 1])]
                     if candidates_num_thinAR is not None:
-                        #valid_rank_thinAR= np.vstack([valid_rank_thinAR,full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]])
                         valid_rank_thinAR= full_vision_rank_B[[full_vision_rank_B[z, 0] in candidates_num_thinAR for z in range(full_vision_rank_B.shape[0])]]
                         valid_rank_thinAR = valid_rank_thinAR[np.argsort(valid_rank_thinAR[:, 1])]
 
                 #convert rankings to readable labels
-                read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in range(valid_rank.shape[0])]
+                read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in
+                             range(valid_rank.shape[0])]
                 read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
                                   range(valid_rank_flat.shape[0])]
                 read_rank_thin = [(self.remapper[valid_rank_thin[z, 0]], valid_rank_thin[z, 1]) for z in
@@ -458,7 +513,7 @@ class ObjectReasoner():
                     if len(valid_rank_flat)>0: flat_copy[i] = valid_rank_flat[:5, :]
 
                 print("ML based ranking")
-                print(read_current_rank)
+                print(read_current_rank[:5])
                 print("Knowledge validated ranking (area)")
                 print(read_rank[:5])
                 if self.verbose:
@@ -580,7 +635,7 @@ class ObjectReasoner():
         dis = read_current_rank[0][1]  # distance between test embedding and prod embedding
         if dis < distance_t and c_ >= n:  # lower distance/higher conf and class appears at least three times
             # ML is confident, keep as is
-            print("%s predicted as %s" % (gt_label, current_label))
+            #print("%s predicted as %s" % (gt_label, current_label))
             print("ML based ranking")
             print(read_current_rank)
             print("ML confident, skipping size-based validation")
