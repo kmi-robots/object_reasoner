@@ -102,7 +102,7 @@ def eval_KMi(ReasonerObj, depth_aligned=False, K=1):
                       and '_'.join(ReasonerObj.imglist[i].split('/')[-1].split('.')[0].split('_')[-2:]) not in blacklist]
         else: #eval on full RGB test set
             y_true = ReasonerObj.labels
-        print(classification_report(y_true, y_pred))
+        print(classification_report(y_true, y_pred,digits=4))
         print(accuracy_score(y_true, y_pred))
     else:#eval top-K ranking (ranking quality metrics)
         eval_ranking(ReasonerObj,K,depth_aligned,blackl=blacklist)

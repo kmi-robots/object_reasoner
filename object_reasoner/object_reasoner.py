@@ -230,7 +230,7 @@ class ObjectReasoner():
             T_view2,T_view3 = None, None #assumption: one natural orientation
             lam = [0.1, 0.2, 0.4]
             lam_view2, lam_view3 = None, None  # assumption: one natural orientation
-            epsilon = 0.04
+            epsilon = 0.040554 #0.04
             N=3
 
         elif self.set =='arc':
@@ -243,7 +243,7 @@ class ObjectReasoner():
             lam = [0.022,0.033,0.063]
             lam_view2 = [0.075,0.126,0.185] #objects can be grasped from different angles
             lam_view3 = [0.083,0.11,0.16]
-            epsilon = 0.03 #0.0309 #0.03
+            epsilon = (0.033357,0.021426) #(Nnet, Knet) #0.03
             N = 3
 
         estimated_sizes = {}
@@ -308,18 +308,7 @@ class ObjectReasoner():
                         print("================================")
                     else: #disagreement, proceed with size validation
                         sizeValidate = True
-                        """sizeValidate, _ = self.ML_predselection(read_current_rank, current_label, gt_label,distance_t=epsilon, n=N)
-                        print("Disagreement..checking confidence")
-                        if sizeValidate: #K-net is not confident
-                            sizeValidate, _ = self.ML_predselection(read_current_rank_B, current_label_B, gt_label,distance_t=epsilon, n=N)
-                            if not sizeValidate:  # second method is confident, use its predictions as ranking
-                                self.predictions[i] = self.predictions_B[i]
-                                print("Confident object is unknown..retain ML ranking")
-                                print("ML based ranking - N-net")
-                                print(read_current_rank_B)
-                                print("================================")
-                        """
-                        #otherwise it will select which one to use based on size validation results
+
             elif self.scenario=='best':
                 if current_label!= gt_label: sizeValidate = True
                 else: sizeValidate = False
@@ -334,19 +323,6 @@ class ObjectReasoner():
                 plt.title(gt_label+ " - "+self.imglist[i].split("/")[-1].split(".png")[0])
                 plt.show()"""
 
-
-                """if self.scenario =='best' and self.set=='arc':
-                    #best case gt includes knowning if the object is known
-                    # or novel, in the context of ARC
-                    \"""if not self.KB[gt_label]['known']:
-                    \"""
-                    #Use N-net instead
-                    self.predictions[i] = self.predictions_B[i]
-                    continue
-                    \"""if self.KB[gt_label]['known']:
-                        # size validate only K-net
-                        full_vision_rank_B = None\"""
-                """
                 #TODO move 1,2 & 3 up after ARC eval done
                 """ 1. Depth image to pointcloud conversion
                     2. OPTIONAL foreground extraction """
@@ -462,14 +438,34 @@ class ObjectReasoner():
                         print("Both or neither predictions are area-validated..picking most confident one")
                         topscore_Knet = valid_rank[0][1]
                         topscore_Nnet = valid_rank_B[0][1]
-                        #i_knet = len([lbl for lbl in valid_rank[:5, 0] if lbl==valid_rank[0][0]])
-                        #i_nnet = len([lbl for lbl in valid_rank_B[:5, 0] if lbl==valid_rank_B[0][0]])
-                        if topscore_Nnet < topscore_Knet:
+
+                        #distance between top score and ideal epsilon as suggested by param tuner
+                        dis_Knet = abs(topscore_Knet - epsilon[1])
+                        dis_Nnet = abs(topscore_Nnet - epsilon[0])
+
+                        if topscore_Nnet < epsilon[0] and topscore_Knet > epsilon[1]:
                             print("N-net more confident")
                             valid_rank = valid_rank_B
                             valid_rank_flat = valid_rank_flat_B
                             valid_rank_thin = valid_rank_thin_B
-                        else: print("K-net more confident") # keep ranking as-is/do nothing
+                        elif topscore_Knet < epsilon[1] and topscore_Nnet > epsilon[0]: print("K-net more confident") # keep ranking as-is/do nothing
+                        elif topscore_Nnet<epsilon[0] and topscore_Knet<epsilon[1]: #equally confident
+                            #pick the one that is smallest compared to (i.e., most distant from) their ideal threshold
+                            if dis_Knet>dis_Nnet: print("K-net more confident") # keep ranking as-is/do nothing
+                            else:
+                                print("N-net more confident")
+                                valid_rank = valid_rank_B
+                                valid_rank_flat = valid_rank_flat_B
+                                valid_rank_thin = valid_rank_thin_B
+                        else: #neither is confident
+                            #pick the one with the least distance from ideal threshold
+                            if dis_Knet<dis_Nnet: print("K-net more confident") # keep ranking as-is/do nothing
+                            else:
+                                print("N-net more confident")
+                                valid_rank = valid_rank_B
+                                valid_rank_flat = valid_rank_flat_B
+                                valid_rank_thin = valid_rank_thin_B
+
                     elif (str(current_prediction) not in candidates_num and str(current_prediction_B) in candidates_num):
                         print("Only N-net is size validated") # use N-net's validated ranking
                         valid_rank = valid_rank_B
