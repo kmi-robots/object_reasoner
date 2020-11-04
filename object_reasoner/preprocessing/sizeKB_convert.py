@@ -5,9 +5,9 @@ and create a JSON file in the format of ./data/KMi_obj_catalogue.json
 
 import argparse
 import sys
-from object_sizes import get_csv_data
-from object_sizes import dict_from_csv
+from object_sizes import get_csv_data,dict_from_csv,integrate_scraped, add_hardcoded
 import json
+import os
 
 
 def add_qual_hardcoded(obj_dict, ref_csv,flat=True, thinness=True, proportion=True): #10% of obj dim
@@ -47,6 +47,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('shp', help="Path to ShapeNetSem csv file")
+    parser.add_argument('--scrap_path', help="Path to scraped csv data,if any is used", required=False)
     parser.add_argument('--classes', help="Path to class index, json file",
                         default='./data/KMi-set-2020/class_to_index.json', required=False)
     parser.add_argument('--pmanual', default='./data/KMi_obj_catalogue_manual.csv',
@@ -64,14 +65,19 @@ def main():
         return 0
 
     KB = {} #init empty catalogue
-    KB = add_qual_hardcoded(KB, hcsv_gen)
-    #KB = dict_from_csv(shp_gen,CLASSES,KB,source='ShapeNet') #populate with ShapeNet data
-
+    #KB = add_qual_hardcoded(KB, hcsv_gen)
+    KB = dict_from_csv(shp_gen,CLASSES,KB,source='ShapeNet') #populate with ShapeNet data
+    remainder = [c for c in CLASSES if c not in KB]
+    scraped_files = [os.path.join(args.scrap_path,fname) for fname in os.listdir(args.scrap_path) if fname.endswith('csv')]
+    KB = integrate_scraped(KB,scraped_files,remainder,[])
+    remainder = [c for c in CLASSES if c not in KB]
     #Save KB locally as JSON file
+    KB= add_hardcoded(KB,remainder,hcsv_gen)
+
     print("Saving object catalogue under ./data ...")
-    with open('../data/KMi_obj_catalogue.json', 'w') as fout:
+    with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
         json.dump(KB, fout)
-    print("File saved as KMi_object_catalogue.json")
+    print("File saved as KMi_object_catalogue_autom.json")
     return 0
 
 

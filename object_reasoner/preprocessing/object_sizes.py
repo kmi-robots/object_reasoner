@@ -69,13 +69,11 @@ def dict_from_csv(csv_gen, classes, base, source='ShapeNet'):
                     or (cat == 'headphones' and "earphone" in obj_name) \
                     or (cat == 'desk' and "table" in obj_name):
                     tgts.append((cat, obj_name))
-
                 elif (cat == 'sofa' and "couch" in super_class.lower()) \
                     or (cat =='whiteboard' and super_class=='Whiteboard')\
                     or (cat == 'wallpaper' and "WallArt" in super_class) \
                     or ('food' in cat and "FoodItem" in super_class):
                     tgts.append((cat, super_class.lower()))
-
             if len(tgts)>0:
                 if len(tgts)==1: #only one match available
                     cat = tgts[0][0]
@@ -262,32 +260,29 @@ def add_hardcoded(obj_dict, bespoke_list, ref_csv, tolerance= 0.05): #10% of obj
     # if full==False hardcodes only objects in bespoke_list, otherwise hardcodes all entries found in ref_csv
     returns: object dictionary with hardcoded values + list of objects for which no measures could be defined
     """
-    blacklisted =[]
     for i,row in enumerate(ref_csv):
         if i ==0: continue
         obj_name = row[0].replace("_", " ")
-        obj_dict[obj_name] = {}
+        #obj_dict[obj_name] = {}
 
         if row[1] != '':
             dims_min = [float(v) for v in row[1:4]]
-            dims_max = [float(v) for v in row[4:]]
-
+            dims_max = [float(v) for v in row[4:7]]
         elif row[1]=='' and row[4] !='':
-            dims = [float(v) for v in row[4:]]
+            dims = [float(v) for v in row[4:7]]
             dims_min = [(d - tolerance * d) for d in dims]  # min-max range of dims
             dims_max = [(d + tolerance * d) for d in dims]
-        else:
-            blacklisted.append(obj_name) #blacklisted object
-            obj_dict[obj_name]['dims_cm'] = None
-            obj_dict[obj_name]['volume_cm3'] = None
-            obj_dict[obj_name]['volume_m3'] = None
-            continue
         if obj_name in bespoke_list: # update dictionary only for give set of objects
-            obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
+            try:
+                obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
+            except KeyError:
+                obj_dict[obj_name]={}
+                obj_dict[obj_name]['dims_cm'] = [dims_min, dims_max]
             vol_min, vol_max = reduce(operator.mul, dims_min, 1), reduce(operator.mul, dims_max, 1)
             obj_dict[obj_name]['volume_cm3'] = [vol_min, vol_max]
             obj_dict[obj_name]['volume_m3'] = [float(vol_min / 10 ** 6), float(vol_max / 10 ** 6)]
-    return obj_dict, blacklisted
+
+    return obj_dict
 
 
 def parse_anthro(csv_gen, unit ='mm'):
@@ -360,7 +355,8 @@ def integrate_scraped(obj_dict, path_to_csvs,remainder_list,blacklist):
                     dim_list.append(0.25)#add depth without compromising volume too much
                 if unit=='mm': #convert to cm first
                     dim_list= [float(d/ 10) for d in dim_list]
-                if obj_name in remainder_list and obj_name not in blacklist:
+                if obj_name not in blacklist: #in remainder_list and obj_name not in blacklist:
+                    # overwrites SHP with Amazon if executed after
                     try:
                         obj_dict[obj_name]['dims_cm'].append(dim_list)
                     except:
