@@ -26,7 +26,7 @@ wallpaper,40,100,1,50,200,2,large-XL,flat/thin,WTT/TTW/EQ,1
 welcome_pod,,,,48.26,24.64,86.36,large-XL,thick,EQ,0
 coat_stand,5,5,160,40,40,160,large-XL,flat/thin,TTW,0-1
 door,61,203.2,3.5,121.9,300.,4.4,large-XL,thin/thick/bulky,TTW,0
-office_signs,20,5,0.1,21,29.7,0.5,small-medium,flat/thin,WTT/TTW/EQ,0-1
+office_signs,20,5,0.1,21,29.7,0.5,small-medium,flat/thin,WTT/TTW/EQ,1
 chair,45,40,71,61,51,116.8,large-XL,thick,TTW/EQ,0
 plant,25,15,50,60,60,160,XS-small-medium-large-XL,flat/thin/thick/bulky,TTW/WTT/EQ,0-1
 toilet_sign,,,,8.5,8.5,0.5,small,flat,EQ,1
@@ -41,7 +41,7 @@ mug,12,12,10,15,15,20,XS-small,thick,EQ/WTT/TTW,0
 podium,,,,60,200,98,XL,bulky,WTT,0
 emergency_exit_sign,30,10,0.1,31,11,0.5,small,flat,WTT/EQ,1
 whiteboard,60,40,2,200,192,2,medium-large,flat,WTT/TTW/EQ,1
-keyboard,,,,45,20,2,small,flat,WTT,1s
+keyboard,,,,45,20,2,small,flat,WTT,1
 fan,,,,37,30,52,medium,flat/thin,EQ,0-1
 drink_can,2,2,10,3,3,20,XS,thin/thick,TTW/EQ,0
 pigeon_holes,20,40,70,40,90,75,large,thick/bulky,EQ,0

@@ -8,6 +8,7 @@ import sys
 from object_sizes import get_csv_data,dict_from_csv,integrate_scraped, add_hardcoded
 import json
 import os
+import itertools
 
 
 def add_qual_hardcoded(obj_dict, ref_csv,flat=True, thinness=True, proportion=True): #10% of obj dim
@@ -42,6 +43,22 @@ def add_qual_hardcoded(obj_dict, ref_csv,flat=True, thinness=True, proportion=Tr
 
     return obj_dict
 
+def add_ARflat_hardcoded(obj_dict, ref_csv):
+    for i,row in enumerate(ref_csv):
+        if i ==0: continue
+        obj_name = row[0].replace("_", " ")
+        prop = row[9]
+        rates = prop.split('/')
+        if len(rates) > 1:
+            obj_dict[obj_name]['aspect_ratio'] = rates
+        else:
+            obj_dict[obj_name]['aspect_ratio'] = rates[0]
+        flat = row[10]
+        if "-" in flat:obj_dict[obj_name]['is_flat'] = [True, False]
+        elif '0' in flat:obj_dict[obj_name]['is_flat'] = False
+        elif '1' in flat: obj_dict[obj_name]['is_flat'] = True
+    return obj_dict
+
 
 def main():
 
@@ -71,13 +88,16 @@ def main():
     scraped_files = [os.path.join(args.scrap_path,fname) for fname in os.listdir(args.scrap_path) if fname.endswith('csv')]
     KB = integrate_scraped(KB,scraped_files,remainder,[])
     remainder = [c for c in CLASSES if c not in KB]
+    remainder.append("printer")
     #Save KB locally as JSON file
+    hcsv_gen, ar_gen = itertools.tee(hcsv_gen)
     KB= add_hardcoded(KB,remainder,hcsv_gen)
+    KB = add_ARflat_hardcoded(KB, ar_gen)
 
     print("Saving object catalogue under ./data ...")
-    with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
+    with open('./data/KMi_obj_catalogue_autom_raw.json', 'w') as fout:
         json.dump(KB, fout)
-    print("File saved as KMi_object_catalogue_autom.json")
+    print("File saved as KMi_object_catalogue_autom_raw.json")
     return 0
 
 

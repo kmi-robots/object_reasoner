@@ -263,7 +263,6 @@ def add_hardcoded(obj_dict, bespoke_list, ref_csv, tolerance= 0.05): #10% of obj
     for i,row in enumerate(ref_csv):
         if i ==0: continue
         obj_name = row[0].replace("_", " ")
-        #obj_dict[obj_name] = {}
 
         if row[1] != '':
             dims_min = [float(v) for v in row[1:4]]
