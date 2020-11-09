@@ -12,6 +12,15 @@ import statistics
 from sklearn.neighbors import LocalOutlierFactor
 import matplotlib.pyplot as plt
 
+Xlabels = ['XS','small','medium','large','XL']
+Ylabels = ['flat','thin','thick','bulky']
+#Xlabels = ['XS','small','StM','medium','MtL','large','LtX','XL']
+#Ylabels = ['flat','thin','THNtTHK','thick','THKtoB','bulky']
+all_bins = []
+for al in Xlabels:
+    for dl in Ylabels:
+        all_bins.append(al+"-"+dl)
+
 def object_sorting(KB,args):
     areas1, areas2, areas3 = [], [], []
     depths1, depths2, depths3 = [], [], []
@@ -30,11 +39,16 @@ def object_sorting(KB,args):
         keyword = 'dims_cm'
         for k in KB.keys():
             measurements = KB[k][keyword] #array of measurements
+
             if str(True) in str(KB[k]["is_flat"]) and not str(False) in str(KB[k]["is_flat"]):
                 #if object marked as striclty flat, we can assume depth is the minimum
                 # i.e., only one configuration
                 all_depths,all_areas=[],[]
                 for dims in measurements:
+                    # avoid near-zero values
+                    for j,d in enumerate(dims):
+                        if d < 1.:  # in cm
+                            dims[j] = 1.
                     sdims = [float(d / 100) for d in dims]  # convert cm to meters,i.e., as in arc case
                     all_depths.append(min(sdims))
                     sdims.remove(min(sdims))
@@ -46,7 +60,12 @@ def object_sorting(KB,args):
             else:  # we cannot univoquely map any of the dimensions to w,h,d
                 #exploring 3 configurations as in the ARC case
                 d1s,d2s,d3s,a1s,a2s,a3s= [],[],[],[],[],[]
-                for d1,d2,d3 in measurements:
+                for dims in measurements:
+                    # avoid near-zero values
+                    for j, d in enumerate(dims):
+                        if d < 1.:  # in cm
+                            dims[j] = 1.
+                    d1, d2, d3 = dims
                     d1 = float(d1/100)
                     d2 = float(d2/100)
                     d3 = float(d3/100)
@@ -104,8 +123,6 @@ def bin_creation(obj_dict,input_sorts,n_areabins=5,n_depthbins=4, C=3):
     Splits up groups automatically to keep histogram bins equidistributed
     Expects dims of a N x M (e.g.,5x4) grid to be given, depending on how many bins one wants to create
     """
-    Xlabels = ['XS','small','medium','large','XL']
-    Ylabels = ['flat','thin','thick','bulky']
     area_thresholds, depth_thresholds = [],[]
     for config in range(C): # 3 configurations
         areas, depths = input_sorts[config], input_sorts[config+3]
@@ -114,11 +131,15 @@ def bin_creation(obj_dict,input_sorts,n_areabins=5,n_depthbins=4, C=3):
         H, xedges, yedges = np.histogram2d(areas_ar,depths_ar,bins=[n_areabins,n_depthbins])
         H = H.T # Let each row list bins with common y range.
         # Plot 2D histogram
-        """fig = plt.figure(figsize=(7, 3))
+        """fig = plt.figure(figsize=(7,3))
         ax = fig.add_subplot(132, title=('Objects histogram - config %s') % str(config+1),aspect = 'equal')
         X, Y = np.meshgrid(xedges, yedges)
         ax.pcolormesh(X, Y, H)
+        cbaxes = fig.add_axes([0.1, 0.1, 0.03, 0.8])
+        cb = fig.colorbar(ax.collections[0], cax=cbaxes)
+        cb.set_label('counts in bin')
         plt.show()"""
+
         #Keep track of thresholds used for bin creation
         xedges_log,yedges_log = xedges.tolist().copy(),yedges.tolist().copy()
         area_thresholds.append(xedges_log[1:len(xedges)-1])
@@ -160,6 +181,29 @@ def remove_outliers(obj_dict):
             continue #skip
     return obj_dict
 
+def valid_adjustments(obj_dict):
+    flat_depths = []
+    for k in obj_dict.keys():
+        if k =='box' or k=='power cord':
+            # extreme cases, all bin combinations are possible
+            obj_dict[k]['has_size']= all_bins
+            continue
+        """
+        if str(True) in str(obj_dict[k]["is_flat"]) and not str(False) in str(obj_dict[k]["is_flat"]):
+            # if object marked as striclty flat, validate autom generated thinness
+            bins_ = [tuple(t.split('-')) for t in obj_dict[k]['has_size']]
+            nbins = [ a+'-'+'flat' for a,d in bins_]
+            obj_dict[k]['has_size'] = nbins
+            measures = obj_dict[k]["dims_cm"]
+            for dims in measures:
+                depth = np.log(float(min(dims)/100))
+                if depth == -np.inf: # depth is 0.0, e.g., wallpapers
+                    depth = np.log(float(1/100)) #use 1 cm as proxy
+                flat_depths.append(depth)
+        """
+    #new_T0 =statistics.mean(flat_depths)
+    return obj_dict #, new_T0
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('catalogue', help="Path to input object catalogue, in JSON format")
@@ -171,6 +215,7 @@ def main():
     if args.set=='KMi': KB = remove_outliers(KB)
     sorted_res = object_sorting(KB,args)
     KB, aTs, dTs = bin_creation(KB,sorted_res)
+    KB = valid_adjustments(KB)
 
     print("Saving object catalogue under ./data ...")
     with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
@@ -182,7 +227,7 @@ def main():
     print(("Config 2 %s") % str(aTs[1]))
     print(("Config 3 %s") % str(aTs[2]))
     print("The logarithmic depth thresholds used for bin creation were")
-    print(("Config 1 %s") % str(dTs[0]))
+    print(("Config 1 %s") % str(dTs[0])) #print(("Config 1 %s") % (str(dthresh_config1)+str(dTs[0][1:]))) #
     print(("Config 2 %s") % str(dTs[1]))
     print(("Config 3 %s") % str(dTs[2]))
 

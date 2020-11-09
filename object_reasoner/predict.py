@@ -158,24 +158,35 @@ def predict_classifier(test_data, model, device):
             predictions.append(int(np.argmax(out_logits.cpu().numpy()))) #torch.argmax(class_prob, dim=1).tolist())
     return predictions
 
+area_labels = ['XS','small','medium','large','XL']
+depth_labels = ['flat','thin','thick','bulky']
+#area_labels = ['XS','small','StM','medium','MtL','large','LtX','XL']
+#depth_labels = ['flat','thin','THNtTHK','thick','THKtoB','bulky']
+
 def pred_size_qual(dim1, dim2,thresholds=[0.007,0.05,0.35,0.79]): #): #t3=0.19
-    t1,t2,t3,t4 = thresholds
-    estimated_area = dim1*dim2
-    if estimated_area < t1: return 'XS'
-    elif estimated_area >= t1 and estimated_area < t2: return 'small'
-    elif estimated_area>= t2 and estimated_area < t3: return 'medium'
-    elif estimated_area>= t3 and estimated_area < t4: return 'large'
-    else: return 'XL'
 
-"""
+    estimated_area = np.log(dim1 * dim2)
+    if estimated_area < thresholds[0]: return 'XS'
+    elif estimated_area >= thresholds[-1]: return 'XL'
+    else: #intermediate cases
+        for i in range(len(thresholds)-1):
+            if (estimated_area>=thresholds[i] and estimated_area < thresholds[i+1]):
+                return area_labels[i+1]
+    """
+    if len(thresholds)=='4': #original trials
+        t1,t2,t3,t4 = thresholds
+        estimated_area = np.log(dim1*dim2)
+        if estimated_area < t1: return 'XS'
+        elif estimated_area >= t1 and estimated_area < t2: return 'small'
+        elif estimated_area>= t2 and estimated_area < t3: return 'medium'
+        elif estimated_area>= t3 and estimated_area < t4: return 'large'
+        else: return 'XL'
+    elif len(thresholds)=='7': #more area bins introduced in the automated bin creation phase
+        pass
+    """
 
-def pred_size_qual(dim1, dim2,t1=0.07,t2=0.5):#868): #t1=0.0868 #t2=0.4248
-    estimated_area = dim1*dim2
-    if estimated_area < t1: return 'small'
-    elif estimated_area>= t1 and estimated_area <= t2: return 'medium'
-    else: return 'large'
-"""
 def pred_flat(depth, len_thresh = 0.10): #if depth greater than x% of its min dim then non flat
+    depth = np.log(depth)
     if depth <= len_thresh: return True
     else: return False
 
@@ -183,11 +194,19 @@ def pred_thinness(depth, cuts=[0.1,0.2,0.4]):
     """
     Rates object thinness/thickness based on measured depth
     """
+    depth = np.log(depth)
+    if depth <= cuts[0]: return 'flat'
+    elif depth > cuts[-1]: return 'bulky'
+    else: # intermediate cases
+        for i in range(len(cuts)-1):
+            if depth > cuts[i] and depth <= cuts[i+1]:
+                return depth_labels[i+1]
+    """
     if depth <= cuts[0]: return 'flat'
     elif depth > cuts[0] and depth <= cuts[1]: return 'thin'
     elif depth > cuts[1] and depth <= cuts[2]: return 'thick'
     else: return 'bulky'
-
+    """
 
 def pred_proportion(area_qual, mid_measure, depth_measure, cuts=[0.22,0.23,0.65]): #0.15,0.35,0.65
     prop = float(depth_measure/mid_measure)
