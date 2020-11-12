@@ -160,6 +160,7 @@ def predict_classifier(test_data, model, device):
 
 area_labels = ['XS','small','medium','large','XL']
 depth_labels = ['flat','thin','thick','bulky']
+#area_labels = ['XS','small','medium','MtL','large','LtX','XL']
 #area_labels = ['XS','small','StM','medium','MtL','large','LtX','XL']
 #depth_labels = ['flat','thin','THNtTHK','thick','THKtoB','bulky']
 

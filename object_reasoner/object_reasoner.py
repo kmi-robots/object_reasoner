@@ -59,9 +59,11 @@ class ObjectReasoner():
             self.mapper = dict((k, self.KB[k]['label']) for k in self.KB.keys())
         elif self.set == 'KMi':
             try:
-                with open('./data/KMi_obj_catalogue_autom.json') as fin,\
+                with open('./data/KMi_obj_catalogue_autom_valid.json') as fin,\
+                    open('./data/KMi_obj_catalogue.json') as fin2,\
                     open('./data/KMi-set-2020/class_to_index.json') as cin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
+                    self.refKB = json.load(fin2) #manually sorted objects
                     self.mapper = json.load(cin)
             except FileNotFoundError:
                 print("No KMi catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
@@ -76,7 +78,7 @@ class ObjectReasoner():
             # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
             if args.set =='KMi': self.imglist = imgf.read().splitlines()
-            else: self.imglist = [ os.path.join(args.test_res,pp) for pp in imgf.read().splitlines()] #ARC support
+            else: self.imglist = [os.path.join(args.test_res,pp) for pp in imgf.read().splitlines()] #ARC support
 
     def init_depth_imglist(self,args):
         if args.set =='KMi':
@@ -226,12 +228,12 @@ class ObjectReasoner():
             foregroundextract = False
             self.predictions = self.predictions[:, :5, :]
             if self.predictions_B: self.predictions_B = self.predictions_B[:, :5, :]
-            T= [-4.149075426919093, -2.776689935975939, -1.4043044450327855, -0.0319189540896323] #[0.007, 0.05, 0.35, 0.79]
-            T_view2 = [-4.304882321457492, -3.0883037250527376, -1.8717251286479835, -0.6551465322432293]
-            T_view3 = [-5.693662433822248, -4.048786672569905, -2.4039109113175616, -0.7590351500652188]
-            lam = [-3.3145883831019756, -2.02400658021586, -0.7334247773297449]#[-4.3963762539301765, -2.7451984941013277, -1.0940207342724788] #[0.1, 0.2, 0.4]
-            lam_view2 = [-2.583024931358944, -1.477170408603952, -0.37131588584896]
-            lam_view3 = [-2.0244465762356794, -1.0759355070093815, -0.12742443778308354]
+            T= [-4.149075426919093,-2.776689935975939, -1.4043044450327855, -0.0319189540896323]#[-4.149075426919093, -2.776689935975939, -1.4043044450327855, -0.0319189540896323] #[0.007, 0.05, 0.35, 0.79]
+            T_view2 = None #[-4.304882321457492, -3.0883037250527376, -1.8717251286479835, -0.6551465322432293]
+            T_view3 = None #[-5.693662433822248, -4.048786672569905, -2.4039109113175616, -0.7590351500652188]
+            lam = [-2.0244465762356794, -1.0759355070093815, -0.12742443778308354] #[-3.3145883831019756, -2.02400658021586, -0.7334247773297449]#[-4.3963762539301765, -2.7451984941013277, -1.0940207342724788] #[0.1, 0.2, 0.4]
+            lam_view2 = None #[-2.583024931358944, -1.477170408603952, -0.37131588584896]
+            lam_view3 = None #[-2.0244465762356794, -1.0759355070093815, -0.12742443778308354]
             epsilon = 0.040554 #0.04
             N=3
 
@@ -371,59 +373,31 @@ class ObjectReasoner():
 
                 print("Estimated dims oriented %f x %f x %f m" % (d1, d2, d3))
 
-                if T_view2 is None: #single view case, e.g., KMi set case
-                    depth=d3
-                    """ 6. size quantization """
-                    qual = predictors.pred_size_qual(d1,d2,thresholds=T)
-                    flat = predictors.pred_flat(depth,len_thresh=lam[0])
-                    flat_flag = 'flat' if flat else 'non flat'
-                    #Aspect ratio based on crop
-                    aspect_ratio = predictors.pred_AR(dimage.shape,(d1,d2))
-                    thinness = predictors.pred_thinness(depth,cuts=lam)
-
-                    print("Detected size is %s" % qual)
-                    print("Object is %s" % flat_flag)
-                    print("Object is %s" % aspect_ratio)
-                    print("Object is %s" % thinness)
-
-                    """ 7. Hybrid (area) """
-                    candidates = [oname for oname in self.KB.keys() if qual in self.KB[oname]["has_size"]]
-                    candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
-                    valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
-
-                    """ 7. Hybrid (area + flat) """
-                    candidates_flat = [oname for oname in self.KB.keys() if
-                                       (qual in self.KB[oname]["has_size"] and str(flat) in str(self.KB[oname]["is_flat"]))]
-                    candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
-                    valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
-
-                    """ 7. Hybrid (area + thin) """
-                    candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                                                             and thinness in str(self.KB[oname]["thinness"]))]
-                    candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
-                    valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
-
-                    """ 7. Hybrid (area + flat+AR) """
-                    candidates_flat_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                                        and str(flat) in str(self.KB[oname]["is_flat"])
-                                        and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
-                    candidates_num_flatAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat_AR]
+                if T_view2 is None: #single view/config case, e.g., KMi set case
+                    #results with autom generated KB
+                    res = self.size_reasoner_singleview(self.KB, dimage, [d1, d2, d3], T, lam)
+                    candidates_num, candidates_num_flat, candidates_num_thin, candidates_num_flatAR, candidates_num_thinAR = res
                     valid_rank_flatAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR for z in range(full_vision_rank.shape[0])]]
-
-                    """ 7. Hybrid (area + thin +AR) """
-                    candidates_thin_AR = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
-                                and str(thinness) in str(self.KB[oname]["thinness"]) and aspect_ratio in str(self.KB[oname]["aspect_ratio"]))]
-                    candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
                     valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
+
+                    # results with manual sorting KB
+                    res = self.size_reasoner_singleview(self.refKB, dimage, [d1, d2, d3], T, lam)
+                    candidates_num2, candidates_num_flat2, candidates_num_thin2, candidates_num_flatAR2, candidates_num_thinAR2 = res
+                    valid_rank2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num2 for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_flat2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat2 for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_thin2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin2 for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_flatAR2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR2 for z in range(full_vision_rank.shape[0])]]
+                    valid_rank_thinAR2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR2 for z in range(full_vision_rank.shape[0])]]
 
                 else: #multi-view case, e.g., ARC set
                     res = self.size_reasoner_multiview((d1, d2, d3), (T, T_view2, T_view3),(lam, lam_view2, lam_view3))
                     candidates_num,candidates_num_flat,candidates_num_thin = res
-                    valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
-                    valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
-                    valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
                     candidates_num_flatAR, candidates_num_thinAR = None, None # Aspect Ratio is not relevant if multiple orientations are possible
                     valid_rank_flatAR, valid_rank_thinAR = [], []
+
+                valid_rank = full_vision_rank[[full_vision_rank[z, 0] in candidates_num for z in range(full_vision_rank.shape[0])]]
+                valid_rank_flat = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flat for z in range(full_vision_rank.shape[0])]]
+                valid_rank_thin = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin for z in range(full_vision_rank.shape[0])]]
 
                 if full_vision_rank_B is not None:  # or in other baseline rank (two-stage pipeline)
                     # add n-net predictions and resort by ascending distance
@@ -485,17 +459,11 @@ class ObjectReasoner():
                         valid_rank_thinAR = valid_rank_thinAR[np.argsort(valid_rank_thinAR[:, 1])]
 
                 #convert rankings to readable labels
-                read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in
-                             range(valid_rank.shape[0])]
-                read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
-                                  range(valid_rank_flat.shape[0])]
-                read_rank_thin = [(self.remapper[valid_rank_thin[z, 0]], valid_rank_thin[z, 1]) for z in
-                                  range(valid_rank_thin.shape[0])]
-                if candidates_num_flatAR is not None:
-                    read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z, 0]], valid_rank_flatAR[z, 1]) for z in
-                                    range(valid_rank_flatAR.shape[0])]
-                if candidates_num_thinAR is not None:
-                    read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in range(valid_rank_thinAR.shape[0])]
+                read_res = self.makereadable(valid_rank, valid_rank_flat, valid_rank_thin, valid_rank_flatAR, valid_rank_thinAR)
+                read_rank, read_rank_flat, read_rank_thin, read_rank_flatAR, read_rank_thinAR = read_res
+
+                read_res2 = self.makereadable(valid_rank2, valid_rank_flat2, valid_rank_thin2, valid_rank_flatAR2, valid_rank_thinAR2)
+                read_rank2, read_rank_flat2, read_rank_thin2, read_rank_flatAR2, read_rank_thinAR2 = read_res2
 
                 if self.set =='KMi':
                     if len(valid_rank_flatAR)>0: self.predictions[i, :] = valid_rank_flatAR[:5, :]
@@ -516,17 +484,32 @@ class ObjectReasoner():
                 print(read_current_rank[:5])
                 print("Knowledge validated ranking (area)")
                 print(read_rank[:5])
+                print("**Ranking with manual sorting KB:**")
+                print("Knowledge validated ranking (area)")
+                print(read_rank2[:5])
                 if self.verbose:
                     print("Knowledge validated ranking (area + flat)")
                     print(read_rank_flat[:5])
+                    print("**Ranking with manual sorting KB:**")
+                    print("Knowledge validated ranking (area + flat)")
+                    print(read_rank_flat2[:5])
                     print("Knowledge validated ranking (area + thin)")
                     print(read_rank_thin[:5])
+                    print("**Ranking with manual sorting KB:**")
+                    print("Knowledge validated ranking (area + thin)")
+                    print(read_rank_thin2[:5])
                     if candidates_num_flatAR is not None:
                         print("Knowledge validated ranking (area + flat + AR)")
                         print(read_rank_flatAR[:5])
+                        print("**Ranking with manual sorting KB:**")
+                        print("Knowledge validated ranking (area + flat + AR)")
+                        print(read_rank_flatAR2[:5])
                     if candidates_num_thinAR is not None:
                         print("Knowledge validated ranking (area + thin + AR)")
                         print(read_rank_thinAR[:5])
+                        print("**Ranking with manual sorting KB:**")
+                        print("Knowledge validated ranking (area + thin + AR)")
+                        print(read_rank_thinAR2[:5])
                 print("================================")
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
@@ -644,6 +627,57 @@ class ObjectReasoner():
         else:
             return (True,None)
 
+    def size_reasoner_singleview(self,KB,dimage, estimated_dims,T,lam):
+        depth = min(estimated_dims)
+        estimated_dims.remove(depth)
+        d1, d2 = estimated_dims
+
+        """ 6. size quantization """
+        qual = predictors.pred_size_qual(d1, d2, thresholds=T)
+        flat = predictors.pred_flat(depth, len_thresh=lam[0])
+        flat_flag = 'flat' if flat else 'non flat'
+        # Aspect ratio based on crop
+        aspect_ratio = predictors.pred_AR(dimage.shape, (d1, d2))
+        thinness = predictors.pred_thinness(depth, cuts=lam)
+        cluster = qual + "-" + thinness
+
+        print("Detected size is %s" % qual)
+        print("Object is %s" % flat_flag)
+        print("Object is %s" % aspect_ratio)
+        print("Object is %s" % thinness)
+
+        """ 7. Hybrid (area) """
+        candidates = [oname for oname in KB.keys() if qual in str(
+            KB[oname]["has_size"])]  # len([s for s in self.KB[oname]["has_size"] if s.startswith(qual)])>0]
+        candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
+
+        """ 7. Hybrid (area + flat) """
+        candidates_flat = [oname for oname in candidates if str(flat) in str(KB[oname]["is_flat"])]
+        candidates_num_flat = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat]
+
+        """ 7. Hybrid (area + thin) """
+        try:
+            candidates_thin = [oname for oname in candidates if thinness in str(KB[oname]["thinness"])]
+
+        except KeyError:  # annotation format variation
+            candidates_thin = [oname for oname in candidates if thinness in str(KB[oname]["has_size"])]
+
+        # candidates_thin = [oname for oname in candidates if thinness in str(self.KB[oname]["has_size"])]
+        # candidates_thin = [oname for oname in self.KB.keys() if cluster in self.KB[oname]["has_size"]]
+        # candidates_thin = [oname for oname in self.KB.keys() if (qual in self.KB[oname]["has_size"]
+        #                     and thinness in str(self.KB[oname]["thinness"]))]
+        candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
+
+        """7. Hybrid (area + flat+AR) """
+        candidates_flat_AR = [oname for oname in candidates_flat if aspect_ratio in str(KB[oname]["aspect_ratio"])]
+        candidates_num_flatAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_flat_AR]
+
+        """ 7. Hybrid (area + thin +AR) """
+        candidates_thin_AR = [oname for oname in candidates_thin if aspect_ratio in str(KB[oname]["aspect_ratio"])]
+        candidates_num_thinAR = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin_AR]
+
+        return [candidates_num, candidates_num_flat, candidates_num_thin, candidates_num_flatAR, candidates_num_thinAR]
+
     def size_reasoner_multiview(self, estimated_dims, area_thresholds, depth_thresholds):
         """Size reasoning in a case where multiple orientation configurations can be observed
         """
@@ -652,7 +686,6 @@ class ObjectReasoner():
         lam1,lam2,lam3 = depth_thresholds
 
         """ 6. size quantization (config 1)"""
-
         qual = predictors.pred_size_qual(d1, d2, thresholds=T1)
         flat = predictors.pred_flat(d3, len_thresh=lam1[0])
         thinness = predictors.pred_thinness(d3, cuts=lam1)
@@ -675,9 +708,9 @@ class ObjectReasoner():
         """ 7. Hybrid (area) """
         candidates = [oname for oname in self.KB.keys() if
                       len([s for s in self.KB[oname]["has_size"]
-                           if (s.startswith(qual) or s.startswith(qual2) or s.startswith(qual3))
-                         ])>0 ]
+                           if (s.startswith(qual) or s.startswith(qual2) or s.startswith(qual3)) ])>0 ]
         candidates_num = [self.mapper[oname.replace(' ', '_')] for oname in candidates]
+
 
         """ 7. Hybrid (area +flat) """
         candidates_flat = [oname for oname in candidates if
@@ -694,3 +727,23 @@ class ObjectReasoner():
         candidates_num_thin = [self.mapper[oname.replace(' ', '_')] for oname in candidates_thin]
 
         return [candidates_num,candidates_num_flat,candidates_num_thin]
+
+    def makereadable(self,valid_rank, valid_rank_flat, valid_rank_thin, valid_rank_flatAR, valid_rank_thinAR):
+
+        read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in
+                     range(valid_rank.shape[0])]
+        read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
+                          range(valid_rank_flat.shape[0])]
+        read_rank_thin = [(self.remapper[valid_rank_thin[z, 0]], valid_rank_thin[z, 1]) for z in
+                          range(valid_rank_thin.shape[0])]
+        if len(valid_rank_flatAR)>0:
+            read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z, 0]], valid_rank_flatAR[z, 1]) for z in
+                                range(valid_rank_flatAR.shape[0])]
+        else: read_rank_flatAR =[]
+        if len(valid_rank_thinAR)>0:
+            read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in
+                            range(valid_rank_thinAR.shape[0])]
+        else: read_rank_thinAR=[]
+
+        return [read_rank, read_rank_flat, read_rank_thin, read_rank_flatAR, read_rank_thinAR]
+

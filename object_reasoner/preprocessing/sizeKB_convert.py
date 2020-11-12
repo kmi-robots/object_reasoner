@@ -87,13 +87,20 @@ def main():
     remainder = [c for c in CLASSES if c not in KB]
     scraped_files = [os.path.join(args.scrap_path,fname) for fname in os.listdir(args.scrap_path) if fname.endswith('csv')]
     KB = integrate_scraped(KB,scraped_files,remainder,[])
-    remainder = [c for c in CLASSES if c not in KB]
-    remainder.append("printer")
+    remainder = [c for c in CLASSES if c not in KB] # or len(KB[c]["dims_cm"])<=10]
+    remainder.append("printer") #only home printers found via Web
     #Save KB locally as JSON file
     hcsv_gen, ar_gen = itertools.tee(hcsv_gen)
     KB= add_hardcoded(KB,remainder,hcsv_gen)
     KB = add_ARflat_hardcoded(KB, ar_gen)
 
+    try: #load flat/no-flat from existing json, if any is found
+        with open('./data/KMi_obj_catalogue_autom_raw.json', 'r') as fin:
+            backup = json.load(fin)
+            for k in KB:
+                KB[k]['is_flat'] = backup[k]['is_flat']
+    except: pass
+    #save updated KB locally
     print("Saving object catalogue under ./data ...")
     with open('./data/KMi_obj_catalogue_autom_raw.json', 'w') as fout:
         json.dump(KB, fout)

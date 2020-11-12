@@ -332,10 +332,7 @@
 			"flat",
 			"thin"
 		],
-		"is_flat": [
-			true,
-			false
-		],
+		"is_flat": true,
 		"aspect_ratio": [
 			"WTT",
 			"TTW",
