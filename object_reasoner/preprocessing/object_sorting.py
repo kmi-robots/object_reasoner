@@ -21,6 +21,7 @@ for al in Xlabels:
     for dl in Ylabels:
         all_bins.append(al+"-"+dl)
 body_bins = ['large-thin','large-thick','large-bulky','XL-thin','XL-thick',"XL-bulky"]
+appearance_wise =['black_fashion_gloves','cherokee_easy_tee_shirt','measuring_spoons',"white_facecloth"]
 
 def object_sorting(KB,args):
     areas1, areas2, areas3 = [], [], []
@@ -29,6 +30,11 @@ def object_sorting(KB,args):
         keyword = 'dimensions'
         for k in KB.keys():
             d1, d2, d3 = KB[k][keyword][0], KB[k][keyword][1], KB[k][keyword][2]
+            # avoid near-zero values
+            if d1 < 0.01:  d1 = 0.01
+            if d2 < 0.01:  d2 = 0.01
+            if d3 < 0.01:  d3 = 0.01
+
             area1, area2, area3 = float(d1 * d2), float(d1 * d3), float(d2 * d3)
             areas1.append((k, area1))
             areas2.append((k, area2))
@@ -36,6 +42,21 @@ def object_sorting(KB,args):
             depths1.append((k, d3))
             depths2.append((k, d2))
             depths3.append((k, d1))
+
+            if k!='empty' and KB[k]['type'] == 'book' or k in appearance_wise:
+                dims = [d1,d2,d3]
+                md = max(dims) * 2.
+                dims.remove(max(dims))
+                dims.append(md)
+                d1,d2,d3 = dims
+                area1, area2, area3 = float(d1 * d2), float(d1 * d3), float(d2 * d3)
+                areas1.append((k, area1))
+                areas2.append((k, area2))
+                areas3.append((k, area3))
+                depths1.append((k, d3))
+                depths2.append((k, d2))
+                depths3.append((k, d1))
+
     elif args.set =='KMi':
         keyword = 'dims_cm'
         for k in KB.keys():
@@ -216,6 +237,54 @@ def remove_outliers(obj_dict):
             continue #skip
     return obj_dict
 
+def refresh(obj_dict):
+    """Remove prior annotations, if any"""
+    for k in obj_dict:
+        obj_dict[k]['has_size'] = []
+        obj_dict[k]['is_flat'] = []
+    return obj_dict
+
+def check_flat(obj_dict):
+    """
+    ARC set: flat info is acquired automatically rather than manually
+    (it is not part of the benchmark set)
+    """
+    for k in obj_dict:
+        #if flat appears in sorting mark object as strictly flat
+        # if it appears with others mark as flat/no-flat
+        # otherwise as no flat
+        if "flat" in str(obj_dict[k]['has_size']):
+            obj_dict[k]['is_flat'].append(True)
+        noflats = [l for l in Ylabels[1:] if l in str(obj_dict[k]['has_size'])]
+        if len(noflats)>0:
+            obj_dict[k]['is_flat'].append(False)
+        obj_dict[k]['is_flat'] = list(set(obj_dict[k]['is_flat']))
+    return obj_dict
+
+
+def rule_adjust(obj_dict):
+    """
+    Fll in gaps for area annotations. e.g., if annotated as medium and XL also add large
+    """
+    # all cases: fill gaps on X axis (e.g., object marked as both medium and XL but not large
+    for k in obj_dict:
+        as_ = list(set([c.split('-')[0] for c in obj_dict[k]['has_size']]))
+        if len(as_) > 1:
+            ar_indices = [Xlabels.index(a) for a in as_]
+            mina, maxa = min(ar_indices), max(ar_indices)
+            all_indices = list(range(mina, maxa + 1))
+            missing_indices = [ind for ind in all_indices if ind not in ar_indices]
+            if len(missing_indices) > 0:
+                tgt_thick = [c.split('-')[1] for c in obj_dict[k]['has_size'] if c.split('-')[0] == Xlabels[mina]][
+                    0]  # thickness of lowest area bin
+                obj_dict[k]['has_size'].extend([Xlabels[ind] + '-' + tgt_thick for ind in all_indices])
+    # After all configurations are considered, remove area-depth combination duplicates
+    for k in obj_dict.keys():
+        size_list = obj_dict[k]["has_size"]
+        obj_dict[k]["has_size"] = list(set(size_list))
+
+    return obj_dict
+
 def valid_adjustments(obj_dict):
     """
     Validate the automatically-generated bins with manually collected
@@ -279,14 +348,6 @@ def valid_adjustments(obj_dict):
             obj_dict[k]['has_size'] = list(set(nb))
             continue
 
-        """if is_flat:
-            #fill gaps in between flat and max thinness at that area value
-            for dims in measures:
-                for j, d in enumerate(dims): #avoid near-zero values
-                    if d < 1.: dims[j] = 1. # in cm
-                depth = np.log(float(min(dims)/100)) #convert to meters and take the log
-                flat_depths.append(depth)
-        """
     return obj_dict
 
 def main():
@@ -298,9 +359,13 @@ def main():
         KB = json.load(fin)
 
     if args.set=='KMi': KB = remove_outliers(KB)
+    elif args.set=='arc': KB = refresh(KB)
     sorted_res = object_sorting(KB,args)
     KB, aTs, dTs = bin_creation(KB,sorted_res)
-    KB= valid_adjustments(KB)
+    if args.set=='KMi': KB= valid_adjustments(KB) #autom annotation adjusted based on flat/no-flat collected manually
+    elif args.set=='arc':
+        KB = rule_adjust(KB)
+        KB = check_flat(KB) #autom annotation is used to automatically annotate objects as flat-no-flat
 
     print("The logarithmic area thresholds used for bin creation were")
     print(("Config 1 %s") % str(aTs[0]))
@@ -319,10 +384,16 @@ def main():
     #KB = bin_creation_fromedges(KB,sorted_res,area_edges,depth_edges)
     #KB = valid_adjustments(KB)
 
-    print("Saving object catalogue under ./data ...")
-    with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
-        json.dump(KB, fout)
-    print("File saved as KMi_object_catalogue_autom.json")
+    if args.set =="KMi":
+        print("Saving object catalogue under ./data ...")
+        with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
+            json.dump(KB, fout)
+        print("File saved as KMi_object_catalogue_autom.json")
+    elif args.set =="arc":
+        print("Saving object catalogue under ./data ...")
+        with open('./data/arc_obj_catalogue_autom.json', 'w') as fout:
+            json.dump(KB, fout)
+        print("File saved as arc_object_catalogue_autom.json")
 
 
 if __name__ == "__main__":

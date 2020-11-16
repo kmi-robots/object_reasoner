@@ -39,7 +39,7 @@ class ObjectReasoner():
     def obj_catalogue(self,args):
         if self.set =='arc':
             try:
-                with open('./data/arc_obj_catalogue.json') as fin: #
+                with open('./data/arc_obj_catalogue_autom.json') as fin: #
                     self.KB = json.load(fin) #where the ground truth knowledge is
             except FileNotFoundError:
                 print("Please copy the arc_obj_catalogue.json file under the ./data folder")
@@ -241,13 +241,17 @@ class ObjectReasoner():
             foregroundextract = True
             self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
             if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
-            T = [0.0085, 0.01326, 0.0208, 0.033]
-            T_view2 =  [0.0021,0.0037,0.0049,0.0092] #objects can be grasped from different angles
-            T_view3 = [0.00203,0.0037,0.0066,0.013]
-            lam = [0.022,0.033,0.063]
-            lam_view2 = [0.075,0.126,0.185] #objects can be grasped from different angles
-            lam_view3 = [0.083,0.11,0.16]
+            T =  [-7.739329757837735, -6.268319143699288, -4.797308529560841, -3.326297915422394] #[0.0085, 0.01326, 0.0208, 0.033]
+            T_view2 =  None #[0.0021,0.0037,0.0049,0.0092] #objects can be grasped from different angles
+            T_view3 = None #[0.00203,0.0037,0.0066,0.013]
+            lam = [-3.5866347222619455, -2.5680992585358005, -1.5495637948096554] #[0.022,0.033,0.063]
+            lam_view2 = None #[0.075,0.126,0.185] #objects can be grasped from different angles
+            lam_view3 = None #[0.083,0.11,0.16]
             epsilon = (0.033357,0.021426) #(Nnet, Knet) #0.03
+            if self.set == 'arc' and self.baseline == 'k-net':
+                epsilon = epsilon[1]
+            elif self.set == 'arc' and self.baseline == 'n-net':
+                epsilon = epsilon[0]
             N = 3
 
         estimated_sizes = {}
@@ -380,7 +384,7 @@ class ObjectReasoner():
                     valid_rank_flatAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR for z in range(full_vision_rank.shape[0])]]
                     valid_rank_thinAR = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR for z in range(full_vision_rank.shape[0])]]
 
-                    # results with manual sorting KB
+                    """"# results with manual sorting KB
                     res = self.size_reasoner_singleview(self.refKB, dimage, [d1, d2, d3], T, lam)
                     candidates_num2, candidates_num_flat2, candidates_num_thin2, candidates_num_flatAR2, candidates_num_thinAR2 = res
                     valid_rank2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num2 for z in range(full_vision_rank.shape[0])]]
@@ -388,7 +392,7 @@ class ObjectReasoner():
                     valid_rank_thin2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thin2 for z in range(full_vision_rank.shape[0])]]
                     valid_rank_flatAR2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_flatAR2 for z in range(full_vision_rank.shape[0])]]
                     valid_rank_thinAR2 = full_vision_rank[[full_vision_rank[z, 0] in candidates_num_thinAR2 for z in range(full_vision_rank.shape[0])]]
-
+                    """
                 else: #multi-view case, e.g., ARC set
                     res = self.size_reasoner_multiview((d1, d2, d3), (T, T_view2, T_view3),(lam, lam_view2, lam_view3))
                     candidates_num,candidates_num_flat,candidates_num_thin = res
@@ -462,8 +466,8 @@ class ObjectReasoner():
                 read_res = self.makereadable(valid_rank, valid_rank_flat, valid_rank_thin, valid_rank_flatAR, valid_rank_thinAR)
                 read_rank, read_rank_flat, read_rank_thin, read_rank_flatAR, read_rank_thinAR = read_res
 
-                read_res2 = self.makereadable(valid_rank2, valid_rank_flat2, valid_rank_thin2, valid_rank_flatAR2, valid_rank_thinAR2)
-                read_rank2, read_rank_flat2, read_rank_thin2, read_rank_flatAR2, read_rank_thinAR2 = read_res2
+                #read_res2 = self.makereadable(valid_rank2, valid_rank_flat2, valid_rank_thin2, valid_rank_flatAR2, valid_rank_thinAR2)
+                #read_rank2, read_rank_flat2, read_rank_thin2, read_rank_flatAR2, read_rank_thinAR2 = read_res2
 
                 if self.set =='KMi':
                     if len(valid_rank_flatAR)>0: self.predictions[i, :] = valid_rank_flatAR[:5, :]
@@ -484,32 +488,32 @@ class ObjectReasoner():
                 print(read_current_rank[:5])
                 print("Knowledge validated ranking (area)")
                 print(read_rank[:5])
-                print("**Ranking with manual sorting KB:**")
-                print("Knowledge validated ranking (area)")
-                print(read_rank2[:5])
+                #print("**Ranking with manual sorting KB:**")
+                #print("Knowledge validated ranking (area)")
+                #print(read_rank2[:5])
                 if self.verbose:
                     print("Knowledge validated ranking (area + flat)")
                     print(read_rank_flat[:5])
-                    print("**Ranking with manual sorting KB:**")
-                    print("Knowledge validated ranking (area + flat)")
-                    print(read_rank_flat2[:5])
+                    #print("**Ranking with manual sorting KB:**")
+                    #print("Knowledge validated ranking (area + flat)")
+                    #print(read_rank_flat2[:5])
                     print("Knowledge validated ranking (area + thin)")
                     print(read_rank_thin[:5])
-                    print("**Ranking with manual sorting KB:**")
-                    print("Knowledge validated ranking (area + thin)")
-                    print(read_rank_thin2[:5])
-                    if candidates_num_flatAR is not None:
+                    #print("**Ranking with manual sorting KB:**")
+                    #print("Knowledge validated ranking (area + thin)")
+                    #print(read_rank_thin2[:5])
+                    if candidates_num_flatAR is not None and self.set!='arc':
                         print("Knowledge validated ranking (area + flat + AR)")
                         print(read_rank_flatAR[:5])
-                        print("**Ranking with manual sorting KB:**")
-                        print("Knowledge validated ranking (area + flat + AR)")
-                        print(read_rank_flatAR2[:5])
-                    if candidates_num_thinAR is not None:
+                        #print("**Ranking with manual sorting KB:**")
+                        #print("Knowledge validated ranking (area + flat + AR)")
+                        #print(read_rank_flatAR2[:5])
+                    if candidates_num_thinAR is not None and self.set!='arc':
                         print("Knowledge validated ranking (area + thin + AR)")
                         print(read_rank_thinAR[:5])
-                        print("**Ranking with manual sorting KB:**")
-                        print("Knowledge validated ranking (area + thin + AR)")
-                        print(read_rank_thinAR2[:5])
+                        #print("**Ranking with manual sorting KB:**")
+                        #print("Knowledge validated ranking (area + thin + AR)")
+                        #print(read_rank_thinAR2[:5])
                 print("================================")
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
