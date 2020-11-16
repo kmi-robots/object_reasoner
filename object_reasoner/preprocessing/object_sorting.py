@@ -188,42 +188,6 @@ def bin_creation(obj_dict,input_sorts,n_areabins=len(Xlabels),n_depthbins=len(Yl
         obj_dict[k]["has_size"] = list(set(size_list))
     return obj_dict,area_thresholds,depth_thresholds
 
-def bin_creation_fromedges(obj_dict,input_sorts,area_edges,depth_edges,n_areabins=len(Xlabels),n_depthbins=len(Ylabels),C=3):
-    """recompute bin membership given max edges identified"""
-    import copy
-    backup = copy.deepcopy(obj_dict)
-    for k in obj_dict.keys(): obj_dict[k]["has_size"] = []
-
-    for config in range(C): # 3 configurations
-        areas, depths = input_sorts[config], input_sorts[config+3]
-        areas_ar, depths_ar = np.asarray(list(zip(*areas))[1]), np.asarray(list(zip(*depths))[1])
-        areas_ar, depths_ar = np.log(areas_ar),np.log(depths_ar)
-        area_edges.extend([min(area_edges)-1.,max(area_edges)+1.]) #add min/max
-        depth_edges.extend([min(depth_edges)-1.,max(depth_edges)+1.])
-        area_edges = list(sorted(area_edges))
-        depth_edges = list(sorted(depth_edges))
-        #Area bin memberships
-        xindices = np.digitize(areas_ar,area_edges)
-        yindices = np.digitize(depths_ar,depth_edges)
-        for j,(obj1, areav) in enumerate(areas):
-            idepth = [i for i,(o,v) in enumerate(depths) if o == obj1][0]
-            areabin,depthbin = xindices[j],yindices[idepth]
-            #adjust exceeding values
-            if areabin > n_areabins: areabin = n_areabins
-            elif areabin == 0: areabin = 1
-            if depthbin > n_depthbins: depthbin = n_depthbins
-            elif depthbin == 0: depthbin = 1
-            #print("%s is %s and %s" % (obj1,Xlabels[areabin-1],Ylabels[depthbin-1]))
-            #update KB
-            obj_dict[obj1]["has_size"].append('-'.join((Xlabels[areabin-1],Ylabels[depthbin-1])))
-
-    #After all configurations are considered, remove area-depth combination duplicates
-    for k in obj_dict.keys():
-        size_list = obj_dict[k]["has_size"]
-        obj_dict[k]["has_size"] = list(set(size_list))
-
-    return obj_dict
-
 def remove_outliers(obj_dict):
     clf = LocalOutlierFactor(n_neighbors=2,metric='euclidean',n_jobs=-1)
     for k in obj_dict.keys():
@@ -250,9 +214,7 @@ def check_flat(obj_dict):
     (it is not part of the benchmark set)
     """
     for k in obj_dict:
-        #if flat appears in sorting mark object as strictly flat
-        # if it appears with others mark as flat/no-flat
-        # otherwise as no flat
+        #ARC set: derive "is_flat" property from thinness annotations
         if "flat" in str(obj_dict[k]['has_size']):
             obj_dict[k]['is_flat'].append(True)
         noflats = [l for l in Ylabels[1:] if l in str(obj_dict[k]['has_size'])]
@@ -290,7 +252,6 @@ def valid_adjustments(obj_dict):
     Validate the automatically-generated bins with manually collected
     knowledge of flat/non-flat objects
     """
-    #flat_depths = []
     for k in obj_dict.keys():
         flat_only = False
         if k =='box' or k=='power cord':
@@ -376,14 +337,6 @@ def main():
     print(("Config 2 %s") % str(dTs[1]))
     print(("Config 3 %s") % str(dTs[2]))
 
-    #Select max of thresholds for most inclusive bins
-    aTs_ar, dTs_ar = np.asarray(aTs), np.asarray(dTs)
-    area_edges = [max(aTs_ar[:,k].tolist()) for k in range(aTs_ar.shape[1])]
-    depth_edges = [max(dTs_ar[:,k].tolist()) for k in range(dTs_ar.shape[1])]
-    # Recalc annotations for specific bin edges found
-    #KB = bin_creation_fromedges(KB,sorted_res,area_edges,depth_edges)
-    #KB = valid_adjustments(KB)
-
     if args.set =="KMi":
         print("Saving object catalogue under ./data ...")
         with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
@@ -394,7 +347,6 @@ def main():
         with open('./data/arc_obj_catalogue_autom.json', 'w') as fout:
             json.dump(KB, fout)
         print("File saved as arc_object_catalogue_autom.json")
-
 
 if __name__ == "__main__":
     sys.exit(main())
