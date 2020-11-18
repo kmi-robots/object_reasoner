@@ -78,37 +78,23 @@ def eval_classifier(all_gt_labels, knownclasses, predicted):
     return
 
 
-def eval_KMi(ReasonerObj, depth_aligned=False, K=1):
+def eval_KMi(ReasonerObj, K=1):
     """
     Used for KMi test set when all classes are known, based on scikit-learn
     If K is set, it looks at whether the correct answer appears in the top-K ranking
     if depth-aligned is True, evals only on those images which have an accurate (and non null) match for depth
     """
-    # eval only on those with a depth region associated
-    blacklist = ['387317_6', '559158_0', '559158_3', '559158_poly3', '437317_poly10', '809309_poly2', '809309_poly4', '859055_1',
-                 '859055_2', '859055_3', '859055_poly0', '246928_6', '655068_2', '655068_5', '655068_6', '477148_poly7',
-                 '258729_2', '258729_3', '258729_poly4']     #old set #['524132', '409022', '240924', '741394', '109086', '041796', '036939']
     print("Class-wise test results \n")
     if K==1:
         # eval top-1 of each ranking
         y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
-        if depth_aligned:
-            y_pred = [y for i,y in enumerate(y_pred)
-                      if ReasonerObj.dimglist[i] is not None
-                and '_'.join(ReasonerObj.imglist[i].split('/')[-1].split('.')[0].split('_')[-2:]) not in blacklist]
-
-            y_true = [l for i,l in enumerate(ReasonerObj.labels)
-                      if ReasonerObj.dimglist[i] is not None
-                      and '_'.join(ReasonerObj.imglist[i].split('/')[-1].split('.')[0].split('_')[-2:]) not in blacklist]
-        else: #eval on full RGB test set
-            y_true = ReasonerObj.labels
+        y_true = ReasonerObj.labels
         print(classification_report(y_true, y_pred,digits=4))
         print(accuracy_score(y_true, y_pred))
     else:#eval top-K ranking (ranking quality metrics)
-        eval_ranking(ReasonerObj,K,depth_aligned,blackl=blacklist)
+        eval_ranking(ReasonerObj,K)
 
-
-def eval_ranking(ReasonerObj,K,depth_aligned,blackl=[]):
+def eval_ranking(ReasonerObj,K):
     """
     Prints mean Precision@K, mean nDCG@K and hit ratio @ K
     """
@@ -124,9 +110,6 @@ def eval_ranking(ReasonerObj,K,depth_aligned,blackl=[]):
     for n in range(2, K + 2):
         IDCG += float(1 / math.log(n, 2))
     for z, (ranking, gt_label) in enumerate(zip(y_pred, y_true)):
-        if depth_aligned and (ReasonerObj.dimglist[z] is None \
-                              or ReasonerObj.imglist[z].split('/')[-1].split('_')[-2] in blackl):
-            continue
         pred_rank = [1 if r == gt_label else 0 for r in ranking]
         dis_scores = [float(1 / math.log(i + 2, 2)) for i, r in enumerate(ranking) if r == gt_label]
         no_hits = pred_rank.count(1)

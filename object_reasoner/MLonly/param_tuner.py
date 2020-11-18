@@ -1,58 +1,55 @@
 """
 This script recommends a confidence threshold for the Euclidean distance
-based on matching the first n embeddings from test set against the support set.
+based on matching a random subsample of test embeddings from test set against the support set.
 This distance threshold can be then used as starting point for
 fine-tuning on the test set (i.e., in the ML prediction selection model under cli.py)
 """
-import torch
-import os
-import sys
-import numpy as np
+
+from sklearn.model_selection import StratifiedKFold
 import statistics
-import data_loaders
-import models
-import object_reasoner.preprocessing.utils as utl
 
-#input arguments
-n = 10
-args = type('args', (object,), {})()
-args.set ="KMi"
+def subsample(Reasonerobj, test1_index, test2_index, basemethod):
+    # generate test splits so that all contain the same distribution of classes, or as close as possible
+    allclasses = Reasonerobj.mapper.values()
+    #retain larger split as test set, smaller split is for tuning the epsilon params
+    Reasonerobj.labels = [lbl for i, lbl in enumerate(Reasonerobj.labels) if i in test1_index]
+    Reasonerobj.predictions = [t for i, t in enumerate(Reasonerobj.predictions) if i in test1_index]
+    predictions2 = [t for i, t in enumerate(Reasonerobj.predictions) if i in test2_index]
+    if basemethod =='two-stage':
+        Reasonerobj.predictions_B = [t for i, t in enumerate(Reasonerobj.predictions_B) if i in test1_index]
+        predictions_B2= [t for i, t in enumerate(Reasonerobj.predictions_B) if i in test2_index]
+    else: Reasonerobj.predictions_B, predictions_B2 = None, None
+    if Reasonerobj.set == 'arc':
+        Reasonerobj.tsamples = [s for i, s in enumerate(Reasonerobj.tsamples) if i in test1_index]
+    else: Reasonerobj.tsamples = None
+    Reasonerobj.dimglist = [imge for i, imge in enumerate(Reasonerobj.dimglist) if i in test1_index]
+    Reasonerobj.imglist = [imge for i, imge in enumerate(Reasonerobj.imglist) if i in test1_index]
+    Reasonerobj.epsilon_set = estimate_epsilon(predictions2, predictions_B2, allclasses)
+    return Reasonerobj
 
-if args.set=='KMi':
-    args.baseline = "k-net"
-    args.test_res = "./data"
-    kprod_emb, ktest_emb, _,_= utl.load_emb_space(args)
-    args.baseline = "n-net"
-    nprod_emb, ntest_emb, _, _ = utl.load_emb_space(args)
+def estimate_epsilon(subsample_preds_algo1, subsample_preds_algo2, classlist):
+    """
+    Input:  - predictions on test subset by ML algorithm 1
+            - predictions on test subset by ML algorithm 2
+            - list of N classes
+    Output: a 3xN list, with values of the epsilon param for each class and for each algorithm
+            + indication of the class label those value refer to
+    """
+    epsilon_set = []
+    for classl in classlist:
+        mean_predwise1,mean_predwise2 = [],[]
+        if subsample_preds_algo2 is None: #only one baseline algorithm
+            for pred in subsample_preds_algo1:
+                try:
+                    mean_predwise1.append(statistics.mean([score for l_, score in pred if l_ == classl]))
+                except: continue
+            epsilon_set.append((classl, statistics.mean(mean_predwise1), None))
+        else:
+            for pred,pred2 in list(zip(subsample_preds_algo1,subsample_preds_algo2)):
+                try:
+                    mean_predwise1.append(statistics.mean([score for l_,score in pred if l_ ==classl]))
+                    mean_predwise2.append(statistics.mean([score for l_,score in pred2 if l_ ==classl]))
+                except: continue
+            epsilon_set.append((classl,statistics.mean(mean_predwise1),statistics.mean(mean_predwise2)))
 
-elif args.set=='arc':
-    args.baseline = "two-stage"
-    args.test_res = os.path.join("../../arc-robot-vision/image-matching/")
-    kprod_emb, ktest_emb, nprod_emb, ntest_emb = utl.load_emb_space(args)
-
-else:
-    print("Dataset not supported yet")
-    sys.exit(0)
-
-# normalise vectors to normalise scores
-ktest_emb = ktest_emb / np.linalg.norm(ktest_emb)
-ntest_emb = ntest_emb/ np.linalg.norm(ntest_emb)
-kprod_emb = kprod_emb / np.linalg.norm(kprod_emb)
-nprod_emb = nprod_emb / np.linalg.norm(nprod_emb)
-
-#pick first n test embeddings
-ksubset = ktest_emb[:n,:] #n x 2048
-nsubset = ntest_emb[:n,:]
-
-ndists,kdists = [],[]
-for i in range(n):
-    nemb = nsubset[i,:]
-    kemb = ksubset[i,:]
-    nl2_dist = np.linalg.norm(nemb - nprod_emb, axis=1)
-    kl2_dist = np.linalg.norm(kemb - kprod_emb, axis=1)
-    ndists.append(nl2_dist.min())
-    kdists.append(kl2_dist.min())
-
-print("Suggested Epsilon for N-net is %f" % (statistics.mean(ndists)))
-print("Suggested Epsilon for K-net is %f" % (statistics.mean(kdists)))
-
+    return epsilon_set

@@ -157,11 +157,14 @@ class ObjectReasoner():
                 os.mkdir(args.preds)
             # # First time loading preds from raw embeddings
             self.kprod_emb, self.ktest_emb, self.nprod_emb, self.ntest_emb = utl.load_emb_space(args,fname)
+
             if args.baseline == 'two-stage': #both k-net and n-net pred are loaded
                 self.predictions, self.predictions_B = predictors.pred_twostage(self, args)
             else:
                 self.predictions = predictors.pred_singlemodel(self, args)
                 self.predictions_B = None
+
+            #Save predictions locally
             if self.predictions is not None and args.set=='KMi':
                 if args.baseline !='two-stage':
                     np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
@@ -204,8 +207,8 @@ class ObjectReasoner():
         """ Evaluate ML predictions before hybrid reasoning"""
         print("Double checking top-1 accuracies for ML baseline...")
         if self.set == 'KMi':  # class-wise report
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True, K=5)
+            eval_KMi(self)
+            eval_KMi(self,K=5)
         else:  # separate eval for known vs novel
             eval_singlemodel(self)
             eval_singlemodel(self,K=5)
@@ -222,6 +225,8 @@ class ObjectReasoner():
         pclcluster = True
         all_predictions = self.predictions # copy to store all similarity scores, not just top 5
         all_predictions_B = self.predictions_B
+
+        #TODO now there is a self.epsilons list to derive conf thresholds from
 
         if self.set == 'KMi':
             # segmented areas are higher quality and foreground extract is skipped
@@ -496,26 +501,26 @@ class ObjectReasoner():
                 json.dump(size_summary, fout)
         if self.set == 'KMi':
             print("Knowledge-corrected (size qual + flat + AR)")
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True,K=5)
+            eval_KMi(self)
+            eval_KMi(self,K=5)
             print("Knowledge-corrected (size qual)")
             self.predictions = sizequal_copy
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True, K=5)
+            eval_KMi(self)
+            eval_KMi(self, K=5)
             #print("Knowledge-corrected (size qual+prop)")
             print("Knowledge-corrected (size qual+flat)")
             self.predictions = flat_copy
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True, K=5)
+            eval_KMi(self)
+            eval_KMi(self, K=5)
 
             print("Knowledge-corrected (size qual+thin)")
             self.predictions = thin_copy
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True, K=5)
+            eval_KMi(self)
+            eval_KMi(self, K=5)
             print("Knowledge-corrected (size qual + thin + AR)")
             self.predictions = thinAR_copy
-            eval_KMi(self, depth_aligned=True)
-            eval_KMi(self, depth_aligned=True, K=5)
+            eval_KMi(self)
+            eval_KMi(self, K=5)
 
         else:  # separate eval for known vs novel
             print("Knowledge-corrected (size qual + flat + AR)")

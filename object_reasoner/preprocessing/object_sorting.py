@@ -194,6 +194,7 @@ def remove_outliers(obj_dict):
         measurements = obj_dict[k]["dims_cm"]  # array of measurements
         try:
             is_inlier = clf.fit_predict(measurements)
+            outls = [dims for i,dims in enumerate(measurements) if is_inlier[i]==-1]
             cleaned_measures = [dims for i,dims in enumerate(measurements) if is_inlier[i]==1]
             obj_dict[k]["dims_cm"] = cleaned_measures
         except ValueError:

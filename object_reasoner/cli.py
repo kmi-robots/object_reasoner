@@ -2,7 +2,9 @@
 import argparse
 import sys
 from object_reasoner import ObjectReasoner
-
+from MLonly.param_tuner import subsample
+from preprocessing import utils as utls
+from sklearn.model_selection import StratifiedKFold
 
 def main():
     """Console script for object_reasoner."""
@@ -40,7 +42,13 @@ def main():
         print("Known vs Novel leverage only supported for arc set")
         return 0
     reasoner = ObjectReasoner(args)
-    reasoner.run()
+    reasoner = utls.exclude_nodepth(reasoner,args.baseline)
+    # Nfold stratified cross-validation for test results
+    # subsample test set to devote a small portion to param tuning
+    skf = StratifiedKFold(n_splits=7,random_state=0)  # random state set to int to make it reproducible across runs
+    for test1_index, test2_index in skf.split(reasoner.predictions, reasoner.labels):
+        reasoner = subsample(reasoner, test1_index, test2_index, args.baseline)
+        reasoner.run()
     return 0
 
 def str2bool(v):
