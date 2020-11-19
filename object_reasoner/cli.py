@@ -5,6 +5,8 @@ from object_reasoner import ObjectReasoner
 from MLonly.param_tuner import subsample
 from preprocessing import utils as utls
 from sklearn.model_selection import StratifiedKFold
+import statistics
+import os,json
 
 def main():
     """Console script for object_reasoner."""
@@ -41,14 +43,28 @@ def main():
     if args.set == 'KMi' and args.baseline == 'two-stage':
         print("Known vs Novel leverage only supported for arc set")
         return 0
+    overall_res= {m:{} for m in ['MLonly','area','area+flat','area+thin','area+flat+AR','area+thin+AR']}
     reasoner = ObjectReasoner(args)
     reasoner = utls.exclude_nodepth(reasoner,args.baseline)
+    # overall_res = reasoner.run(overall_res)
     # Nfold stratified cross-validation for test results
     # subsample test set to devote a small portion to param tuning
-    skf = StratifiedKFold(n_splits=7,random_state=0)  # random state set to int to make it reproducible across runs
+    nsplits = 7
+    skf = StratifiedKFold(n_splits=nsplits)
     for test1_index, test2_index in skf.split(reasoner.predictions, reasoner.labels):
         reasoner = subsample(reasoner, test1_index, test2_index, args.baseline)
-        reasoner.run()
+        overall_res = reasoner.run(overall_res)
+
+    mean_res ={}
+    for method, subdict in overall_res:
+        print("---Cross-fold eval results for method %s----" % method)
+        mean_res[method]={}
+        for metric_name, metric_array in subdict:
+            meanm = statistics.mean(metric_array)
+            print("Mean %s: %f" % (metric_name,meanm))
+            mean_res[method][metric_name]= meanm
+    with open(os.path.join(args.preds,'eval_results_%s_%s'% (args.baseline,args.set)),'w') as jout:
+        json.dump(mean_res,jout)
     return 0
 
 def str2bool(v):

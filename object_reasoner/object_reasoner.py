@@ -15,7 +15,7 @@ import preprocessing.depth_img_processing as dimgproc
 from preprocessing.rgb_img_processing import crop_test
 import preprocessing.pcl_processing as pclproc
 import predict as predictors
-from evalscript import eval_singlemodel, eval_KMi
+from evalscript import eval_singlemodel
 
 class ObjectReasoner():
     def __init__(self, args):
@@ -203,15 +203,11 @@ class ObjectReasoner():
                         self.predictions = pickle.load(fp)
                         self.predictions_B = pickle.load(fp2)
 
-    def run(self):
+    def run(self, eval_dictionary):
         """ Evaluate ML predictions before hybrid reasoning"""
-        print("Double checking top-1 accuracies for ML baseline...")
-        if self.set == 'KMi':  # class-wise report
-            eval_KMi(self)
-            eval_KMi(self,K=5)
-        else:  # separate eval for known vs novel
-            eval_singlemodel(self)
-            eval_singlemodel(self,K=5)
+        print("Evaluating ML baseline...")
+        eval_dictionary = eval_singlemodel(self,eval_dictionary, 'MLonly')
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'MLonly', K=5)
 
         print("Reasoning for correction ... ")
         """Data stats and monitoring vars for debugging"""
@@ -242,7 +238,7 @@ class ObjectReasoner():
             foregroundextract = True
             self.predictions = [ar[:5,:] for ar in self.predictions] #only top-5 ranking
             if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
-            T =  [-7.739329757837735, -6.268319143699288, -4.797308529560841, -3.326297915422394]
+            T = [-7.739329757837735, -6.268319143699288, -4.797308529560841, -3.326297915422394]
             lam = [-3.5866347222619455, -2.5680992585358005, -1.5495637948096554]
             epsilon = (0.033357,0.021426) #(Nnet, Knet) #0.03
             if self.set == 'arc' and self.baseline == 'k-net':
@@ -499,57 +495,33 @@ class ObjectReasoner():
                     size_summary[k]['max-%s' % subk] = max(v)
             with open(os.path.join(self.p_to_preds,"../logged_stats.json"), 'w') as fout:
                 json.dump(size_summary, fout)
-        if self.set == 'KMi':
-            print("Knowledge-corrected (size qual + flat + AR)")
-            eval_KMi(self)
-            eval_KMi(self,K=5)
-            print("Knowledge-corrected (size qual)")
-            self.predictions = sizequal_copy
-            eval_KMi(self)
-            eval_KMi(self, K=5)
-            #print("Knowledge-corrected (size qual+prop)")
-            print("Knowledge-corrected (size qual+flat)")
-            self.predictions = flat_copy
-            eval_KMi(self)
-            eval_KMi(self, K=5)
 
-            print("Knowledge-corrected (size qual+thin)")
-            self.predictions = thin_copy
-            eval_KMi(self)
-            eval_KMi(self, K=5)
-            print("Knowledge-corrected (size qual + thin + AR)")
-            self.predictions = thinAR_copy
-            eval_KMi(self)
-            eval_KMi(self, K=5)
-
-        else:  # separate eval for known vs novel
-            print("Knowledge-corrected (size qual + flat + AR)")
-            eval_singlemodel(self)
-            eval_singlemodel(self,K=5)
-            print("Knowledge-corrected (size qual)")
-            self.predictions = sizequal_copy
-            eval_singlemodel(self)
-            eval_singlemodel(self, K=5)
-            # print("Knowledge-corrected (size qual+prop)")
-            print("Knowledge-corrected (size qual+flat)")
-            self.predictions = flat_copy
-            eval_singlemodel(self)
-            eval_singlemodel(self, K=5)
-            print("Knowledge-corrected (size qual+thin)")
-            self.predictions = thin_copy
-            eval_singlemodel(self)
-            eval_singlemodel(self, K=5)
-            print("Knowledge-corrected (size qual + thin + AR)")
-            self.predictions = thinAR_copy
-            eval_singlemodel(self)
-            eval_singlemodel(self, K=5)
+        print("Knowledge-corrected (size qual + flat + AR)")
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+flat+AR')
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+flat+AR',K=5)
+        print("Knowledge-corrected (size qual)")
+        self.predictions = sizequal_copy
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area')
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area',K=5)
+        print("Knowledge-corrected (size qual+flat)")
+        self.predictions = flat_copy
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+flat')
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+flat',K=5)
+        print("Knowledge-corrected (size qual+thin)")
+        self.predictions = thin_copy
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+thin')
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+thin',K=5)
+        print("Knowledge-corrected (size qual + thin + AR)")
+        self.predictions = thinAR_copy
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+thin+AR')
+        eval_dictionary = eval_singlemodel(self,eval_dictionary,'area+thin+AR',K=5)
 
         print("{} out of {} images need correction ".format(no_corrected,len(self.dimglist)))
         print("{} out of {} images were not corrected, no depth data available ".format(non_depth_aval,len(self.dimglist)))
         print("{} images {} not corrected due to processing issues".format(non_processed_pcls,len(self.dimglist)))
         print("Names of discarded img files: %s" % str(non_processed_fnames))
         print("for {} out of {} images size predictor was not confident enough, fallback to ML score".format(nfallbacks,len(self.dimglist)))
-        return
+        return eval_dictionary
 
     def depth2PCL(self,dimage,foregroundextract):
         if foregroundextract:
@@ -641,5 +613,22 @@ class ObjectReasoner():
 
         return [candidates_num, candidates_num_flat, candidates_num_thin, candidates_num_flatAR, candidates_num_thinAR]
 
+    def makereadable(self,valid_rank, valid_rank_flat, valid_rank_thin, valid_rank_flatAR, valid_rank_thinAR):
 
+        read_rank = [(self.remapper[valid_rank[z, 0]], valid_rank[z, 1]) for z in
+                     range(valid_rank.shape[0])]
+        read_rank_flat = [(self.remapper[valid_rank_flat[z, 0]], valid_rank_flat[z, 1]) for z in
+                          range(valid_rank_flat.shape[0])]
+        read_rank_thin = [(self.remapper[valid_rank_thin[z, 0]], valid_rank_thin[z, 1]) for z in
+                          range(valid_rank_thin.shape[0])]
+        if len(valid_rank_flatAR)>0:
+            read_rank_flatAR = [(self.remapper[valid_rank_flatAR[z, 0]], valid_rank_flatAR[z, 1]) for z in
+                                range(valid_rank_flatAR.shape[0])]
+        else: read_rank_flatAR =[]
+        if len(valid_rank_thinAR)>0:
+            read_rank_thinAR = [(self.remapper[valid_rank_thinAR[z, 0]], valid_rank_thinAR[z, 1]) for z in
+                            range(valid_rank_thinAR.shape[0])]
+        else: read_rank_thinAR=[]
+
+        return [read_rank, read_rank_flat, read_rank_thin, read_rank_flatAR, read_rank_thinAR]
 

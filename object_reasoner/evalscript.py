@@ -1,16 +1,12 @@
-from sklearn.metrics import classification_report, accuracy_score, dcg_score, ndcg_score, precision_score
+from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support
 import math
-#import pprint
-#import os
-#import json
-import numpy as np
-"""
-Evaluation script - top-1 eval accuracy
-to reproduce results in https://github.com/andyzeng/arc-robot-vision/image-matching
-"""
 
-def eval_singlemodel(ReasonerObj,K=1):
-    if K==1:
+def eval_singlemodel(ReasonerObj,eval_d,method, K=1):
+    if K==1 and ReasonerObj.set=='arc':
+        """
+        Evaluation script - top-1 eval accuracy
+        to reproduce results in https://github.com/andyzeng/arc-robot-vision/image-matching
+        """
         all_labels = ReasonerObj.labels
         knownclasses = [v['label'] for v in ReasonerObj.known.values()]
         newclasses = [v['label'] for v in ReasonerObj.novel.values()]
@@ -18,7 +14,6 @@ def eval_singlemodel(ReasonerObj,K=1):
         #all_preds = ReasonerObj.predictions[:,0,0].astype('int').astype('str').tolist()
         known_labels = [l for l in all_labels if l in knownclasses]
         new_labels = [l for l in all_labels if l in newclasses]
-
         all_sum = 0
         k_sum = 0
         n_sum = 0
@@ -32,12 +27,35 @@ def eval_singlemodel(ReasonerObj,K=1):
         print("Mixed object accuracy: %f" % float(all_sum/len(all_preds)))
         print("Known object accuracy: %f" % float(k_sum / len(known_labels)))
         print("Novel object accuracy: %f" % float(n_sum / len(new_labels)))
-    else: #eval quality of top-K ranking
-        eval_ranking(ReasonerObj, K, False)
-    return
+        for k, metr in [('known_acc',float(k_sum / len(known_labels)) ), ('novel_acc',float(k_sum / len(known_labels)) ), \
+                         ('mixed_acc',float(all_sum / len(all_preds)))]:
+            try: eval_d[method][k].append(metr)
+            except KeyError:
+                eval_d[method][k] = []
+                eval_d[method][k].append(metr)
+        return eval_d
+
+    elif K==1 and ReasonerObj.set=='KMi':
+        # eval top-1 of each ranking
+        y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
+        y_true = ReasonerObj.labels
+        global_acc = accuracy_score(y_true, y_pred)
+        print(classification_report(y_true, y_pred, digits=4))
+        print(global_acc)
+        Pu,Ru, F1u, _ = precision_recall_fscore_support(y_true, y_pred, average='macro')
+        Pw, Rw, F1w, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted')
+        for k,metr in [('accuracy',global_acc),('Punweighted',Pu),('Runweighted',Ru),('F1unweighted',F1u), ('Pweighted',Pw),('Rweighted',Rw),('F1weighted',F1w)]:
+            try:eval_d[method][k].append(metr)
+            except KeyError:
+                eval_d[method][k] =[]
+                eval_d[method][k].append(metr)
+        return eval_d
+    else:#eval quality of top-K ranking
+        return eval_ranking(ReasonerObj, K, eval_d,method)
+
 
 def eval_twostage():
-    """Two-stage pipeline, by Zeng et al. (2018). Skipped because it uses gt labels to predict Known v Novel"""
+    """Two-stage pipeline, by Zeng et al. (2018). Skipped because it uses gt labels to predict Known v Novel optimal thresholds"""
     return
 
 def eval_classifier(all_gt_labels, knownclasses, predicted):
@@ -74,27 +92,10 @@ def eval_classifier(all_gt_labels, knownclasses, predicted):
     print("Mixed object accuracy: %f" % float(all_sum / len(all_preds)))
     print("Known object accuracy: %f" % float(k_sum / len(known_labels)))
     print("Novel object accuracy: %f" % float(n_sum / len(new_labels)))
-
     return
 
 
-def eval_KMi(ReasonerObj, K=1):
-    """
-    Used for KMi test set when all classes are known, based on scikit-learn
-    If K is set, it looks at whether the correct answer appears in the top-K ranking
-    if depth-aligned is True, evals only on those images which have an accurate (and non null) match for depth
-    """
-    print("Class-wise test results \n")
-    if K==1:
-        # eval top-1 of each ranking
-        y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
-        y_true = ReasonerObj.labels
-        print(classification_report(y_true, y_pred,digits=4))
-        print(accuracy_score(y_true, y_pred))
-    else:#eval top-K ranking (ranking quality metrics)
-        eval_ranking(ReasonerObj,K)
-
-def eval_ranking(ReasonerObj,K):
+def eval_ranking(ReasonerObj,K,eval_d,method):
     """
     Prints mean Precision@K, mean nDCG@K and hit ratio @ K
     """
@@ -121,3 +122,11 @@ def eval_ranking(ReasonerObj,K):
     print("Avg ranking Precision@%i: %f " % (K, float(sum(precisions) / len(precisions))))
     print("Avg Normalised DCG @%i: %f" % (K, float(sum(ndcgs) / len(precisions))))
     print("Hit ratio @%i: %f" % (K, float(hits / len(precisions))))
+
+    for k,metr in [('meanP@K', float(sum(precisions) / len(precisions))), ('meannDCG@K', float(sum(ndcgs) / len(precisions))) \
+        , ('hitratio', float(hits / len(precisions)))]:
+        try: eval_d[method][k].append(metr)
+        except KeyError:
+            eval_d[method][k] = []
+            eval_d[method][k].append(metr)
+    return eval_d

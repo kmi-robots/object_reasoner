@@ -13,11 +13,11 @@ def subsample(Reasonerobj, test1_index, test2_index, basemethod):
     allclasses = Reasonerobj.mapper.values()
     #retain larger split as test set, smaller split is for tuning the epsilon params
     Reasonerobj.labels = [lbl for i, lbl in enumerate(Reasonerobj.labels) if i in test1_index]
-    Reasonerobj.predictions = [t for i, t in enumerate(Reasonerobj.predictions) if i in test1_index]
-    predictions2 = [t for i, t in enumerate(Reasonerobj.predictions) if i in test2_index]
+    Reasonerobj.predictions = Reasonerobj.predictions[test1_index]
+    predictions2 = Reasonerobj.predictions[test2_index]
     if basemethod =='two-stage':
-        Reasonerobj.predictions_B = [t for i, t in enumerate(Reasonerobj.predictions_B) if i in test1_index]
-        predictions_B2= [t for i, t in enumerate(Reasonerobj.predictions_B) if i in test2_index]
+        Reasonerobj.predictions_B = Reasonerobj.predictions_B[test1_index]
+        predictions_B2= Reasonerobj.predictions_B[test2_index]
     else: Reasonerobj.predictions_B, predictions_B2 = None, None
     if Reasonerobj.set == 'arc':
         Reasonerobj.tsamples = [s for i, s in enumerate(Reasonerobj.tsamples) if i in test1_index]

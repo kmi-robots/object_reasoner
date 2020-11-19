@@ -89,8 +89,8 @@ def exclude_nodepth(Reasonerobj, basemethod):
     Reasonerobj.labels = [l for i,l in enumerate(Reasonerobj.labels) if i in keep_indices]
     if Reasonerobj.set =='arc': Reasonerobj.tsamples = [l for i, l in enumerate(Reasonerobj.labels) if i in keep_indices]
     else: Reasonerobj.tsamples = None
-    Reasonerobj.predictions = [t for i, t in enumerate(Reasonerobj.predictions) if i in keep_indices]
-    if basemethod=='two-stage': Reasonerobj.predictions_B = [t for i, t in enumerate(Reasonerobj.predictions_B) if i in keep_indices]
+    Reasonerobj.predictions = Reasonerobj.predictions[keep_indices]
+    if basemethod=='two-stage': Reasonerobj.predictions_B[keep_indices]
     else: Reasonerobj.predictions_B = None
     Reasonerobj.dimglist = [imge for i, imge in enumerate(Reasonerobj.dimglist) if i in keep_indices]
     Reasonerobj.imglist = [imge for i, imge in enumerate(Reasonerobj.imglist) if i in keep_indices]
