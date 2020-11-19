@@ -7,6 +7,7 @@ from preprocessing import utils as utls
 from sklearn.model_selection import StratifiedKFold
 import statistics
 import os,json
+import copy
 
 def main():
     """Console script for object_reasoner."""
@@ -46,20 +47,21 @@ def main():
     overall_res= {m:{} for m in ['MLonly','area','area+flat','area+thin','area+flat+AR','area+thin+AR']}
     reasoner = ObjectReasoner(args)
     reasoner = utls.exclude_nodepth(reasoner,args.baseline)
+
     # overall_res = reasoner.run(overall_res)
     # Nfold stratified cross-validation for test results
     # subsample test set to devote a small portion to param tuning
     nsplits = 7
     skf = StratifiedKFold(n_splits=nsplits)
     for test1_index, test2_index in skf.split(reasoner.predictions, reasoner.labels):
-        reasoner = subsample(reasoner, test1_index, test2_index, args.baseline)
-        overall_res = reasoner.run(overall_res)
+        sampled_reasoner = subsample(copy.deepcopy(reasoner), test1_index, test2_index, args.baseline)
+        overall_res = sampled_reasoner.run(overall_res)
 
     mean_res ={}
-    for method, subdict in overall_res:
+    for method, subdict in overall_res.items():
         print("---Cross-fold eval results for method %s----" % method)
         mean_res[method]={}
-        for metric_name, metric_array in subdict:
+        for metric_name, metric_array in subdict.items():
             meanm = statistics.mean(metric_array)
             print("Mean %s: %f" % (metric_name,meanm))
             mean_res[method][metric_name]= meanm
