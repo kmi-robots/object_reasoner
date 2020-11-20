@@ -46,7 +46,7 @@ def main():
         return 0
     overall_res= {m:{} for m in ['MLonly','area','area+flat','area+thin','area+flat+AR','area+thin+AR']}
     reasoner = ObjectReasoner(args)
-    reasoner = utls.exclude_nodepth(reasoner,args.baseline)
+    if args.set=='KMi': reasoner = utls.exclude_nodepth(reasoner,args.baseline)
 
     # overall_res = reasoner.run(overall_res)
     # Nfold stratified cross-validation for test results

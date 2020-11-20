@@ -14,16 +14,21 @@ def subsample(Reasonerobj, test1_index, test2_index, basemethod):
     #retain larger split as test set, smaller split is for tuning the epsilon params
     Reasonerobj.labels = [lbl for i, lbl in enumerate(Reasonerobj.labels) if i in test1_index]
     fullpredictions,fullpredictions2 = Reasonerobj.predictions.copy(), Reasonerobj.predictions.copy()
-    Reasonerobj.predictions = fullpredictions[test1_index]
-    predictions2 = fullpredictions2[test2_index]
-    if basemethod =='two-stage':
-        fullpredictionsB, fullpredictionsB2 = Reasonerobj.predictions_B.copy(),Reasonerobj.predictions_B.copy()
-        Reasonerobj.predictions_B = fullpredictionsB[test1_index]
-        predictions_B2= fullpredictionsB[test2_index]
-    else: Reasonerobj.predictions_B, predictions_B2 = None, None
+    if Reasonerobj.set == 'KMi':
+        Reasonerobj.predictions = fullpredictions[test1_index]
+        predictions2 = fullpredictions2[test2_index]
+        Reasonerobj.predictions_B, predictions_B2 = None, None
+    else: #predictions are in a list
+        Reasonerobj.predictions = [pred for i, pred in enumerate(fullpredictions) if i in test1_index]
+        predictions2 = [pred for i, pred in enumerate(fullpredictions2) if i in test2_index]
+        if basemethod =='two-stage':
+            fullpredictionsB, fullpredictionsB2 = Reasonerobj.predictions_B.copy(),Reasonerobj.predictions_B.copy()
+            Reasonerobj.predictions_B = [pred for i, pred in enumerate(fullpredictionsB) if i in test1_index]
+            predictions_B2 = [pred for i, pred in enumerate(fullpredictionsB2) if i in test2_index]
     if Reasonerobj.set == 'arc':
         Reasonerobj.tsamples = [s for i, s in enumerate(Reasonerobj.tsamples) if i in test1_index]
     else: Reasonerobj.tsamples = None
+
     Reasonerobj.dimglist = [imge for i, imge in enumerate(Reasonerobj.dimglist) if i in test1_index]
     Reasonerobj.imglist = [imge for i, imge in enumerate(Reasonerobj.imglist) if i in test1_index]
     Reasonerobj.epsilon_set = estimate_epsilon(predictions2, predictions_B2, allclasses)
