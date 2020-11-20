@@ -37,21 +37,23 @@ def estimate_epsilon(subsample_preds_algo1, subsample_preds_algo2, classlist):
     Output: a 3xN list, with values of the epsilon param for each class and for each algorithm
             + indication of the class label those value refer to
     """
-    epsilon_set = []
+    min_classwise1, min_classwise2 = [],[]
+    epsilon_set= []
     for classl in classlist:
-        mean_predwise1,mean_predwise2 = [],[]
+        min_predwise1,min_predwise2 = [],[]
         if subsample_preds_algo2 is None: #only one baseline algorithm
             for pred in subsample_preds_algo1:
                 try:
-                    mean_predwise1.append(min([score for l_, score in pred if l_ == classl]))
+                    min_predwise1.append(min([score for l_, score in pred if l_ == classl]))
                 except: continue
-            epsilon_set.append((classl, min(mean_predwise1), None))
         else:
             for pred,pred2 in list(zip(subsample_preds_algo1,subsample_preds_algo2)):
                 try:
-                    mean_predwise1.append(min([score for l_,score in pred if l_ ==classl]))
-                    mean_predwise2.append(min([score for l_,score in pred2 if l_ ==classl]))
+                    min_predwise1.append(min([score for l_,score in pred if l_ ==classl]))
+                    min_predwise2.append(min([score for l_,score in pred2 if l_ ==classl]))
                 except: continue
-            epsilon_set.append((classl,statistics.mean(mean_predwise1),statistics.mean(mean_predwise2)))
-
+            min_classwise2.append(min(min_predwise2))
+        min_classwise1.append(min(min_predwise1))
+    if subsample_preds_algo2 is None: epsilon_set= (statistics.mean(min_classwise1),None)
+    else: epsilon_set = (statistics.mean(min_classwise1),statistics.mean(min_classwise2))
     return epsilon_set

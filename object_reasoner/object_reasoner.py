@@ -231,8 +231,6 @@ class ObjectReasoner():
             if self.predictions_B: self.predictions_B = self.predictions_B[:, :5, :]
             T= [-4.149075426919093,-2.776689935975939, -1.4043044450327855, -0.0319189540896323]
             lam = [-2.0244465762356794, -1.0759355070093815, -0.12742443778308354]
-            """epsilon = 0.040554 #0.04
-            N=3"""
 
         elif self.set =='arc':
             foregroundextract = True
@@ -240,13 +238,7 @@ class ObjectReasoner():
             if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
             T = [-7.739329757837735, -6.268319143699288, -4.797308529560841, -3.326297915422394]
             lam = [-3.5866347222619455, -2.5680992585358005, -1.5495637948096554]
-            """epsilon = (0.033357,0.021426) #(Nnet, Knet) #0.03
-            if self.set == 'arc' and self.baseline == 'k-net':
-                epsilon = epsilon[1]
-            elif self.set == 'arc' and self.baseline == 'n-net':
-                epsilon = epsilon[0]
-            N = 3
-            """
+
         estimated_sizes = {}
         sizequal_copy = self.predictions.copy()
         flat_copy = self.predictions.copy()
@@ -393,10 +385,10 @@ class ObjectReasoner():
                         or (str(current_prediction) not in candidates_num and str(current_prediction_B) not in candidates_num):
                         print("Both or neither predictions are area-validated..picking most confident one")
 
-                        topc_num, topscore_Knet = self.mapper(valid_rank[0][0]),valid_rank[0][1]
-                        topc_numB, topscore_Nnet = self.mapper(valid_rank_B[0][0]),valid_rank_B[0][1]
+                        topscore_Knet = valid_rank[0][1]
+                        topscore_Nnet = valid_rank_B[0][1]
                         #conf thresh is class-wise and algorithm-wise
-                        Kconf_thresh, Nconf_thresh = self.epsilon_set[int(topc_num)-1][1],self.epsilon_set[int(topc_num)-1][2]
+                        Kconf_thresh, Nconf_thresh = self.epsilon_set[0],self.epsilon_set[1]
 
                         #distance between top score and ideal epsilon as suggested by param tuner
                         dis_Knet = abs(topscore_Knet - Kconf_thresh)
@@ -466,7 +458,6 @@ class ObjectReasoner():
                     if candidates_num_thinAR is not None and self.set!='arc':
                         print("Knowledge validated ranking (area + thin + AR)")
                         print(read_rank_thinAR[:5])
-
                 print("================================")
 
         print("Took % fseconds." % float(time.time() - start)) #global proc time
@@ -546,8 +537,8 @@ class ObjectReasoner():
 
     def ML_predselection(self,read_current_rank,distance_ts):
 
-        cl_num,dis = self.mapper[read_current_rank[0][0]], read_current_rank[0][1]  # distance between test embedding and prod embedding
-        conf_thresh = distance_ts[int(cl_num)-1][1] #based on the class being predicted
+        dis = read_current_rank[0][1]  # distance between test embedding and prod embedding
+        conf_thresh = distance_ts[0]
         if dis < conf_thresh:  # lower distance/higher conf
             # ML is confident, keep as is
             #print("%s predicted as %s" % (gt_label, current_label))
