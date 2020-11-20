@@ -43,14 +43,14 @@ def estimate_epsilon(subsample_preds_algo1, subsample_preds_algo2, classlist):
         if subsample_preds_algo2 is None: #only one baseline algorithm
             for pred in subsample_preds_algo1:
                 try:
-                    mean_predwise1.append(statistics.mean([score for l_, score in pred if l_ == classl]))
+                    mean_predwise1.append(min([score for l_, score in pred if l_ == classl]))
                 except: continue
-            epsilon_set.append((classl, statistics.mean(mean_predwise1), None))
+            epsilon_set.append((classl, min(mean_predwise1), None))
         else:
             for pred,pred2 in list(zip(subsample_preds_algo1,subsample_preds_algo2)):
                 try:
-                    mean_predwise1.append(statistics.mean([score for l_,score in pred if l_ ==classl]))
-                    mean_predwise2.append(statistics.mean([score for l_,score in pred2 if l_ ==classl]))
+                    mean_predwise1.append(min([score for l_,score in pred if l_ ==classl]))
+                    mean_predwise2.append(min([score for l_,score in pred2 if l_ ==classl]))
                 except: continue
             epsilon_set.append((classl,statistics.mean(mean_predwise1),statistics.mean(mean_predwise2)))
 

@@ -231,8 +231,8 @@ class ObjectReasoner():
             if self.predictions_B: self.predictions_B = self.predictions_B[:, :5, :]
             T= [-4.149075426919093,-2.776689935975939, -1.4043044450327855, -0.0319189540896323]
             lam = [-2.0244465762356794, -1.0759355070093815, -0.12742443778308354]
-            epsilon = 0.040554 #0.04
-            N=3
+            """epsilon = 0.040554 #0.04
+            N=3"""
 
         elif self.set =='arc':
             foregroundextract = True
@@ -240,13 +240,13 @@ class ObjectReasoner():
             if self.predictions_B: self.predictions_B = [ar[:5,:] for ar in self.predictions_B]
             T = [-7.739329757837735, -6.268319143699288, -4.797308529560841, -3.326297915422394]
             lam = [-3.5866347222619455, -2.5680992585358005, -1.5495637948096554]
-            epsilon = (0.033357,0.021426) #(Nnet, Knet) #0.03
+            """epsilon = (0.033357,0.021426) #(Nnet, Knet) #0.03
             if self.set == 'arc' and self.baseline == 'k-net':
                 epsilon = epsilon[1]
             elif self.set == 'arc' and self.baseline == 'n-net':
                 epsilon = epsilon[0]
             N = 3
-
+            """
         estimated_sizes = {}
         sizequal_copy = self.predictions.copy()
         flat_copy = self.predictions.copy()
@@ -293,7 +293,7 @@ class ObjectReasoner():
                     if current_label == 'empty':
                         sizeValidate=False
                     else:
-                        sizeValidate,_= self.ML_predselection(read_current_rank,current_label,gt_label,distance_t=epsilon,n=N)
+                        sizeValidate,_= self.ML_predselection(read_current_rank,self.epsilon_set)
                 else:# ARC case: two ML baselines could be leveraged
                     if current_label ==current_label_B or current_label=='empty':
                         # if there is agreement between the 2 Nets, retain predictions as-is
@@ -392,20 +392,23 @@ class ObjectReasoner():
                     if (str(current_prediction) in candidates_num and str(current_prediction_B) in candidates_num) \
                         or (str(current_prediction) not in candidates_num and str(current_prediction_B) not in candidates_num):
                         print("Both or neither predictions are area-validated..picking most confident one")
-                        topscore_Knet = valid_rank[0][1]
-                        topscore_Nnet = valid_rank_B[0][1]
+
+                        topc_num, topscore_Knet = self.mapper(valid_rank[0][0]),valid_rank[0][1]
+                        topc_numB, topscore_Nnet = self.mapper(valid_rank_B[0][0]),valid_rank_B[0][1]
+                        #conf thresh is class-wise and algorithm-wise
+                        Kconf_thresh, Nconf_thresh = self.epsilon_set[int(topc_num)-1][1],self.epsilon_set[int(topc_num)-1][2]
 
                         #distance between top score and ideal epsilon as suggested by param tuner
-                        dis_Knet = abs(topscore_Knet - epsilon[1])
-                        dis_Nnet = abs(topscore_Nnet - epsilon[0])
+                        dis_Knet = abs(topscore_Knet - Kconf_thresh)
+                        dis_Nnet = abs(topscore_Nnet - Nconf_thresh)
 
-                        if topscore_Nnet < epsilon[0] and topscore_Knet > epsilon[1]:
+                        if topscore_Nnet < Nconf_thresh and topscore_Knet >= Kconf_thresh:
                             print("N-net more confident")
                             valid_rank = valid_rank_B
                             valid_rank_flat = valid_rank_flat_B
                             valid_rank_thin = valid_rank_thin_B
-                        elif topscore_Knet < epsilon[1] and topscore_Nnet > epsilon[0]: print("K-net more confident") # keep ranking as-is/do nothing
-                        elif topscore_Nnet<epsilon[0] and topscore_Knet<epsilon[1]: #equally confident
+                        elif topscore_Knet < Kconf_thresh and topscore_Nnet >= Nconf_thresh: print("K-net more confident") # keep ranking as-is/do nothing
+                        else: #both equally confident or neither of the two is confident
                             #pick the one that is smallest compared to (i.e., most distant from) their ideal threshold
                             if dis_Knet>dis_Nnet: print("K-net more confident") # keep ranking as-is/do nothing
                             else:
@@ -413,15 +416,6 @@ class ObjectReasoner():
                                 valid_rank = valid_rank_B
                                 valid_rank_flat = valid_rank_flat_B
                                 valid_rank_thin = valid_rank_thin_B
-                        else: #neither is confident
-                            #pick the one with the least distance from ideal threshold
-                            if dis_Knet<dis_Nnet: print("K-net more confident") # keep ranking as-is/do nothing
-                            else:
-                                print("N-net more confident")
-                                valid_rank = valid_rank_B
-                                valid_rank_flat = valid_rank_flat_B
-                                valid_rank_thin = valid_rank_thin_B
-
                     elif (str(current_prediction) not in candidates_num and str(current_prediction_B) in candidates_num):
                         print("Only N-net is size validated") # use N-net's validated ranking
                         valid_rank = valid_rank_B
@@ -550,12 +544,11 @@ class ObjectReasoner():
             cluster_pcl = obj_pcl
         return cluster_pcl
 
-    def ML_predselection(self,read_current_rank,current_label,gt_label,distance_t=0.04,n=3):
+    def ML_predselection(self,read_current_rank,distance_ts):
 
-        MLclasses = [l[0] for l in read_current_rank]
-        l_, c_ = Counter(MLclasses).most_common()[0]
-        dis = read_current_rank[0][1]  # distance between test embedding and prod embedding
-        if dis < distance_t and c_ >= n:  # lower distance/higher conf and class appears at least three times
+        cl_num,dis = self.mapper[read_current_rank[0][0]], read_current_rank[0][1]  # distance between test embedding and prod embedding
+        conf_thresh = distance_ts[int(cl_num)-1][1] #based on the class being predicted
+        if dis < conf_thresh:  # lower distance/higher conf
             # ML is confident, keep as is
             #print("%s predicted as %s" % (gt_label, current_label))
             print("ML based ranking")
