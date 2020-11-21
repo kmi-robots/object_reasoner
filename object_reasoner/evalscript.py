@@ -27,7 +27,7 @@ def eval_singlemodel(ReasonerObj,eval_d,method, K=1):
         print("Mixed object accuracy: %f" % float(all_sum/len(all_preds)))
         print("Known object accuracy: %f" % float(k_sum / len(known_labels)))
         print("Novel object accuracy: %f" % float(n_sum / len(new_labels)))
-        for k, metr in [('known_acc',float(k_sum / len(known_labels)) ), ('novel_acc',float(k_sum / len(known_labels)) ), \
+        for k, metr in [('known_acc',float(k_sum / len(known_labels)) ), ('novel_acc',float(n_sum / len(new_labels))), \
                          ('mixed_acc',float(all_sum / len(all_preds)))]:
             try: eval_d[method][k].append(metr)
             except KeyError:
