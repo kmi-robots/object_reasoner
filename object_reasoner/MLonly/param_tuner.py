@@ -25,6 +25,7 @@ def subsample(Reasonerobj, test1_index, test2_index, basemethod):
             fullpredictionsB, fullpredictionsB2 = Reasonerobj.predictions_B.copy(),Reasonerobj.predictions_B.copy()
             Reasonerobj.predictions_B = [pred for i, pred in enumerate(fullpredictionsB) if i in test1_index]
             predictions_B2 = [pred for i, pred in enumerate(fullpredictionsB2) if i in test2_index]
+        else: Reasonerobj.predictions_B, predictions_B2 = None, None
     if Reasonerobj.set == 'arc':
         Reasonerobj.tsamples = [s for i, s in enumerate(Reasonerobj.tsamples) if i in test1_index]
     else: Reasonerobj.tsamples = None
