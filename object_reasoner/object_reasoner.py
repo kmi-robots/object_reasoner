@@ -400,7 +400,8 @@ class ObjectReasoner():
                             valid_rank_flat = valid_rank_flat_B
                             valid_rank_thin = valid_rank_thin_B
                         elif topscore_Knet < Kconf_thresh and topscore_Nnet >= Nconf_thresh: print("K-net more confident") # keep ranking as-is/do nothing
-                        else: #both equally confident or neither of the two is confident
+
+                        elif topscore_Knet < Kconf_thresh and topscore_Nnet < Nconf_thresh: #both equally confident neither of the two is confident
                             #pick the one that is smallest compared to (i.e., most distant from) their ideal threshold
                             if dis_Knet>dis_Nnet: print("K-net more confident") # keep ranking as-is/do nothing
                             else:
@@ -408,6 +409,14 @@ class ObjectReasoner():
                                 valid_rank = valid_rank_B
                                 valid_rank_flat = valid_rank_flat_B
                                 valid_rank_thin = valid_rank_thin_B
+                        else: #neither of the two is confident
+                            if dis_Knet<dis_Nnet: print("K-net more confident") # keep ranking as-is/do nothing
+                            else: #pick the one that is least distant from their ideal threshold
+                                print("N-net more confident")
+                                valid_rank = valid_rank_B
+                                valid_rank_flat = valid_rank_flat_B
+                                valid_rank_thin = valid_rank_thin_B
+
                     elif (str(current_prediction) not in candidates_num and str(current_prediction_B) in candidates_num):
                         print("Only N-net is size validated") # use N-net's validated ranking
                         valid_rank = valid_rank_B
