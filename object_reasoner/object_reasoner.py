@@ -222,8 +222,6 @@ class ObjectReasoner():
         all_predictions = self.predictions # copy to store all similarity scores, not just top 5
         all_predictions_B = self.predictions_B
 
-        #TODO now there is a self.epsilons list to derive conf thresholds from
-
         if self.set == 'KMi':
             # segmented areas are higher quality and foreground extract is skipped
             foregroundextract = False

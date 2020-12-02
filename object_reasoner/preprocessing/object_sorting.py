@@ -11,6 +11,9 @@ import numpy as np
 import statistics
 from sklearn.neighbors import LocalOutlierFactor
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams.update({'font.size': 8})
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 Xlabels = ['XS','small','medium','large','XL']
 Ylabels = ['flat','thin','thick','bulky']
@@ -138,6 +141,7 @@ def object_sorting(KB,args):
 
     return [areas1,areas2,areas3,depths1,depths2,depths3]
 
+
 def bin_creation(obj_dict,input_sorts,n_areabins=len(Xlabels),n_depthbins=len(Ylabels), C=3):
     """
     Create object groups/quadrants based on area surface v depth sorting
@@ -145,22 +149,34 @@ def bin_creation(obj_dict,input_sorts,n_areabins=len(Xlabels),n_depthbins=len(Yl
     Expects dims of a N x M (e.g.,5x4) grid to be given, depending on how many bins one wants to create
     """
     area_thresholds, depth_thresholds = [],[]
+    #fig, axes = plt.subplots(nrows=1,ncols=3,figsize=(7,3))#, constrained_layout=True)
     for config in range(C): # 3 configurations
         areas, depths = input_sorts[config], input_sorts[config+3]
         areas_ar, depths_ar = np.asarray(list(zip(*areas))[1]), np.asarray(list(zip(*depths))[1])
         areas_ar, depths_ar = np.log(areas_ar),np.log(depths_ar)
         H, xedges, yedges = np.histogram2d(areas_ar,depths_ar,bins=[n_areabins,n_depthbins])
         H = H.T # Let each row list bins with common y range.
-        # Plot 2D histogram
-        """fig = plt.figure(figsize=(7,3))
-        ax = fig.add_subplot(132, title=('Objects histogram - config %s') % str(config+1),aspect = 'equal')
-        X, Y = np.meshgrid(xedges, yedges)
-        ax.pcolormesh(X, Y, H)
-        cbaxes = fig.add_axes([0.1, 0.1, 0.03, 0.8])
-        cb = fig.colorbar(ax.collections[0], cax=cbaxes)
-        cb.set_label('counts in bin')
-        plt.show()"""
 
+        # Plot 2D histogram
+        """ax = axes[config]
+        #im = ax.imshow(H, interpolation='nearest', origin='low',extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
+        #fig.colorbar(im, ax=ax, fraction=0.046, pad=0.05)
+        #ax.set_aspect('equal')
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        if config ==1: xttl,yttl ='Mean area (d1*d2)', 'Mean thickness (d3)'
+        elif config ==2: xttl,yttl ='Mean area (d1*d3)', 'Mean thickness (d2)'
+        else: xttl,yttl ='Mean area (d2*d3)', 'Mean thickness (d1)'
+        ax.set_xlabel(xttl)
+        ax.set_ylabel(yttl)
+        X, Y = np.meshgrid(xedges, yedges)
+        pcm = ax.pcolormesh(X,Y,H)
+        fig.colorbar(pcm, ax=ax, fraction=0.046, pad=0.05)
+        #cb.set_label('counts in bin')
+        #set aspect based on axis limits to obtained three scaled subplots
+        asp = np.diff(ax.get_xlim())[0] / np.diff(ax.get_ylim())[0]
+        ax.set_aspect(asp)
+        """
         #Keep track of thresholds used for bin creation
         xedges_log,yedges_log = xedges.tolist().copy(),yedges.tolist().copy()
         area_thresholds.append(xedges_log[1:len(xedges)-1])
@@ -182,10 +198,14 @@ def bin_creation(obj_dict,input_sorts,n_areabins=len(Xlabels),n_depthbins=len(Yl
                 obj_dict[obj1]["has_size"] = []
                 obj_dict[obj1]["has_size"].append('-'.join((Xlabels[areabin - 1], Ylabels[depthbin - 1])))
 
+    #plt.tight_layout()
+    #plt.show()
+
     #After all configurations are considered, remove area-depth combination duplicates
     for k in obj_dict.keys():
         size_list = obj_dict[k]["has_size"]
         obj_dict[k]["has_size"] = list(set(size_list))
+
     return obj_dict,area_thresholds,depth_thresholds
 
 def remove_outliers(obj_dict):
