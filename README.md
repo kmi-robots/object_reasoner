@@ -1,4 +1,4 @@
-A Synoptic Size Representation to Categorise Objects in Service Robotics
+Code docs
 ======================================================
 
 [![image](https://img.shields.io/pypi/v/object_reasoner.svg)](https://pypi.python.org/pypi/object_reasoner)
@@ -9,7 +9,7 @@ Supported datasets
 ------------------
 
 -   the Lab RGBD dataset: You can find the relevant data and models to reproduce
-our results as part of a zipped folder [here](https://mega.nz/file/sk9QlISA#whLLoS4qpUCkaQpb47FQaS8XslRgpnk0RSjLL7pfIWI).
+our results as part of a zipped folder [here](https://mega.nz/file/s1k1GCQQ#u7JOQ6_1SGAwxDr7fte-ljxheqLyaKAsYSgsCZswOq0).
 **Note: the extracted files require about 2.5 GB of free disk space**.
 -   the 2017 Amazon Robotic Challenge (ARC) image matching set: please
     refer to these [instructions](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/)
@@ -51,7 +51,7 @@ and then using the `make pip-package` before installing the python lib manually 
 
 Getting started
 ---------------
-* After completing all the installation steps, download the relevant data [here](https://mega.nz/file/sk9QlISA#whLLoS4qpUCkaQpb47FQaS8XslRgpnk0RSjLL7pfIWI).
+* After completing all the installation steps, download the relevant data [here](https://mega.nz/file/s1k1GCQQ#u7JOQ6_1SGAwxDr7fte-ljxheqLyaKAsYSgsCZswOq0).
 
 * After downloading and unzipping the starter kit:
     * Move or copy the k-net and n-net folders under `object_reasoner/object_reasoner/data`
