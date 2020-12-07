@@ -57,16 +57,16 @@ class ObjectReasoner():
                 self.volumes[i] = v['dimensions'][0] * v['dimensions'][1] * v['dimensions'][2]  # size catalogue in meters
                 self.labelset.append(v['label'])
             self.mapper = dict((k, self.KB[k]['label']) for k in self.KB.keys())
-        elif self.set == 'KMi':
+        elif self.set == 'lab':
             try:
-                with open('./data/KMi_obj_catalogue_autom_valid.json') as fin,\
-                    open('./data/KMi_obj_catalogue.json') as fin2,\
-                    open('./data/KMi-set-2020/class_to_index.json') as cin:
+                with open('data/lab_obj_catalogue_autom_valid.json') as fin,\
+                    open('data/lab_obj_catalogue.json') as fin2,\
+                    open('data/Lab-set/class_to_index.json') as cin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
                     #self.refKB = json.load(fin2) #manually sorted objects
                     self.mapper = json.load(cin)
             except FileNotFoundError:
-                print("No KMi catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
+                print("No lab catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
                 sys.exit(0)
         self.remapper = dict((v, k) for k, v in self.mapper.items())  # swap keys with indices
 
@@ -77,13 +77,13 @@ class ObjectReasoner():
             self.labels = txtf.read().splitlines()       #gt labels for each test img
             # test samples (each of 20 classes,10 known v 10 novel, chosen at random)
             self.plabels = prf.read().splitlines()       # product img labels
-            if args.set =='KMi': self.imglist = imgf.read().splitlines()
+            if args.set =='lab': self.imglist = imgf.read().splitlines()
             else: self.imglist = [os.path.join(args.test_res,pp) for pp in imgf.read().splitlines()] #ARC support
 
     def init_depth_imglist(self,args):
-        if args.set =='KMi':
+        if args.set =='lab':
             """
-                    KMi set: Picked nearest depth frame to RGB image, based on timestamp.
+                    lab set: Picked nearest depth frame to RGB image, based on timestamp.
                     Depth images are saved as 16-bit PNG, where depth values are saved in millimeters (10-3m).
                     Invalid depth is set to 0.
             """
@@ -165,7 +165,7 @@ class ObjectReasoner():
                 self.predictions_B = None
 
             #Save predictions locally
-            if self.predictions is not None and args.set=='KMi':
+            if self.predictions is not None and args.set=='lab':
                 if args.baseline !='two-stage':
                     np.save(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), self.predictions)
                 else:
@@ -185,7 +185,7 @@ class ObjectReasoner():
                 sys.exit(0)
 
         else: #Load from local npy file
-            if args.set =='KMi':
+            if args.set =='lab':
                 if args.baseline != 'two-stage':
                     self.predictions = np.load(('%s/test_predictions_%s.npy' % (args.preds, args.baseline)), allow_pickle=True)
                     self.predictions_B = None
@@ -222,7 +222,7 @@ class ObjectReasoner():
         all_predictions = self.predictions # copy to store all similarity scores, not just top 5
         all_predictions_B = self.predictions_B
 
-        if self.set == 'KMi':
+        if self.set == 'lab':
             # segmented areas are higher quality and foreground extract is skipped
             foregroundextract = False
             self.predictions = self.predictions[:, :5, :]
@@ -247,7 +247,7 @@ class ObjectReasoner():
         for i,dimage in enumerate(self.dimglist):
             full_vision_rank_B, read_current_rank_B = None, None
 
-            if self.set == 'KMi':
+            if self.set == 'lab':
                 current_ranking = self.predictions[i, :]
                 current_prediction = self.predictions[i, 0, 0]
                 full_vision_rank = all_predictions[i, :]
@@ -279,7 +279,7 @@ class ObjectReasoner():
 
             """# 1. ML prediction selection module"""
             if self.scenario == 'selected':
-                if self.set=='KMi' or self.baseline!='two-stage':
+                if self.set=='lab' or self.baseline!='two-stage':
                     if current_label == 'empty':
                         sizeValidate=False
                     else:
@@ -433,7 +433,7 @@ class ObjectReasoner():
                 read_res = self.makereadable(valid_rank, valid_rank_flat, valid_rank_thin, valid_rank_flatAR, valid_rank_thinAR)
                 read_rank, read_rank_flat, read_rank_thin, read_rank_flatAR, read_rank_thinAR = read_res
 
-                if self.set =='KMi':
+                if self.set =='lab':
                     if len(valid_rank_flatAR)>0: self.predictions[i, :] = valid_rank_flatAR[:5, :]
                     if len(valid_rank_flatAR)>0: thinAR_copy[i, :] = valid_rank_thinAR[:5, :]
                     thin_copy[i, :] = valid_rank_thin[:5, :]

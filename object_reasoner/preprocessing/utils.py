@@ -38,7 +38,7 @@ def load_emb_space(args,fname='snapshot-test-results.h5'):
     as produced by the baselines provided at
     https://github.com/andyzeng/arc-robot-vision/image-matching
     """
-    if args.baseline =="imprk-net" or args.set=='KMi':
+    if args.baseline =="imprk-net" or args.set=='lab':
 
         path_to_hdf5 = os.path.join(args.test_res, args.baseline, 'snapshots-with-class',fname)
         tgt_impr = h5py.File(path_to_hdf5, 'r')

@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('test_base', help="Base path to test imgs and product data")
     parser.add_argument('test_res', help="Base path to dataset")
-    parser.add_argument('--set', default='KMi', choices=['arc', 'KMi'], help="Chosen dataset")
+    parser.add_argument('--set', default='lab', choices=['arc', 'lab'], help="Chosen dataset")
     parser.add_argument('--baseline', nargs='?', choices=['k-net', 'n-net', 'two-stage','imprk-net', 'triplet', 'baselineNN'],
                         default="k-net",
                         help="Baseline method to retrieve predictions from."
@@ -41,12 +41,12 @@ def main():
                         help='prints more stats on console, if True')
 
     args = parser.parse_args()
-    if args.set == 'KMi' and args.baseline == 'two-stage':
+    if args.set == 'lab' and args.baseline == 'two-stage':
         print("Known vs Novel leverage only supported for arc set")
         return 0
     overall_res= {m:{} for m in ['MLonly','area','area+flat','area+thin','area+flat+AR','area+thin+AR']}
     reasoner = ObjectReasoner(args)
-    if args.set=='KMi': reasoner = utls.exclude_nodepth(reasoner,args.baseline)
+    if args.set=='lab': reasoner = utls.exclude_nodepth(reasoner,args.baseline)
 
     # overall_res = reasoner.run(overall_res)
     # Nfold stratified cross-validation for test results

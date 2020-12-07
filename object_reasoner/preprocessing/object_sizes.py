@@ -452,7 +452,7 @@ def main():
     parser.add_argument('shp', help="Path to ShapeNetSem csv file")
     parser.add_argument('scrap', help="Path to Web-scraped csv files")
     parser.add_argument('anthropo', help="Path to anthropometric data")
-    parser.add_argument('--classes', help="Path to class index, json file",default='./data/KMi-set-2020/class_to_index.json',required=False)
+    parser.add_argument('--classes', help="Path to class index, json file",default='./data/Lab-set/class_to_index.json',required=False)
     parser.add_argument('--doq', help="Path to DoQ csv file", default=None, required=False)
     parser.add_argument('--customc', nargs='+',
                         default=['projector', 'electric heater', 'podium', 'welcome pod', 'printer',
@@ -466,7 +466,7 @@ def main():
     parser.add_argument('--fullmanual', action = 'store_true',
                         help="If True, only hardcoded measurements are used, otherwise external sources are integrated for specific objects",
                         required=False)
-    parser.add_argument('--pmanual', default='./data/KMi_obj_catalogue_manual.csv',
+    parser.add_argument('--pmanual', default='./data/lab_obj_catalogue_manual.csv',
                         help="Path to csv with manually-defined/hardcoded measurements",
                         required=False)
     parser.add_argument('--N', default=40,
@@ -487,9 +487,9 @@ def main():
         print("Please provide valid input paths as specified in the helper")
         return 0
 
-    if os.path.exists('../data/KMi_obj_catalogue.json'):
+    if os.path.exists('../data/lab_obj_catalogue.json'):
         print("Retrieve existing catalogue for update...")
-        with open('../data/KMi_obj_catalogue.json', 'r') as fin:
+        with open('../data/lab_obj_catalogue.json', 'r') as fin:
             matches = json.load(fin)
         print("Starting lognormal fitting")
         matches = log_normalise(matches,args.N,args.cloth)
@@ -536,9 +536,9 @@ def main():
 
     #In both cases, save result locally
     print("Saving object catalogue under ./data ...")
-    with open('../data/KMi_obj_catalogue.json', 'w') as fout:
+    with open('../data/lab_obj_catalogue.json', 'w') as fout:
         json.dump(matches, fout)
-    print("File saved as KMi_object_catalogue.json")
+    print("File saved as lab_object_catalogue.json")
     return 0
 
 if __name__ == "__main__":

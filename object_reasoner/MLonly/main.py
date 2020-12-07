@@ -14,7 +14,7 @@ from train import train
 from validate import validate
 from object_reasoner import predict
 from object_reasoner import evalscript
-import object_reasoner.preprocessing.utils as utl 
+import object_reasoner.preprocessing.utils as utl
 from object_reasoner.preprocessing.rgb_img_processing import crop_test
 
 """ Hardcoded training params
@@ -41,7 +41,7 @@ def main():
                         help='Image Matching model to use')
     parser.add_argument('--out', default='./data/imprintedKnet',
                         help='path where to save outputs. defaults to data/imprintedKnet')
-    parser.add_argument('--set', default='arc', choices=['arc','KMi'],
+    parser.add_argument('--set', default='arc', choices=['arc','lab'],
                         help='Dataset to run on')
     parser.add_argument('--KNN', type=str2bool, nargs='?',const=True, default=True,
                         help='path to image annotations')
@@ -55,7 +55,7 @@ def main():
 
     if args.mode =='train':
         if set =='arc':
-            print("Training mode only supported for KMi set. Please refer"
+            print("Training mode only supported for lab set. Please refer"
                   "to https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching"
                   "for scripts to train on ARC set")
             return 0
@@ -95,7 +95,7 @@ def training_routine(args,device):
         data_loaders.ImageMatchingDataset(model, device, args, randomised=False), batch_size=batch_size,
         shuffle=True)
     print("Train batches loaded!")
-    if args.set == 'KMi':
+    if args.set == 'lab':
         print("Loading validation data")
         val_loader = torch.utils.data.DataLoader(
             data_loaders.ImageMatchingDataset(model, device, args, randomised=False, load_validation=True),
@@ -136,7 +136,7 @@ def inference_routine(args, device):
             print("Please provide a path to pre-trained model checkpoint")
             return 0
 
-    if args.set == 'KMi':
+    if args.set == 'lab':
         if not os.path.exists(os.path.join(args.out, '../class_to_index.json')):
             res = utl.create_class_map(os.path.join(args.out, '../class_to_index.json'))
             if res is not None:  # stopping because reference training files are missing

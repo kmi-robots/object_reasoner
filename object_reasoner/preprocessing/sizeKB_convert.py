@@ -1,6 +1,6 @@
 """
-Methods to read qualitative size data in the same format as ./data/KMi_obj_catalogue_manual.csv
-and create a JSON file in the format of ./data/KMi_obj_catalogue.json
+Methods to read qualitative size data in the same format as ./data/lab_obj_catalogue_manual.csv
+and create a JSON file in the format of ./data/lab_obj_catalogue.json
 """
 
 import argparse
@@ -66,8 +66,8 @@ def main():
     parser.add_argument('shp', help="Path to ShapeNetSem csv file")
     parser.add_argument('--scrap_path', help="Path to scraped csv data,if any is used", required=False)
     parser.add_argument('--classes', help="Path to class index, json file",
-                        default='./data/KMi-set-2020/class_to_index.json', required=False)
-    parser.add_argument('--pmanual', default='./data/KMi_obj_catalogue_manual.csv',
+                        default='./data/Lab-set/class_to_index.json', required=False)
+    parser.add_argument('--pmanual', default='./data/lab_obj_catalogue_manual.csv',
                         help="Path to csv with manually-defined/hardcoded measurements",
                         required=False)
     args = parser.parse_args()
@@ -95,14 +95,14 @@ def main():
     KB = add_ARflat_hardcoded(KB, ar_gen)
 
     try: #load flat/no-flat from existing json, if any is found
-        with open('./data/KMi_obj_catalogue_autom_raw.json', 'r') as fin:
+        with open('./data/lab_obj_catalogue_autom_raw.json', 'r') as fin:
             backup = json.load(fin)
             for k in KB:
                 KB[k]['is_flat'] = backup[k]['is_flat']
     except: pass
     #save updated KB locally
     print("Saving object catalogue under ./data ...")
-    with open('./data/KMi_obj_catalogue_autom_raw.json', 'w') as fout:
+    with open('./data/lab_obj_catalogue_autom_raw.json', 'w') as fout:
         json.dump(KB, fout)
     print("File saved as KMi_object_catalogue_autom_raw.json")
     return 0

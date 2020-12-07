@@ -10,7 +10,7 @@ def pred_singlemodel(ReasonerObj, args):
     """
     #Find NN based on the embeddings of a single model
 
-    if args.baseline =='k-net' or args.baseline =="imprk-net" or args.set=='KMi':
+    if args.baseline =='k-net' or args.baseline =="imprk-net" or args.set=='lab':
         tgt_space = ReasonerObj.ktest_emb
         prod_space = ReasonerObj.kprod_emb
 
@@ -38,7 +38,7 @@ def pred_singlemodel(ReasonerObj, args):
             #predictions[i,:] = ranking.astype(np.object)
             predictions.append(ranking.astype(np.object)) # variable length, predictions is a list and not an array in this case
     else:
-        #KMi set case, all classes are valid in all runs
+        #lab set case, all classes are valid in all runs
         predictions = np.empty((tgt_space.shape[0], prod_space.shape[0], 2), dtype="object")
         for i in range(len(ReasonerObj.imglist)):
             t_emb = tgt_space[i,:] #1x2048/
@@ -64,14 +64,14 @@ def pred_twostage(ReasonerObj, args):
 def pred_by_size(ReasonerObj, dims,current_index):
     """Find NN based on size catalogue"""
     prod_space = ReasonerObj.sizes
-    if ReasonerObj.set !='KMi':
+    if ReasonerObj.set !='lab':
         classlist = ReasonerObj.tsamples[current_index]
     #normalize first
     t_emb = dims / np.linalg.norm(dims)  # 1x3
     prod_space = prod_space / np.linalg.norm(prod_space)
     l2dist = np.linalg.norm(t_emb - prod_space, axis=1).astype(np.object)   # keep as type numeric
     all_dists = np.column_stack((ReasonerObj.labelset, l2dist))
-    if ReasonerObj.set != 'KMi':
+    if ReasonerObj.set != 'lab':
         valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]
         ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
     else:
@@ -82,12 +82,12 @@ def pred_by_vol(ReasonerObj,volume,current_index):
 
     """Find NN based on volume catalogue"""
     prod_space = ReasonerObj.volumes
-    if ReasonerObj.set != 'KMi':
+    if ReasonerObj.set != 'lab':
         classlist = ReasonerObj.tsamples[current_index]
     t_emb = volume # 1-dim only
     l2dist = np.linalg.norm(t_emb - prod_space, axis=1).astype(np.object)    # keep as type numeric
     all_dists = np.column_stack((ReasonerObj.labelset, l2dist))   #list(ReasonerObj.KB.keys())
-    if ReasonerObj.set != 'KMi':
+    if ReasonerObj.set != 'lab':
         valid_dists = all_dists[np.isin(all_dists, classlist)[:, 0]]        # filter by valid for this dataset only
         ranking = valid_dists[np.argsort(valid_dists[:, 1])]  # sort by distance, ascending
     else:
@@ -97,7 +97,7 @@ def pred_by_vol(ReasonerObj,volume,current_index):
 
 def pred_vol_proba(ReasonerObj,estimated_volume, dist='mixed', tol=0.0001):
 
-    """Make predictions base on size distributions in KMi object catalogue
+    """Make predictions base on size distributions in lab object catalogue
     See object_sizes.py for more details on how these distributions are derived
     # volume ranges are computed based on set (fixed) tolerance
     """

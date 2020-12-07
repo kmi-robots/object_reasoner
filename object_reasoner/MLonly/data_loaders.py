@@ -107,7 +107,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
                 labels = [torch.LongTensor([int(l)]) for l in labelfile.read().splitlines()]
                 imglist = [os.path.join(self.args.path_to_arc, '..', pth) for pth in imgfile.read().splitlines()]
         except FileNotFoundError:
-            #KMi set case
+            #lab set case
             with open(os.path.join(self.args.out, '..', pathtxt)) as imgfile, \
                 open(os.path.join(self.args.out, '..', labeltxt)) as labelfile:
                 labels = [torch.LongTensor([int(l)]) for l in labelfile.read().splitlines()]

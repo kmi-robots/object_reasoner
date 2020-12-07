@@ -9,7 +9,7 @@ Supported datasets
 ------------------
 
 -   the Lab RGBD dataset: You can find the relevant data and models to reproduce
-our results as part of a zipped folder [here](http://www.mediafire.com/file/df2upaslfrpbd0d/starter_kit.zip/file).
+our results as part of a zipped folder [here](https://mega.nz/file/sk9QlISA#whLLoS4qpUCkaQpb47FQaS8XslRgpnk0RSjLL7pfIWI).
 **Note: the extracted files require about 21 GB of free disk space**.
 -   the 2017 Amazon Robotic Challenge (ARC) image matching set: please
     refer to these [instructions](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/)
@@ -51,22 +51,28 @@ and then using the `make pip-package` before installing the python lib manually 
 
 Getting started
 ---------------
-* After completing all the installation steps, download the relavant data [here](http://www.mediafire.com/file/df2upaslfrpbd0d/starter_kit.zip/file).
+* After completing all the installation steps, download the rele../..../..vant data [here](https://mega.nz/file/sk9QlISA#whLLoS4qpUCkaQpb47FQaS8XslRgpnk0RSjLL7pfIWI).
 
 * After downloading and unzipping the starter kit:
     * Move or copy the k-net and n-net folders under `object_reasoner/data`
-    * Move or copy the remaining files and folders under `object_reasoner/data/KMi-set-2020`
+    * Move or copy the remaining files and folders under `object_reasoner/data/Lab-set`
+
+* Clone [repository](https://github.com/andyzeng/arc-robot-vision) of baseline methods in cited paper by Zeng et al.
+
 
 Reproducing paper results
 ----------------
-To reproduce results on the Lab test set.
+Commands to reproduce our results on the Lab test set:
 ```
 cd your_path_to/object_reasoner/object_reasoner
+python3 cli.py ./data/Lab-set ./data
 ```
-To reproduce results on the ARC test set.
+Commands to reproduce our results on the ARC test set:
 ```
-python3 cli.py --help
+cd your_path_to/object_reasoner/object_reasoner
+python3 cli.py your_path_to/arc-robot-vision/image-matching/data your_path_to/arc-robot-vision/image-matching --baseline two-stage --set arc --preds your_path_to/arc-robot-vision/image-matching/data/logged-predictions
 ```
+
 For usage details on how to re-train or produce new ML-based predictions on a different dataset,
 you can run the following commands:
 ```

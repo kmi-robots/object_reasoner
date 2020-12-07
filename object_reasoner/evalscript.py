@@ -35,7 +35,7 @@ def eval_singlemodel(ReasonerObj,eval_d,method, K=1):
                 eval_d[method][k].append(metr)
         return eval_d
 
-    elif K==1 and ReasonerObj.set=='KMi':
+    elif K==1 and ReasonerObj.set=='lab':
         # eval top-1 of each ranking
         y_pred = ReasonerObj.predictions[:, 0, 0].astype('int').astype('str').tolist()
         y_true = ReasonerObj.labels
@@ -99,7 +99,7 @@ def eval_ranking(ReasonerObj,K,eval_d,method):
     """
     Prints mean Precision@K, mean nDCG@K and hit ratio @ K
     """
-    if ReasonerObj.set=='KMi':
+    if ReasonerObj.set=='lab':
         y_pred = ReasonerObj.predictions[:, :K, 0].astype('int').astype('str').tolist()
     else: #ARC: predictions in a list
         y_pred = [ar[:K,0] for ar in ReasonerObj.predictions]

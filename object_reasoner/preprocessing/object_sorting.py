@@ -60,7 +60,7 @@ def object_sorting(KB,args):
                 depths2.append((k, d2))
                 depths3.append((k, d1))
 
-    elif args.set =='KMi':
+    elif args.set =='lab':
         keyword = 'dims_cm'
         for k in KB.keys():
             measurements = KB[k][keyword] #array of measurements
@@ -335,16 +335,16 @@ def valid_adjustments(obj_dict):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('catalogue', help="Path to input object catalogue, in JSON format")
-    parser.add_argument('--set',choices=['arc','KMi'],default='arc',help="name of dataset to sort", required=False)
+    parser.add_argument('--set',choices=['arc','lab'],default='arc',help="name of dataset to sort", required=False)
     args = parser.parse_args()
     with open(args.catalogue) as fin:
         KB = json.load(fin)
 
-    if args.set=='KMi': KB = remove_outliers(KB)
+    if args.set=='lab': KB = remove_outliers(KB)
     elif args.set=='arc': KB = refresh(KB)
     sorted_res = object_sorting(KB,args)
     KB, aTs, dTs = bin_creation(KB,sorted_res)
-    if args.set=='KMi': KB= valid_adjustments(KB) #autom annotation adjusted based on flat/no-flat collected manually
+    if args.set=='lab': KB= valid_adjustments(KB) #autom annotation adjusted based on flat/no-flat collected manually
     elif args.set=='arc':
         KB = rule_adjust(KB)
         KB = check_flat(KB) #autom annotation is used to automatically annotate objects as flat-no-flat
@@ -358,9 +358,9 @@ def main():
     print(("Config 2 %s") % str(dTs[1]))
     print(("Config 3 %s") % str(dTs[2]))
 
-    if args.set =="KMi":
+    if args.set =="lab":
         print("Saving object catalogue under ./data ...")
-        with open('./data/KMi_obj_catalogue_autom.json', 'w') as fout:
+        with open('./data/lab_obj_catalogue_autom.json', 'w') as fout:
             json.dump(KB, fout)
         print("File saved as KMi_object_catalogue_autom.json")
     elif args.set =="arc":

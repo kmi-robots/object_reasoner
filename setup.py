@@ -17,8 +17,8 @@ setup_requirements = [ ]
 test_requirements = [ ]
 
 setup(
-    author="Agnese Chiatti",
-    author_email='agnese.chiatti@gmail.com',
+    author="anonymous authors",
+    author_email='xyz@gmail.com',
     python_requires='>=3.5',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
@@ -47,7 +47,7 @@ setup(
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/achiatti/object_reasoner',
+    url='',
     version='0.1.0',
     zip_safe=False,
 )
