@@ -54,8 +54,8 @@ Getting started
 * After completing all the installation steps, download the relevant data [here](https://mega.nz/file/sk9QlISA#whLLoS4qpUCkaQpb47FQaS8XslRgpnk0RSjLL7pfIWI).
 
 * After downloading and unzipping the starter kit:
-    * Move or copy the k-net and n-net folders under `object_reasoner/data`
-    * Move or copy the remaining files and folders under `object_reasoner/data/Lab-set`
+    * Move or copy the k-net and n-net folders under `object_reasoner/object_reasoner/data`
+    * Move or copy the remaining files and folders under `object_reasoner/object_reasoner/data/Lab-set`
 
 * Clone [repository](https://github.com/andyzeng/arc-robot-vision) of baseline methods in cited paper by Zeng et al.
 

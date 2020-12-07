@@ -62,7 +62,7 @@ class ObjectReasoner():
                 with open('data/lab_obj_catalogue_autom_valid.json') as fin,\
                     open('data/lab_obj_catalogue.json') as fin2,\
                     open('data/Lab-set/class_to_index.json') as cin:
-                    self.KB = json.load(fin) #where the ground truth knowledge is
+                    self.FKB = json.load(fin) #where the ground truth knowledge is
                     #self.refKB = json.load(fin2) #manually sorted objects
                     self.mapper = json.load(cin)
             except FileNotFoundError:
