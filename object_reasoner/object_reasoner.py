@@ -138,6 +138,7 @@ class ObjectReasoner():
     def init_camera_intrinsics(self, args):
         if not os.path.exists(os.path.join(args.test_base,'./camera-intrinsics.txt')) and\
             not os.path.exists(os.path.join(args.test_res,'./camera-intrinsics.txt')):
+
             bagpath = [os.path.join(args.bags, bagname) for bagname in os.listdir(args.bags) if bagname[-4:] == '.bag'][0]
             self.camintr = self.dimglist = utl.call_python_version("2.7", "bag_processing", "load_intrinsics",[bagpath,\
                                                                 os.path.join(args.test_base,'./camera-intrinsics.txt')])
