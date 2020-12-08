@@ -58,7 +58,9 @@ Getting started
     * Move or copy the remaining files and folders under `object_reasoner/object_reasoner/data/Lab-set`
 
 * Clone [repository](https://github.com/andyzeng/arc-robot-vision) of baseline methods in cited paper by Zeng et al.
-
+    * Download the ARC data as described in the arc-robot-vision repository
+    * Create a folder called data under ./arc-robot-vision/image-matching/
+    * Move all ARC data folders and txt files under ./arc-robot-vision/image-matching/data
 
 Reproducing paper results
 ----------------
