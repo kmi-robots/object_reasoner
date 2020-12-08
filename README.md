@@ -9,10 +9,12 @@ Supported datasets
 ------------------
 
 -   the Lab RGBD dataset: You can find the relevant data and models to reproduce
-our results as part of a zipped folder [here](https://mega.nz/file/s1k1GCQQ#u7JOQ6_1SGAwxDr7fte-ljxheqLyaKAsYSgsCZswOq0).
-**Note: the extracted files require about 2.5 GB of free disk space**.
+    our results as part of a zipped folder [here](https://mega.nz/file/9xMVESIC#c_LSlTqVpgBtLRBFUT9Dzeu0zphal2bAQyoHgaFFvFU).
+    **Note: the extracted files require about 2.5 GB of free disk space**.
 -   the 2017 Amazon Robotic Challenge (ARC) image matching set: please
-    refer to these [instructions](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/)
+    refer to these [instructions](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/).
+    **Note: the zipped dataset occupies 4.6 GB**.
+
 - The size knowledge properties generated for both datasets are saved in JSON format under
  ```./object_reasoner/data/```
 
@@ -51,16 +53,19 @@ and then using the `make pip-package` before installing the python lib manually 
 
 Getting started
 ---------------
-* After completing all the installation steps, download the relevant data [here](https://mega.nz/file/s1k1GCQQ#u7JOQ6_1SGAwxDr7fte-ljxheqLyaKAsYSgsCZswOq0).
+* After completing all the installation steps, download the relevant data [here](https://mega.nz/file/9xMVESIC#c_LSlTqVpgBtLRBFUT9Dzeu0zphal2bAQyoHgaFFvFU).
 
 * After downloading and unzipping the starter kit:
-    * Move or copy the k-net and n-net folders under `object_reasoner/object_reasoner/data`
-    * Move or copy the remaining files and folders under `object_reasoner/object_reasoner/data/Lab-set`
+    * Move ```arc_camera_intrinsics.txt``` under ```./arc-robot-vision/image-matching/``` and rename it as ```camera_intrinsics.txt```
+    * Move the k-net and n-net folders under `object_reasoner/object_reasoner/data`
+    * Move the remaining files and folders under `object_reasoner/object_reasoner/data/Lab-set`
 
 * Clone [repository](https://github.com/andyzeng/arc-robot-vision) of baseline methods in cited paper by Zeng et al.
+    *   Download the ARC data as described in the arc-robot-vision repository (Note: as specified in Zeng et al's instructions,
+    ARC data will have to be placed under a ```./arc-robot-vision/image-matching/data``` folder)
+    * Download the pre-trained K-net and N-net methods from the same repo and extract the contents of the k-net.zip and n-net.zip folders
+    under ```./arc-robot-vision/image-matching```
 
-* Download the ARC data as described in the arc-robot-vision repository (Note: as specified in Zeng et al's instructions,
-ARC data will have to be placed under a ./arc-robot-vision/image-matching/data folder)
 
 Reproducing paper results
 ----------------
