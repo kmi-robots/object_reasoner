@@ -43,8 +43,7 @@ class ImageMatchingDataset(torch.utils.data.Dataset):
                 self.trans = transforms.Compose([
                     transforms.Resize((img_w, img_h)),
                     transforms.ToTensor()
-                    ,transforms.Normalize(means, stds)
-                    ])
+                    ,transforms.Normalize(means, stds)])
 
                 self.prod_data, self.prod_emb, self.prod_labels = self.read_files(model,'train-product-imgs.txt','train-product-labels.txt')
 

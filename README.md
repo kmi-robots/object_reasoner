@@ -9,8 +9,8 @@ Supported datasets
 ------------------
 
 -   the Lab RGBD dataset: You can find the relevant data and models to reproduce
-    our results as part of a zipped folder [here](https://mega.nz/file/klcH3SiQ#mxzEyejzJDwl0WRoN-YOFrwHG8Qb-hCcqi04qqda7k4).
-    **Note: the extracted files require about 2.5 GB of free disk space**.
+    our results as part of a zipped folder [here](https://mega.nz/file/s51SRJpI#rogQVLB7arn3e0PFKKbQ-zuAGRNzK_DmpAzzXuOqfPA).
+    **Note: the extracted files require about 3 GB of free disk space**.
 -   the 2017 Amazon Robotic Challenge (ARC) image matching set: please
     refer to these [instructions](https://github.com/andyzeng/arc-robot-vision/tree/master/image-matching/).
     **Note: the zipped dataset occupies 4.6 GB**.
@@ -53,7 +53,7 @@ and then using the `make pip-package` before installing the python lib manually 
 
 Getting started
 ---------------
-* After completing all the installation steps, download the relevant data [here](https://mega.nz/file/klcH3SiQ#mxzEyejzJDwl0WRoN-YOFrwHG8Qb-hCcqi04qqda7k4).
+* After completing all the installation steps, download the relevant data [here](https://mega.nz/file/s51SRJpI#rogQVLB7arn3e0PFKKbQ-zuAGRNzK_DmpAzzXuOqfPA).
 
 * After downloading and unzipping the starter kit:
     * Move ```arc_camera_intrinsics.txt``` under ```./arc-robot-vision/image-matching/``` and rename it as ```camera-intrinsics.txt```
