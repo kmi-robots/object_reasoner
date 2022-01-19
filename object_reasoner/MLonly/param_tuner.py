@@ -44,7 +44,7 @@ def estimate_epsilon(subsample_preds_algo1, subsample_preds_algo2, classlist):
             + indication of the class label those value refer to
     """
     min_classwise1, min_classwise2 = [],[]
-    epsilon_set= []
+    epsilon_set = []
     for classl in classlist:
         min_predwise1,min_predwise2 = [],[]
         if subsample_preds_algo2 is None: #only one baseline algorithm

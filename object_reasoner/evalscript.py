@@ -1,5 +1,6 @@
-from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, confusion_matrix
 import math
+import matplotlib.pyplot as plt
 
 def eval_singlemodel(ReasonerObj,eval_d,method, K=1):
     if K==1 and ReasonerObj.set=='arc':
@@ -14,21 +15,37 @@ def eval_singlemodel(ReasonerObj,eval_d,method, K=1):
         #all_preds = ReasonerObj.predictions[:,0,0].astype('int').astype('str').tolist()
         known_labels = [l for l in all_labels if l in knownclasses]
         new_labels = [l for l in all_labels if l in newclasses]
-        all_sum = 0
-        k_sum = 0
-        n_sum = 0
-        for p,l in zip(all_preds,all_labels):
-            if p == l:
-                all_sum +=1
-                if l in knownclasses:
-                    k_sum +=1
-                elif l in newclasses:
-                    n_sum +=1
-        print("Mixed object accuracy: %f" % float(all_sum/len(all_preds)))
-        print("Known object accuracy: %f" % float(k_sum / len(known_labels)))
-        print("Novel object accuracy: %f" % float(n_sum / len(new_labels)))
-        for k, metr in [('known_acc',float(k_sum / len(known_labels)) ), ('novel_acc',float(n_sum / len(new_labels))), \
-                         ('mixed_acc',float(all_sum / len(all_preds)))]:
+
+        known_indices = [i for i,l in enumerate(all_labels) if l in knownclasses]
+        known_preds = [all_preds[i] for i in known_indices]
+        new_indices = [i for i,l in enumerate(all_labels) if l in newclasses]
+        new_preds = [all_preds[i] for i in new_indices]
+
+        macc = accuracy_score(all_labels,all_preds)
+        kacc = accuracy_score(known_labels,known_preds)
+        nacc = accuracy_score(new_labels,new_preds)
+        print("Mixed object accuracy: %f" % float(macc))
+        print("Known object accuracy: %f" % float(kacc))
+        print("Novel object accuracy: %f" % float(nacc))
+
+        """classkeys = list(ReasonerObj.mapper.keys())
+        all_labels_h = [ReasonerObj.remapper[l] for l in all_labels]
+        all_preds_h = [ReasonerObj.remapper[p] for p in all_preds]
+        cm = confusion_matrix(all_labels_h, all_preds_h, classkeys)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(cm, cmap='plasma')
+        plt.title('Confusion matrix of the %s classifier' % ReasonerObj.baseline)
+        fig.colorbar(cax)
+        ax.set_xticklabels([''] + classkeys)
+        ax.set_yticklabels([''] + classkeys)
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.show()"""
+
+        for k, metr in [('known_acc',kacc), ('novel_acc',nacc), \
+                         ('mixed_acc',macc)]:
             try: eval_d[method][k].append(metr)
             except KeyError:
                 eval_d[method][k] = []

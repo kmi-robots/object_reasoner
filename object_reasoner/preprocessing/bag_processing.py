@@ -113,7 +113,6 @@ def find_nearest_frame(bagfile, rgb_time, lower_bound, upper_bound, search_list=
                 depth_img = bridge.imgmsg_to_cv2(msg, "32FC1")
             elif topic == '/camera/depth/points':
                 pcl = msg
-
     return depth_img, pcl
 
 def load_intrinsics(path_to_bag, path_to_out):

@@ -63,7 +63,7 @@ class ObjectReasoner():
                     open('data/lab_obj_catalogue.json') as fin2,\
                     open('data/Lab-set/class_to_index.json') as cin:
                     self.KB = json.load(fin) #where the ground truth knowledge is
-                    #self.refKB = json.load(fin2) #manually sorted objects
+                    #self.KB = json.load(fin2) #manually sorted objects
                     self.mapper = json.load(cin)
             except FileNotFoundError:
                 print("No lab catalogue or class-to-label index found - please refer to object_sizes.py for expected catalogue format")
@@ -215,7 +215,7 @@ class ObjectReasoner():
         non_processed_pcls = 0
         non_processed_fnames = []
         non_depth_aval = 0
-        no_corrected =0
+        no_corrected = 0
         nfallbacks = 0
 
         pclcluster = True
@@ -285,7 +285,7 @@ class ObjectReasoner():
                     else:
                         sizeValidate,_= self.ML_predselection(read_current_rank,self.epsilon_set)
                 else:# ARC case: two ML baselines could be leveraged
-                    if current_label ==current_label_B or current_label=='empty':
+                    if current_label == current_label_B or current_label=='empty':
                         # if there is agreement between the 2 Nets, retain predictions as-is
                         # or object categorised as empty (i.e., size is misleading)
                         sizeValidate=False
@@ -308,6 +308,8 @@ class ObjectReasoner():
                 continue #skip correction
 
             else: #current_label != gt_label: #if
+                print(self.imglist[i])
+                print(cv2.imread(self.imglist[i]).shape)
                 """Uncomment to visually inspect images/debug"""
                 """plt.imshow(dimage, cmap='Greys_r')
                 plt.show()

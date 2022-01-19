@@ -124,6 +124,7 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                             safx, safy = int(safpx_rect* w), int(safpx_rect*h)
                             safxmax, safymax = int(w - safx), int(h - safy)
                             roi = roi[safy:safymax, safx:safxmax]
+
                         #plt.imshow(roi)
                         #plt.title(label=label)
                         #plt.show()
@@ -151,7 +152,7 @@ def crop_test(path_to_imgs, path_to_annotations, path_to_out, depth_img=None, di
                 #dimg.show()
                 if safpx_rect> 0:
                     h, w = roi.shape
-                    safx, safy = int(safpx_rect * w), int(safpxsafpx_rect * h)
+                    safx, safy = int(safpx_rect * w), int(safpx_rect * h)
                     safxmax, safymax = int(w - safx), int(h - safy)
                     roi = roi[safy:safymax, safx:safxmax]
                 #dimg = Image.fromarray(roi)
