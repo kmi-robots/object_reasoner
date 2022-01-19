@@ -1,4 +1,4 @@
-from sklearn.metrics import classification_report, accuracy_score, dcg_score, ndcg_score, precision_score
+from sklearn.metrics import classification_report, accuracy_score, precision_recall_fscore_support, dcg_score, ndcg_score, precision_score
 import math
 #import pprint
 #import os
@@ -104,6 +104,14 @@ def eval_KMi(ReasonerObj, depth_aligned=False, K=1):
             y_true = ReasonerObj.labels
         print(classification_report(y_true, y_pred))
         print(accuracy_score(y_true, y_pred))
+        Pu,Ru, F1u, _ = precision_recall_fscore_support(y_true, y_pred, average='macro')
+        Pw, Rw, F1w, _ = precision_recall_fscore_support(y_true, y_pred, average='weighted')
+        print("Unweighted P: %f" % Pu)
+        print("Unweighted R: %f" % Ru)
+        print("Unweighted F1: %f" % F1u)
+        print("Weighted P: %f" % Pw)
+        print("Weighted R: %f" % Rw)
+        print("Weighted F1: %f" % F1w)
     else:#eval top-K ranking (ranking quality metrics)
         eval_ranking(ReasonerObj,K,depth_aligned,blackl=blacklist)
 
